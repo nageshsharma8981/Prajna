@@ -40,6 +40,8 @@ export const store = {
     workspace: readJson('workspace.json', null),
     connectors: readJson('connectors.json', null),
     keys: {},                                 // BYOK: memory-only. Never written to disk, never sent to clients, gone on restart.
+    oauthApps: {},                            // { provider: { clientId, clientSecret } } — memory-only
+    tokens: {},                               // { provider: { token, refresh, expiresAt, account } } — memory-only
     customModels: readJson('models.json', []), // user-added panel seats
   },
 
@@ -57,6 +59,13 @@ export const store = {
     this.flushKeys();
   },
   removeKey(provider) { delete this.state.keys[provider]; this.flushKeys(); },
+
+  oauthApp(provider) { return this.state.oauthApps[provider] || null; },
+  setOauthApp(provider, clientId, clientSecret) { this.state.oauthApps[provider] = { clientId, clientSecret, addedAt: Date.now() }; },
+  removeOauthApp(provider) { delete this.state.oauthApps[provider]; delete this.state.tokens[provider]; },
+  token(provider) { return this.state.tokens[provider] || null; },
+  setToken(provider, t) { this.state.tokens[provider] = { ...t, at: Date.now() }; },
+  removeToken(provider) { delete this.state.tokens[provider]; },
 
   customModels() { return this.state.customModels; },
   addCustomModel(m) { this.state.customModels.push(m); this.flushModels(); return m; },

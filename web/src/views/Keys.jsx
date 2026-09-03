@@ -60,6 +60,42 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
   );
 }
 
+function OAuthAppCard({ id, app, onChange }) {
+  const [clientId, setClientId] = useState('');
+  const [secret, setSecret] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+  const save = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    try { await send(`/api/oauth/${id}/app`, 'PUT', { clientId, clientSecret: secret }); setMsg('Loaded for this session. Connect from the Connectors page.'); setClientId(''); setSecret(''); await onChange(); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const remove = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    try { await send(`/api/oauth/${id}/app`, 'DELETE'); setMsg('App removed; its connections are gone too.'); await onChange(); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="key-card" role="group" aria-label={`${app.label} OAuth app`}>
+      <div className="key-head"><b>{app.label}</b><span className={`sflap ${app.configured ? 'LIVE' : 'QUEUED'}`}>{app.connectedAs ? 'CONNECTED' : app.configured ? 'APP LOADED' : 'NO APP'}</span></div>
+      <p className="key-hint">Covers {app.covers.join(', ')}. Register at: {app.console}</p>
+      <p className="key-saved">Redirect URI to register: <code>{app.redirectUri}</code></p>
+      {app.configured && <p className="key-saved">Client id in memory: <code>{app.clientId}</code>{app.connectedAs ? <> · connected as <code>{app.connectedAs}</code></> : null}</p>}
+      <div className="key-form">
+        <input className="key-input" placeholder="Client id" value={clientId} onChange={(e) => setClientId(e.target.value)} aria-label={`${app.label} client id`} autoComplete="off" />
+        <input className="key-input" type="password" placeholder="Client secret" value={secret} onChange={(e) => setSecret(e.target.value)} aria-label={`${app.label} client secret`} autoComplete="off" />
+        <div className="key-actions">
+          <button className="btn-stamp attn-btn" onClick={save} disabled={busy || !clientId || !secret}>Use app this session</button>
+          {app.configured && <button className="btn-quiet" onClick={remove} disabled={busy}>Remove</button>}
+        </div>
+      </div>
+      {msg && <p className="key-msg" role="status">{msg}</p>}
+      {err && <p className="key-err" role="alert">{err}</p>}
+    </div>
+  );
+}
+
 export default function Keys() {
   const s = useStore();
   const [name, setName] = useState('');
@@ -98,6 +134,18 @@ export default function Keys() {
           {Object.entries(s.providers || {}).map(([id, meta]) => (
             <ProviderCard key={id} id={id} meta={meta} saved={s.keys?.[id]} models={s.models} onChange={s.refresh} />
           ))}
+        </div>
+      </section>
+
+      <section className="section-gap" aria-label="Connector sign-in apps">
+        <h2 className="pg-title" style={{ fontSize: '1.1rem' }}>Connector sign-in apps</h2>
+        <p className="lede">
+          Connectors sign in with real OAuth. Each provider needs an app you register once in its
+          developer console; paste its client id and secret here (memory only, never saved) and set
+          the redirect URI shown. Then Connect on the Connectors page.
+        </p>
+        <div className="key-grid" style={{ marginTop: '1rem' }}>
+          {Object.entries(s.oauthApps || {}).map(([id, app]) => <OAuthAppCard key={id} id={id} app={app} onChange={s.refresh} />)}
         </div>
       </section>
 

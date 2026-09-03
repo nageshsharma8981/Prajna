@@ -101,6 +101,22 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   supersedes.
 - `AGENTS.md` records the mandatory rules for changing the engine.
 
+## v0.6 — connectors that actually connect
+
+- **Real OAuth sign-in** for Google (one app covers Gmail, Drive, Calendar, Sheets,
+  YouTube), Slack, Notion and GitHub — zero dependencies, standard authorization-code
+  flow, state-checked callbacks at `/api/oauth/<provider>/callback`.
+- **Bring your own provider app**: register an OAuth app once in each provider's
+  console, paste its client id/secret under *Your keys* (memory-only, never saved),
+  and Connect from the Connectors page. Tokens are memory-only too.
+- **Connected sources do work**: every mission's first step prints live, read-only
+  evidence lines from each connected source (recent Gmail threads, latest Drive
+  files, upcoming Calendar events, Slack channels, recently edited Notion pages,
+  recently pushed GitHub repos); Slack/Notion/Gmail also add a delivery step that
+  holds for your approval. Failures are printed on the tape, never hidden.
+- Sources without a wired provider (Outlook, Linear, Jira, HubSpot, Stripe, Figma,
+  X, RSS) say so honestly instead of pretending.
+
 ## The world
 
 Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,

@@ -7,6 +7,7 @@ import { store } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
 import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat } from './engine.js';
+import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 
 bindCustomModels(() => store.customModels());
 import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, forkMission, DIMENSIONS } from './engine.js';
@@ -118,6 +119,11 @@ const MIME = {
   '.woff2': 'font/woff2', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon',
 };
 
+// Connectors that are genuinely connected (a live OAuth token in memory).
+function connectedConnectors() {
+  return CONNECTORS.filter((c) => c.provider && store.token(c.provider)).map((c) => c.id);
+}
+
 function connectorState() {
   if (!store.state.connectors) {
     store.state.connectors = { connected: ['gdrive'], skills: SKILLS.filter((s) => s.install === 'installed').map((s) => s.id) };
@@ -150,7 +156,12 @@ async function handle(req, res) {
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint }])),
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
-      connectors: CONNECTORS.map((c) => ({ ...c, connected: cs.connected.includes(c.id) })),
+      connectors: CONNECTORS.map((c) => {
+        const prov = c.provider || null;
+        const tok = prov ? store.token(prov) : null;
+        return { ...c, provider: prov, supported: !!prov, appConfigured: !!(prov && store.oauthApp(prov)), connected: !!tok, account: tok ? tok.account : null };
+      }),
+      oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(pub),
       artifacts: store.artifacts(),
     });
@@ -169,7 +180,7 @@ async function handle(req, res) {
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectorState().connected });
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
     return json(res, 200, pub(mission));
   }
 
@@ -178,7 +189,7 @@ async function handle(req, res) {
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
-    const m = forkMission(forkMatch[1], { goal, installedSkills: connectorState().skills, queuedConnectors: connectorState().connected });
+    const m = forkMission(forkMatch[1], { goal, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     return json(res, 200, pub(m));
   }
@@ -279,6 +290,44 @@ async function handle(req, res) {
     return res.end(html);
   }
 
+  // ---- OAuth connectors (apps + tokens memory-only) ----
+  const appMatch = p.match(/^\/api\/oauth\/([\w]+)\/app$/);
+  if (appMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+    const prov = appMatch[1];
+    if (!OAUTH_PROVIDERS[prov]) return json(res, 404, { error: 'Unknown provider.' });
+    if (req.method === 'DELETE') { store.removeOauthApp(prov); return json(res, 200, { ok: true }); }
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const clientId = String(body.clientId || '').trim(); const clientSecret = String(body.clientSecret || '').trim();
+    if (!clientId || !clientSecret) return json(res, 400, { error: 'Client id and client secret are both required.' });
+    store.setOauthApp(prov, clientId, clientSecret);
+    return json(res, 200, { ok: true, redirectUri: redirectUri(req, prov) });
+  }
+  const startMatch = p.match(/^\/api\/oauth\/([\w]+)\/start$/);
+  if (startMatch) {
+    try { res.writeHead(302, { location: startUrl(req, startMatch[1]) }); return res.end(); }
+    catch (e) { return json(res, 400, { error: e.message }); }
+  }
+  const cbMatch = p.match(/^\/api\/oauth\/([\w]+)\/callback$/);
+  if (cbMatch) {
+    const prov = cbMatch[1];
+    const err = url.searchParams.get('error');
+    if (err) { res.writeHead(302, { location: `/connectors?error=${encodeURIComponent(err)}` }); return res.end(); }
+    try {
+      const account = await finishCallback(req, prov, url.searchParams.get('code') || '', url.searchParams.get('state') || '');
+      res.writeHead(302, { location: `/connectors?connected=${encodeURIComponent(prov)}&as=${encodeURIComponent(account)}` });
+      return res.end();
+    } catch (e) {
+      res.writeHead(302, { location: `/connectors?error=${encodeURIComponent(e.message)}` });
+      return res.end();
+    }
+  }
+  const discMatch = p.match(/^\/api\/oauth\/([\w]+)\/disconnect$/);
+  if (discMatch && req.method === 'POST') {
+    store.removeToken(discMatch[1]);
+    return json(res, 200, { ok: true });
+  }
+
   // ---- BYOK: keys + custom seats (keys never leave the server) ----
   const keyMatch = p.match(/^\/api\/keys\/([\w-]+)$/);
   if (keyMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
@@ -334,7 +383,10 @@ async function handle(req, res) {
   const connectMatch = p.match(/^\/api\/connectors\/([\w-]+)\/toggle$/);
   if (connectMatch && req.method === 'POST') {
     const cid = connectMatch[1];
-    if (!CONNECTORS.some((c) => c.id === cid)) return json(res, 404, { error: 'Unknown connector.' });
+    const cdef = CONNECTORS.find((c) => c.id === cid);
+    if (!cdef) return json(res, 404, { error: 'Unknown connector.' });
+    if (cdef.provider) return json(res, 400, { error: `${cdef.name} connects with real sign-in — use Connect on the Connectors page.` });
+    return json(res, 400, { error: `${cdef.name} is not wired yet — no OAuth provider for it in this build.` });
     const cs = connectorState();
     cs.connected = cs.connected.includes(cid) ? cs.connected.filter((c) => c !== cid) : [...cs.connected, cid];
     store.flushConnectors();

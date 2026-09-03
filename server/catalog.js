@@ -80,20 +80,20 @@ export const SKILLS = [
 ];
 
 export const CONNECTORS = [
-  { id: 'gmail', name: 'Gmail', kind: 'Mail', what: 'Read threads as evidence; draft replies as artifacts.' },
+  { id: 'gmail', provider: 'google', name: 'Gmail', kind: 'Mail', what: 'Read threads as evidence; draft replies as artifacts.' },
   { id: 'outlook', name: 'Outlook', kind: 'Mail', what: 'Mail and calendar evidence for briefs and updates.' },
-  { id: 'gdrive', name: 'Google Drive', kind: 'Files', what: 'Pull documents into mission evidence; file artifacts back.' },
-  { id: 'notion', name: 'Notion', kind: 'Docs', what: 'Source pages as evidence; publish briefs to your wiki.' },
-  { id: 'slack', name: 'Slack', kind: 'Chat', what: 'Post mission fills to a channel; pull threads as context.' },
-  { id: 'github', name: 'GitHub', kind: 'Code', what: 'Repos, issues and PRs as evidence for engineering missions.' },
+  { id: 'gdrive', provider: 'google', name: 'Google Drive', kind: 'Files', what: 'Pull documents into mission evidence; file artifacts back.' },
+  { id: 'notion', provider: 'notion', name: 'Notion', kind: 'Docs', what: 'Source pages as evidence; publish briefs to your wiki.' },
+  { id: 'slack', provider: 'slack', name: 'Slack', kind: 'Chat', what: 'Post mission fills to a channel; pull threads as context.' },
+  { id: 'github', provider: 'github', name: 'GitHub', kind: 'Code', what: 'Repos, issues and PRs as evidence for engineering missions.' },
   { id: 'linear', name: 'Linear', kind: 'Work', what: 'Cycle and project data for delivery analysis.' },
   { id: 'jira', name: 'Jira', kind: 'Work', what: 'Board exports for flow metrics and delivery forecasts.' },
-  { id: 'gcal', name: 'Google Calendar', kind: 'Time', what: 'Schedule evidence; book time when a mission needs it.' },
-  { id: 'sheets', name: 'Google Sheets', kind: 'Data', what: 'Spreadsheets as analysis inputs; results written back.' },
+  { id: 'gcal', provider: 'google', name: 'Google Calendar', kind: 'Time', what: 'Schedule evidence; book time when a mission needs it.' },
+  { id: 'sheets', provider: 'google', name: 'Google Sheets', kind: 'Data', what: 'Spreadsheets as analysis inputs; results written back.' },
   { id: 'hubspot', name: 'HubSpot', kind: 'CRM', what: 'Pipeline and contact evidence for revenue missions.' },
   { id: 'stripe', name: 'Stripe', kind: 'Revenue', what: 'Billing data for pricing and retention analysis.' },
   { id: 'figma', name: 'Figma', kind: 'Design', what: 'Design files as evidence for product and site missions.' },
-  { id: 'youtube', name: 'YouTube', kind: 'Media', what: 'Transcripts as research evidence with timestamped citations.' },
+  { id: 'youtube', provider: 'google', name: 'YouTube', kind: 'Media', what: 'Transcripts as research evidence with timestamped citations.' },
   { id: 'x', name: 'X / Twitter', kind: 'Social', what: 'Public sentiment sampling with explicit bias caveats.' },
   { id: 'rss', name: 'RSS / Feeds', kind: 'News', what: 'Fresh sector news wired straight into research missions.' },
 ];

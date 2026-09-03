@@ -13,6 +13,7 @@ import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
+import { evidenceFor } from './oauth.js';
 
 // BYOK: a seat is LIVE when the workspace holds a key for its provider.
 export function liveSeat(modelIdOrRef) {
@@ -148,6 +149,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
     lineage: lineage || null, // { parentId, parentSerial, version }
+    connected: [...(queuedConnectors || [])],
     spent: 0,
     eventSeq: 0,
     events: [],
@@ -295,6 +297,12 @@ function buildScript(mission) {
     const deps = step.dependsOn?.length ? step.dependsOn : ['__start'];
     let t = Math.max(...deps.map((d) => endAt[d] ?? 400)) + 700;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'LIVE', access: step.access, requiresConfirmation: !!step.requiresConfirmation });
+    if (step.id === 's1') {
+      for (const cid of mission.connected || []) {
+        t += 900;
+        script.push({ t, type: 'log', stepId: step.id, label: 'evidence', detail: `reading ${cid} (live, read-only)…`, connector: cid });
+      }
+    }
     if (step.tool === 'council') {
       const c = councilScript(mission, step.id, t);
       script.push(...c.events);
@@ -407,6 +415,17 @@ async function applyEvent(m, ev, notify, runner) {
       });
       store.flushMissions();
       return 'pause';
+    }
+  }
+
+  if (ev.type === 'log' && ev.connector) {
+    try {
+      const text = await evidenceFor(ev.connector);
+      record.detail = text ? `${text} · live` : `${ev.connector}: no live token in memory — reconnect on the Connectors page`;
+      record.live = !!text;
+    } catch (e) {
+      record.detail = `${ev.connector}: live read failed (${String(e.message || e).slice(0, 120)}) — recorded, not hidden`;
+      record.live = false;
     }
   }
 
