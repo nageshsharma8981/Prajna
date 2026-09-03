@@ -4,7 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
-import { MODELS, DESKS, SKILLS, CONNECTORS, modelById } from './catalog.js';
+import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
+import { PROVIDERS, testKey, maskKey } from './providers.js';
+import { liveSeat } from './engine.js';
+
+bindCustomModels(() => store.customModels());
 import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, DIMENSIONS } from './engine.js';
 import { GENERATORS } from './artifacts.js';
 
@@ -142,7 +146,9 @@ async function handle(req, res) {
     return json(res, 200, {
       workspace: store.workspace(),
       desks: DESKS,
-      models: MODELS,
+      models: allModels().map((m) => ({ ...m, live: !!store.keyFor(m.provider), custom: String(m.id).startsWith('c_') })),
+      providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint }])),
+      keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTORS.map((c) => ({ ...c, connected: cs.connected.includes(c.id) })),
       missions: store.missions().map(pub),
@@ -157,9 +163,9 @@ async function handle(req, res) {
     if (!goal) return json(res, 400, { error: 'A goal is required to write a ticket.' });
     // Strict catalog lookups: a typo must not silently book the wrong desk or council.
     if (body.deskId && !DESKS.some((d) => d.id === body.deskId)) return json(res, 400, { error: `Unknown desk "${String(body.deskId).slice(0, 40)}".` });
-    if (body.lead && !MODELS.some((m) => m.id === body.lead)) return json(res, 400, { error: `Unknown lead model "${String(body.lead).slice(0, 40)}".` });
+    if (body.lead && !allModels().some((m) => m.id === body.lead)) return json(res, 400, { error: `Unknown lead model "${String(body.lead).slice(0, 40)}".` });
     const rawAdvisers = Array.isArray(body.advisers) ? body.advisers : [];
-    const badAdviser = rawAdvisers.find((a) => !MODELS.some((m) => m.id === a));
+    const badAdviser = rawAdvisers.find((a) => !allModels().some((m) => m.id === a));
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
@@ -192,7 +198,7 @@ async function handle(req, res) {
   if (attnMatch && req.method === 'POST') {
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
-    const result = decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify);
+    const result = await decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify);
     return json(res, result.error ? 400 : 200, result);
   }
 
@@ -261,6 +267,58 @@ async function handle(req, res) {
     }
     res.writeHead(200, headers);
     return res.end(html);
+  }
+
+  // ---- BYOK: keys + custom seats (keys never leave the server) ----
+  const keyMatch = p.match(/^\/api\/keys\/([\w-]+)$/);
+  if (keyMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+    const prov = keyMatch[1];
+    if (!PROVIDERS[prov]) return json(res, 404, { error: 'Unknown provider.' });
+    if (req.method === 'DELETE') { store.removeKey(prov); return json(res, 200, { ok: true }); }
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const key = String(body.key || '').trim();
+    if (!key || key.length < 8) return json(res, 400, { error: 'A key is required (at least 8 characters).' });
+    const baseUrl = String(body.baseUrl || '').trim();
+    if (baseUrl && !/^https?:\/\//.test(baseUrl)) return json(res, 400, { error: 'Base URL must start with http:// or https://.' });
+    store.setKey(prov, key, baseUrl || null);
+    return json(res, 200, { ok: true, masked: maskKey(key) });
+  }
+  const keyTest = p.match(/^\/api\/keys\/([\w-]+)\/test$/);
+  if (keyTest && req.method === 'POST') {
+    const prov = keyTest[1];
+    if (!PROVIDERS[prov]) return json(res, 404, { error: 'Unknown provider.' });
+    const body = await readBody(req);
+    const saved = store.keyFor(prov);
+    const key = String(body.key || saved?.key || '').trim();
+    if (!key) return json(res, 400, { error: 'No key to test — save one or pass it in the request.' });
+    const modelId = String(body.modelId || '').trim() || allModels().find((m) => m.provider === prov)?.modelId;
+    try {
+      const r = await testKey({ provider: prov, key, baseUrl: String(body.baseUrl || saved?.baseUrl || '').trim() || null, modelId });
+      return json(res, 200, { ...r, modelId });
+    } catch (e) {
+      return json(res, 400, { error: `${PROVIDERS[prov].label} refused: ${String(e.message || e).slice(0, 200)}`, modelId });
+    }
+  }
+  if (p === '/api/models' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const name = String(body.name || '').trim().slice(0, 40);
+    const provider = String(body.provider || '');
+    const modelId = String(body.modelId || '').trim().slice(0, 80);
+    const baseUrl = String(body.baseUrl || '').trim() || null;
+    if (!name || !modelId) return json(res, 400, { error: 'Name and model id are required.' });
+    if (!PROVIDERS[provider]) return json(res, 400, { error: 'Unknown provider.' });
+    if (baseUrl && !/^https?:\/\//.test(baseUrl)) return json(res, 400, { error: 'Base URL must start with http:// or https://.' });
+    if (allModels().length >= 24) return json(res, 400, { error: 'Seat limit reached (24 models).' });
+    const symbol = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');
+    const m = store.addCustomModel({ id: `c_${Math.random().toString(36).slice(2, 8)}`, symbol, name, house: PROVIDERS[provider].label, role: 'Your seat · BYOK', tier: 'byok', color: '#E3A93C', provider, modelId, baseUrl });
+    return json(res, 200, m);
+  }
+  const modelDel = p.match(/^\/api\/models\/(c_[\w]+)$/);
+  if (modelDel && req.method === 'DELETE') {
+    store.removeCustomModel(modelDel[1]);
+    return json(res, 200, { ok: true });
   }
 
   const connectMatch = p.match(/^\/api\/connectors\/([\w-]+)\/toggle$/);

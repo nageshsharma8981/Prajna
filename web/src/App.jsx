@@ -4,13 +4,14 @@ import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
 import Ticker from './components/Ticker.jsx';
 import SplitFlap from './components/SplitFlap.jsx';
-import { FloorIcon, LedgerIcon, SkillIcon, SeatIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon } from './components/icons.jsx';
+import { FloorIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon } from './components/icons.jsx';
 import Floor from './views/Floor.jsx';
 import Run from './views/Run.jsx';
 import Ledger from './views/Ledger.jsx';
 import ArtifactView from './views/ArtifactView.jsx';
 import Skills from './views/Skills.jsx';
 import Connectors from './views/Instruments.jsx';
+import Keys from './views/Keys.jsx';
 
 const TITLES = [
   ['/run/', 'Mission'],
@@ -20,6 +21,7 @@ const TITLES = [
   ['/skills', 'Skills'],
   ['/connectors', 'Connectors'],
   ['/instruments', 'Connectors'],
+  ['/keys', 'Your keys'],
 ];
 
 function Clock() {
@@ -43,6 +45,7 @@ function Rail({ open, onClose, theme, setTheme, menuRef }) {
     { to: '/artifacts', label: 'Artifacts', icon: LedgerIcon, kbd: 'A' },
     { to: '/skills', label: 'Skills', icon: SkillIcon, kbd: 'S' },
     { to: '/connectors', label: 'Connectors', icon: SeatIcon, kbd: 'C' },
+    { to: '/keys', label: 'Your keys', icon: KeyIcon, kbd: 'K' },
   ];
   const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to) || (to === '/connectors' && path.startsWith('/instruments')) || (to === '/artifacts' && (path.startsWith('/ledger') || path.startsWith('/artifact/'))));
   const mobile = typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
@@ -129,6 +132,7 @@ function Router() {
   if (path.startsWith('/artifacts') || path.startsWith('/ledger')) return <Ledger />;
   if (path.startsWith('/skills')) return <Skills />;
   if (path.startsWith('/connectors') || path.startsWith('/instruments')) return <Connectors />;
+  if (path.startsWith('/keys')) return <Keys />;
   return <Floor />;
 }
 
@@ -175,7 +179,7 @@ function Shell() {
   }, [path]);
 
   useEffect(() => {
-    const NAV_KEYS = { m: '/', a: '/artifacts', s: '/skills', c: '/connectors' };
+    const NAV_KEYS = { m: '/', a: '/artifacts', s: '/skills', c: '/connectors', k: '/keys' };
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();

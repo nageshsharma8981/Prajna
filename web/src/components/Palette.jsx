@@ -25,6 +25,7 @@ export default function Palette({ onClose }) {
       { k: 'GO', t: 'Artifacts — everything delivered', to: '/artifacts' },
       { k: 'GO', t: 'Skills — the house playbook', to: '/skills' },
       { k: 'GO', t: 'Connectors — evidence sources', to: '/connectors' },
+      { k: 'GO', t: 'Your keys — bring your own models', to: '/keys' },
       ...(s.desks || []).map((d) => ({ k: d.code, t: `Open a ${d.name.toLowerCase()} mission`, to: `/?desk=${d.id}` })),
       ...(s.missions || []).slice(0, 8).map((m) => ({ k: m.serial, t: m.subject, to: `/run/${m.id}` })),
       ...(s.artifacts || []).slice(0, 8).map((a) => ({ k: 'ART', t: a.title, to: `/artifact/${a.id}` })),

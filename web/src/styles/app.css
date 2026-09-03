@@ -962,6 +962,26 @@ h1.pg-title {
 /* voided ledger rows */
 .board-row.voided .what b { text-decoration: line-through; color: var(--bone-dim); }
 
+/* BYOK: keys page + live seat markers */
+.key-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; }
+.key-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.2rem 1.1rem; box-shadow: var(--shadow-soft); }
+.key-head { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 0.4rem; }
+.key-head b { font-weight: 700; font-size: 0.95rem; }
+.key-hint { margin: 0 0 0.6rem; font-size: 0.76rem; color: var(--bone-dim); }
+.key-saved { margin: 0 0 0.6rem; font-size: 0.76rem; color: var(--bone-dim); }
+.key-saved code { font-family: var(--mono); color: var(--bone); }
+.key-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.key-input { width: 100%; background: var(--ground); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0.55rem 0.75rem; font-size: 0.86rem; color: var(--bone); }
+.key-input:focus { outline: none; border-color: var(--led); }
+.key-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.key-msg { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--green); }
+.key-err { margin: 0.6rem 0 0; font-size: 0.78rem; color: var(--rose); }
+.key-add { display: grid; grid-template-columns: 1.2fr 1fr 1.4fr 1.2fr auto; gap: 0.6rem; align-items: center; padding: 0.9rem 1.4rem; border-top: 1px solid var(--line); }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px rgba(127, 191, 154, 0.7); margin-left: 0.15rem; }
+.live-error { margin: 0.4rem 0 0; font-size: 0.74rem; color: var(--rose); font-family: var(--mono); }
+.sflap.QUEUED { color: #8d938a; }
+@media (max-width: 900px) { .key-add { grid-template-columns: 1fr; } }
+
 /* -------------------------------- utilities -------------------------------- */
 .fade-up { animation: fadeup 0.5s var(--ease) both; }
 @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

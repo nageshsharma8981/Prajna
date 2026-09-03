@@ -37,12 +37,31 @@ export const store = {
     artifacts: readJson('artifacts.json', []),
     workspace: readJson('workspace.json', null),
     connectors: readJson('connectors.json', null),
+    keys: readJson('keys.json', {}),          // BYOK: { provider: { key, baseUrl, addedAt } } — server-only, never sent to clients
+    customModels: readJson('models.json', []), // user-added panel seats
   },
 
   flushMissions() { writeJson('missions.json', this.state.missions); },
   flushArtifacts() { writeJson('artifacts.json', this.state.artifacts); },
   flushWorkspace() { writeJson('workspace.json', this.state.workspace); },
   flushConnectors() { writeJson('connectors.json', this.state.connectors); },
+  flushKeys() { writeJson('keys.json', this.state.keys); },
+  flushModels() { writeJson('models.json', this.state.customModels); },
+
+  keys() { return this.state.keys; },
+  keyFor(provider) { return this.state.keys[provider] || null; },
+  setKey(provider, key, baseUrl) {
+    this.state.keys[provider] = { key, baseUrl: baseUrl || null, addedAt: Date.now() };
+    this.flushKeys();
+  },
+  removeKey(provider) { delete this.state.keys[provider]; this.flushKeys(); },
+
+  customModels() { return this.state.customModels; },
+  addCustomModel(m) { this.state.customModels.push(m); this.flushModels(); return m; },
+  removeCustomModel(id) {
+    this.state.customModels = this.state.customModels.filter((m) => m.id !== id);
+    this.flushModels();
+  },
 
   missions() { return this.state.missions; },
   mission(id) { return this.state.missions.find((m) => m.id === id); },

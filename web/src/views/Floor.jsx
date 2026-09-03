@@ -233,6 +233,7 @@ export default function Floor() {
                       >
                         <span className="sym" aria-hidden="true">{m.symbol}</span>
                         <span className="nm">{m.name}</span>
+                        {m.live && <span className="live-dot" title="Live — runs on your key" aria-label="live on your key" />}
                       </button>
                       {isLead ? (
                         <span className="tag">Lead</span>
@@ -244,7 +245,7 @@ export default function Floor() {
                 })}
               </div>
               <span className="council-note" role="status">
-                {councilNote || `${1 + advisers.length} seats · lead synthesizes, advisers challenge, dissent is recorded — never erased.`}
+                {councilNote || `${1 + advisers.length} seats · lead synthesizes, advisers challenge, dissent is recorded — never erased.${s.models.some((m) => m.live) ? ' Seats with a green dot run live on your keys.' : ''}`}
               </span>
             </div>
           </div>

@@ -60,6 +60,12 @@ export const SearchIcon = (p) => (
     <path d="M13 13l4 4" />
   </I>
 );
+export const KeyIcon = (p) => (
+  <I {...p}>
+    <circle cx="7" cy="10" r="3.5" />
+    <path d="M10.5 10h7M15 10v3M17.5 10v2.2" />
+  </I>
+);
 export const DownloadIcon = (p) => (
   <I {...p}>
     <path d="M10 3v9M6.5 8.5 10 12l3.5-3.5" />

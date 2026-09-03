@@ -360,7 +360,7 @@ export default function Run({ id }) {
               }
               if (ev.type === 'council.position' || ev.type === 'council.challenge' || ev.type === 'council.verdict') {
                 const cls = ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : '';
-                const role = ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : 'position';
+                const role = ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : ev.live ? 'position · live on your key' : ev.liveError ? 'position · scripted fallback' : 'position';
                 return (
                   <div key={i} className={`quote ${cls}`}>
                     <div className="who">
@@ -369,6 +369,7 @@ export default function Run({ id }) {
                       <span className="role">{role}</span>
                     </div>
                     <p>{ev.text}</p>
+                    {ev.liveError && <p className="live-error">Live call failed ({ev.liveError}) — the scripted voice stood in. Recorded, not hidden.</p>}
                     {ev.dissent && (
                       <div className="dissent"><b>Recorded dissent — {ev.dissent.model}</b><br />{ev.dissent.text}</div>
                     )}

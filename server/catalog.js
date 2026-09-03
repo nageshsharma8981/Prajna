@@ -1,14 +1,21 @@
 // The exchange catalog: council models, skills, connectors, desks.
 // Static product data; connect flows are stubbed at launch (recorded in PRODUCT.md).
 
+// House seats. `provider` + `modelId` are what a BYOK key would call; a seat
+// is LIVE when the workspace holds a key for its provider.
 export const MODELS = [
-  { id: 'opus', symbol: 'OPS', name: 'Claude Opus', house: 'Anthropic', role: 'Deep reasoning · long-horizon plans', tier: 'included', color: '#D97757' },
-  { id: 'sonnet', symbol: 'SNT', name: 'Claude Sonnet', house: 'Anthropic', role: 'Fast, balanced generalist', tier: 'included', color: '#D97757' },
-  { id: 'gpt', symbol: 'SOL', name: 'GPT-5.6', house: 'OpenAI', role: 'Broad knowledge · code', tier: 'included', color: '#6BA292' },
-  { id: 'gemini', symbol: 'GEM', name: 'Gemini 3.1 Pro', house: 'Google', role: 'Multimodal · retrieval', tier: 'included', color: '#5B8DEF' },
-  { id: 'deepseek', symbol: 'DSK', name: 'DeepSeek R2', house: 'DeepSeek', role: 'Contrarian verifier', tier: 'included', color: '#8B7FD4' },
-  { id: 'llama', symbol: 'LMA', name: 'Llama 4 405B', house: 'Meta', role: 'Open-weights baseline', tier: 'included', color: '#C9A227' },
+  { id: 'opus', symbol: 'OPS', name: 'Claude Opus', house: 'Anthropic', role: 'Deep reasoning · long-horizon plans', tier: 'included', color: '#D97757', provider: 'anthropic', modelId: 'claude-opus-5' },
+  { id: 'sonnet', symbol: 'SNT', name: 'Claude Sonnet', house: 'Anthropic', role: 'Fast, balanced generalist', tier: 'included', color: '#D97757', provider: 'anthropic', modelId: 'claude-sonnet-5' },
+  { id: 'gpt', symbol: 'SOL', name: 'GPT-5.6', house: 'OpenAI', role: 'Broad knowledge · code', tier: 'included', color: '#6BA292', provider: 'openai', modelId: 'gpt-5.6' },
+  { id: 'gemini', symbol: 'GEM', name: 'Gemini 3.1 Pro', house: 'Google', role: 'Multimodal · retrieval', tier: 'included', color: '#5B8DEF', provider: 'google', modelId: 'gemini-3.1-pro' },
+  { id: 'deepseek', symbol: 'DSK', name: 'DeepSeek R2', house: 'DeepSeek', role: 'Contrarian verifier', tier: 'included', color: '#8B7FD4', provider: 'openai', modelId: 'deepseek-reasoner', baseUrl: 'https://api.deepseek.com/v1' },
+  { id: 'llama', symbol: 'LMA', name: 'Llama 4 405B', house: 'Meta', role: 'Open-weights baseline', tier: 'included', color: '#C9A227', provider: 'openai', modelId: 'meta-llama/llama-4-maverick', baseUrl: 'https://api.together.xyz/v1' },
 ];
+
+// Custom (BYOK) seats live in the store; resolve across both lists.
+let customResolver = () => [];
+export function bindCustomModels(fn) { customResolver = fn; }
+export function allModels() { return [...MODELS, ...customResolver()]; }
 
 export const DESKS = [
   {
@@ -95,5 +102,5 @@ export function deskById(id) {
   return DESKS.find((d) => d.id === id) || DESKS[0];
 }
 export function modelById(id) {
-  return MODELS.find((m) => m.id === id) || MODELS[0];
+  return allModels().find((m) => m.id === id) || MODELS[0];
 }

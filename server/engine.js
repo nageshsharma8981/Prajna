@@ -12,6 +12,18 @@ import crypto from 'node:crypto';
 import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
+import { callModel } from './providers.js';
+
+// BYOK: a seat is LIVE when the workspace holds a key for its provider.
+export function liveSeat(modelIdOrRef) {
+  const model = modelById(modelIdOrRef);
+  const k = model && model.provider ? store.keyFor(model.provider) : null;
+  return k ? { model, key: k.key, baseUrl: k.baseUrl || model.baseUrl || null } : null;
+}
+
+function positionPrompt(mission, model) {
+  return `You are ${model.name}, one seat on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\nIn 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
+}
 
 // Serial counter continues from the persisted ledger so restarts never mint
 // duplicate PX serials.
@@ -168,7 +180,7 @@ function councilScript(mission, stepId, baseT) {
   let t = baseT;
   for (const m of members) {
     const model = modelById(m);
-    ev.push({ t: (t += 1400 + Math.random() * 900), type: 'council.position', stepId, model: model.name, symbol: model.symbol, color: model.color, text: (VOICES[m] || VOICES.sonnet)(s) });
+    ev.push({ t: (t += 1400 + Math.random() * 900), type: 'council.position', stepId, seat: m, model: model.name, symbol: model.symbol, color: model.color, text: (VOICES[m] || VOICES.sonnet)(s) });
   }
   const challengers = CHALLENGES.filter((c) => members.includes(c.from) && c.from !== mission.lead).slice(0, 2);
   for (const c of challengers) {
@@ -250,6 +262,15 @@ function buildScript(mission) {
     }
     t += 900;
     let jitter = Math.round(step.cost * (0.82 + Math.random() * 0.3) * 10) / 10;
+    let byokSeats = 0;
+    if (step.tool === 'council') {
+      const seats = [mission.lead, ...mission.advisers];
+      byokSeats = seats.filter((id) => liveSeat(id)).length;
+      if (byokSeats) {
+        jitter = Math.round(jitter * ((seats.length - byokSeats) / seats.length) * 10) / 10;
+        script.push({ t: t - 300, type: 'log', stepId: step.id, label: 'byok', detail: `${byokSeats} live seat(s) billed to your own keys — house credits for this step reduced accordingly` });
+      }
+    }
     if (overrun && step.id === overrunStep) {
       // Push cumulative spend ~8% past the ceiling at this step.
       jitter = Math.round((mission.contract.ceiling * 1.08 - projected) * 10) / 10;
@@ -257,7 +278,7 @@ function buildScript(mission) {
     }
     projected += jitter;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'FILLED' });
-    script.push({ t: t + 60, type: 'cost', stepId: step.id, delta: jitter });
+    script.push({ t: t + 60, type: 'cost', stepId: step.id, delta: jitter, byokSeats });
   }
 
   t += 1000;
@@ -326,9 +347,23 @@ function raiseAttention(m, notify, item) {
   return req;
 }
 
-function applyEvent(m, ev, notify, runner) {
+async function applyEvent(m, ev, notify, runner) {
   const record = { ...ev };
   delete record.t;
+
+  if (ev.type === 'council.position' && ev.seat) {
+    const live = liveSeat(ev.seat);
+    if (live) {
+      try {
+        record.text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: positionPrompt(m, live.model) });
+        record.live = true;
+        record.modelId = live.model.modelId;
+      } catch (e) {
+        record.live = false;
+        record.liveError = String(e.message || e).slice(0, 200);
+      }
+    }
+  }
 
   if (ev.type === 'step.status') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
@@ -413,14 +448,16 @@ function scheduleNext(missionId) {
     if (!mission || mission.status === 'KILLED') return;
     runner.cursor++;
     mission.runCursor = runner.cursor;
-    const outcome = applyEvent(mission, ev, runner.notify, runner);
-    if (mission.status === 'FILLED' || mission.status === 'KILLED') { runners.delete(missionId); return; }
-    if (outcome === 'pause') {
-      mission.deferredCost = runner.deferredCost || null;
-      store.flushMissions();
-      return; // resumed via attention decision
-    }
-    scheduleNext(missionId);
+    applyEvent(mission, ev, runner.notify, runner).catch((e) => { console.error('prajna: event failed', e); return 'ok'; }).then((outcome) => {
+      const after = store.mission(missionId);
+      if (!after || after.status === 'FILLED' || after.status === 'KILLED') { runners.delete(missionId); return; }
+      if (outcome === 'pause') {
+        after.deferredCost = runner.deferredCost || null;
+        store.flushMissions();
+        return; // resumed via attention decision
+      }
+      scheduleNext(missionId);
+    });
   }, delay);
 }
 
@@ -436,6 +473,7 @@ export function launchMission(missionId, notify) {
 
   // The script is persisted with the mission so a server restart can
   // rehydrate the runner and continue exactly where the run left off.
+  mission.seats = [mission.lead, ...mission.advisers].map((id) => ({ id, name: modelById(id).name, live: !!liveSeat(id) }));
   const script = buildScript(mission);
   mission.runScript = script;
   mission.runCursor = 0;
@@ -513,7 +551,7 @@ export function voidTicket(missionId, notify) {
   return m;
 }
 
-export function decideAttention(missionId, requestId, decision, justification, notify) {
+export async function decideAttention(missionId, requestId, decision, justification, notify) {
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
   if (m.status === 'KILLED' || m.status === 'FILLED') {
@@ -550,7 +588,7 @@ export function decideAttention(missionId, requestId, decision, justification, n
       const deferred = runner?.deferredCost || m.deferredCost;
       if (runner) runner.deferredCost = null;
       m.deferredCost = null;
-      if (deferred) applyEvent(m, deferred, notify, runner || { deferredCost: null });
+      if (deferred) await applyEvent(m, deferred, notify, runner || { deferredCost: null });
       scheduleNext(missionId);
     } else {
       killMission(missionId, notify);

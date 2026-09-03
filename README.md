@@ -67,6 +67,23 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   + scroll reset on route change, a quiet live region instead of a chatty one,
   gate votes as a real table with readable rationale, a pausable ticker.
 
+## v0.4 — bring your own keys (BYOK)
+
+- **Your keys** page: Anthropic, OpenAI-compatible (OpenAI, DeepSeek, Groq,
+  Together, Ollama… via base URL) and Google Gemini keys, stored only in
+  `data/keys.json`, masked after save, never sent to the browser. **Test** proves
+  a key with a real round-trip.
+- **Your models**: add any model id your provider serves; it becomes a panel
+  seat like a house seat.
+- **Live seats**: a seat whose provider has a key goes *live* — its panel
+  position on the tape is a real model call (green dot on the chip, "live on
+  your key" on the tape). A failed call falls back to the scripted voice and
+  the failure is recorded, never hidden.
+- **Billing honesty**: live seats bill your provider, so the panel step's house
+  cost is reduced pro rata; artifact provenance reports `mode: "hybrid"` with
+  per-seat live flags. Tools and artifacts remain scripted until live execution
+  ships.
+
 ## The world
 
 Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,

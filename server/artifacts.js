@@ -19,7 +19,8 @@ export function subjectOf(goal) {
 function provenanceObject(mission) {
   return {
     schema: 'prajna.provenance.v1',
-    mode: 'scripted',
+    mode: (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
+    seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),
     serial: mission.serial,
     goal: mission.goal,
     desk: mission.deskName,
@@ -72,7 +73,7 @@ function provenance(mission) {
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
-    <p class="note">Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout. The machine-readable record below is the audit object.</p></details>
+    <p class="note">${prov.mode === 'hybrid' ? 'Hybrid run: panel positions from seats marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
   </footer>
   <script type="application/json" id="prajna-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
 }
