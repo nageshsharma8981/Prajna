@@ -14,23 +14,70 @@ export function subjectOf(goal) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Machine-readable provenance: a schema'd JSON block plus a rendered panel.
+// Honest by construction — mode says "scripted" until real model calls land.
+function provenanceObject(mission) {
+  return {
+    schema: 'praxis.provenance.v1',
+    mode: 'scripted',
+    serial: mission.serial,
+    goal: mission.goal,
+    desk: mission.deskName,
+    council: mission.councilNames,
+    partial: !!mission.partial,
+    contract: {
+      plan: mission.contract.plan.map((p) => ({ id: p.id, title: p.title, tool: p.tool, cost: p.cost, status: p.status, contextHash: p.contextHash || null })),
+      estimate: mission.contract.estimate,
+      ceiling: mission.contract.ceiling,
+      dimensions: mission.contract.dimensions || [],
+    },
+    settlement: mission.settlement || { reserved: mission.contract.ceiling, settled: mission.spent, released: null },
+    gate: mission.gate || null,
+    review: mission.review || null,
+    decisions: (mission.attention || []).filter((a) => a.decision).map((a) => ({ kind: a.kind, decision: a.decision, justification: a.justification, decidedAt: a.decidedAt })),
+    events: `mission ${mission.id}, seq 1..${mission.eventSeq || mission.events?.length || 0}`,
+  };
+}
+
+export function partialBanner(mission) {
+  if (!mission.partial) return '';
+  const filled = mission.contract.plan.filter((p) => p.status === 'FILLED').length;
+  return `<div class="partial-banner">PARTIAL ARTIFACT — the run ended at step ${Math.min(filled + 1, mission.contract.plan.length)} of ${mission.contract.plan.length}. Completed work only; the contract's "always an artifact" clause applied.</div>`;
+}
+
 function provenance(mission) {
-  const steps = mission.contract.plan.map((p) => `<li>${esc(p.title)}</li>`).join('');
+  const prov = provenanceObject(mission);
+  const steps = mission.contract.plan.map((p) => `<li>${esc(p.title)} <em>(${esc(p.status.toLowerCase())})</em></li>`).join('');
+  const s = prov.settlement;
+  const gateLine = prov.gate
+    ? `${prov.gate.cleared ? 'cleared' : 'NOT cleared'} · ${prov.gate.rows.length} votes across ${prov.contract.dimensions.length} dimensions`
+    : 'not reached';
+  const reviewLine = prov.review
+    ? (prov.review.verdict === 'pass' ? 'pass — no gaps' : `${prov.review.gaps.length} gap(s): ${prov.review.gaps.map((g) => g.id).join(', ')}`)
+    : 'not reached';
+  const decisions = prov.decisions.length
+    ? prov.decisions.map((d) => `<li><strong>${esc(d.kind)}</strong> → ${esc(d.decision)} — “${esc(d.justification)}”</li>`).join('')
+    : '<li>none required</li>';
   return `
   <footer class="prov">
-    <div class="prov-row"><span>Produced by</span><strong>PRAXIS · ${esc(mission.serial)}</strong></div>
+    <div class="prov-row"><span>Produced by</span><strong>PRAXIS · ${esc(mission.serial)} · ${prov.mode} run${prov.partial ? ' · PARTIAL' : ''}</strong></div>
     <div class="prov-row"><span>Desk</span><strong>${esc(mission.deskName)}</strong></div>
     <div class="prov-row"><span>Council</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
-    <div class="prov-row"><span>Cost</span><strong>${mission.spent.toFixed(1)} credits</strong></div>
+    <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
+    <div class="prov-row"><span>Council gate</span><strong>${gateLine}</strong></div>
+    <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
-    <p class="note">Demonstration run: figures and sources below are illustrative sample data, marked throughout.</p></details>
-  </footer>`;
+    <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
+    <p class="note">Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout. The machine-readable record below is the audit object.</p></details>
+  </footer>
+  <script type="application/json" id="praxis-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
 }
 
 const PROV_CSS = `
 .prov{margin-top:4rem;padding-top:1.5rem;border-top:1px solid rgba(0,0,0,.15);font-size:.85rem;color:#555}
-.prov-row{display:flex;gap:1rem;margin:.2rem 0}.prov-row span{width:8rem;color:#999}
-.prov details{margin-top:.8rem}.prov summary{cursor:pointer}.prov .note{color:#996;font-style:italic}
+.prov-row{display:flex;gap:1rem;margin:.2rem 0}.prov-row span{width:8rem;color:#767268;flex:none}
+.prov details{margin-top:.8rem}.prov summary{cursor:pointer}.prov .note{color:#8a6d3b;font-style:italic}
+.partial-banner{background:#7c3428;color:#f6e3dd;padding:.7rem 1.2rem;font:700 .8rem/1.4 Verdana,sans-serif;letter-spacing:.06em}
 @media print {.prov details{display:none}}`;
 
 /* ---------------------------------- BRIEF --------------------------------- */
@@ -38,6 +85,31 @@ const PROV_CSS = `
 export function briefArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
+
+  // Citation integrity: a sealed source registry. Claims carry refs; the
+  // References section renders ONLY from refs actually cited, and a claim
+  // without a ref fails the artifact build. Sources are illustrative samples.
+  const SOURCES = {
+    'src-1': { title: 'Sector regulatory filing digest (sample)', kind: 'primary', retrieved: '2026-09-03' },
+    'src-2': { title: 'Independent market-size analysis, methodology visible (sample)', kind: 'analysis', retrieved: '2026-09-03' },
+    'src-3': { title: 'Incumbent annual report, segment notes (sample)', kind: 'primary', retrieved: '2026-09-03' },
+    'src-4': { title: 'Practitioner interviews, n=9 (sample)', kind: 'field', retrieved: '2026-09-02' },
+    'src-5': { title: 'Trade-press coverage sweep (sample, directional only)', kind: 'press', retrieved: '2026-09-03' },
+  };
+  const CLAIMS = [
+    { text: 'The demand signal is real but younger than the headlines imply.', grade: 'A', ref: 'src-1', snippet: 'primary indicators point the same direction across independent sources; the disagreement is about slope, not sign', detail: 'Primary indicators point the same direction across independent sources; the disagreement is about slope, not sign.' },
+    { text: 'The economics clear the bar only in the focused segment.', grade: 'B', ref: 'src-2', snippet: 'unit economics in the broad market remain marginal; the narrow segment clears the threshold', detail: 'Unit economics in the broad market remain marginal; in the narrow segment identified in §3 they clear the threshold with room to spare.' },
+    { text: 'Incumbents are structurally slow here.', grade: 'B', ref: 'src-3', snippet: 'the capability is organizationally expensive for incumbents to build', detail: 'The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite — the council’s median estimate is 18–30 months.' },
+  ];
+  for (const c of CLAIMS) {
+    if (!c.ref || !SOURCES[c.ref]) throw new Error(`Artifact build refused: claim "${c.text.slice(0, 40)}…" has no registered source ref.`);
+  }
+  const citedRefs = [...new Set(CLAIMS.map((c) => c.ref))];
+  const claimsHtml = CLAIMS.map((c) => `<p><strong class="claim" data-ref="${c.ref}" data-snippet="${esc(c.snippet)}">${esc(c.text)}</strong><span class="grade g${c.grade}">${c.grade}</span><a class="refmark" href="#${c.ref}">[${c.ref.replace('src-', '')}]</a> ${esc(c.detail)}</p>`).join('\n');
+  const referencesHtml = citedRefs.map((r) => {
+    const s = SOURCES[r];
+    return `<tr id="${r}"><td>[${r.replace('src-', '')}]</td><td>${esc(s.title)}</td><td>${esc(s.kind)}</td><td>${esc(s.retrieved)}</td></tr>`;
+  }).join('\n');
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t} — Decision Brief</title>
@@ -54,13 +126,16 @@ h2{font:700 1.05rem/1.3 Verdana,sans-serif;letter-spacing:.02em;margin:2.6rem 0 
 .verdict b{font-family:Verdana,sans-serif;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.4rem}
 .grade{display:inline-block;font:700 .68rem/1 Verdana,sans-serif;padding:.22em .5em;border-radius:2px;vertical-align:2px;margin-left:.4em}
 .gA{background:#1d5c3a;color:#fff}.gB{background:#6a7f2a;color:#fff}.gC{background:#a86a1c;color:#fff}
+.refmark{font:700 .72rem/1 Verdana,sans-serif;color:var(--accent);text-decoration:none;vertical-align:2px;margin-left:.25em}
+.refmark:hover{text-decoration:underline}
+.claim{cursor:help}
 table{width:100%;border-collapse:collapse;font-size:.9rem;margin:1rem 0}
 th{font:700 .72rem/1.3 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:#777;border-bottom:2px solid var(--ink);padding:.5rem .6rem .4rem 0}
 td{border-bottom:1px solid var(--rule);padding:.55rem .6rem .55rem 0;vertical-align:top}
 .dissent{border:1px solid var(--rule);background:#f6efe3;padding:.9rem 1.2rem;margin:1.2rem 0;color:#4c4a44}
 .dissent b{font-family:Verdana,sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 ${PROV_CSS}
-</style></head><body><div class="wrap">
+</style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
 <p class="docline">Praxis decision brief · ${esc(mission.serial)}</p>
 <p class="stand">A graded-evidence brief: every claim carries its source strength, and the strongest case against the recommendation is included, not buried.</p>
@@ -69,10 +144,8 @@ ${PROV_CSS}
 The council recommends a <strong>staged commitment</strong>: enter with a narrow, reversible first move within two quarters, gated on the two signals in §4. A full commitment now outruns the evidence; standing still concedes the window.</div>
 
 <h2>1 · What the evidence supports</h2>
-<p>Three findings survived cross-examination by the full council:</p>
-<p><strong>The demand signal is real but younger than the headlines imply.</strong><span class="grade gA">A</span> Primary indicators point the same direction across independent sources; the disagreement is about slope, not sign.</p>
-<p><strong>The economics clear the bar only in the focused segment.</strong><span class="grade gB">B</span> Unit economics in the broad market remain marginal; in the narrow segment identified in §3 they clear the threshold with room to spare.</p>
-<p><strong>Incumbents are structurally slow here.</strong><span class="grade gB">B</span> The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite — the council's median estimate is 18–30 months.</p>
+<p>Three findings survived cross-examination by the full council. Every claim carries its source ref — a claim without one cannot ship:</p>
+${claimsHtml}
 
 <h2>2 · What the evidence does not support</h2>
 <p>Claims commonly made in this space that did not survive grading: that the market is winner-take-all<span class="grade gC">C</span>, that regulation will remain favorable by default<span class="grade gC">C</span>, and that early entrants hold durable data advantages<span class="grade gC">C</span>. Each rests on analogy rather than measurement. The brief refuses them as planning assumptions.</p>
@@ -90,11 +163,10 @@ The council recommends a <strong>staged commitment</strong>: enter with a narrow
 <div class="dissent"><b>Recorded dissent — DeepSeek R2</b><br>
 One council member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The council holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months.</div>
 
-<h2>5 · Sources & grading</h2>
-<table><thead><tr><th>Source class</th><th>Count</th><th>Grade basis</th></tr></thead><tbody>
-<tr><td>Primary data & filings <em>(illustrative)</em></td><td>7</td><td>A — direct measurement</td></tr>
-<tr><td>Sector analyses <em>(illustrative)</em></td><td>9</td><td>B — triangulated, methodology visible</td></tr>
-<tr><td>Press & commentary <em>(illustrative)</em></td><td>12</td><td>C — directional only, never load-bearing</td></tr>
+<h2>5 · References — cited sources only</h2>
+<p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. All entries are illustrative samples in this demonstration run.</p>
+<table><thead><tr><th>Ref</th><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>
+${referencesHtml}
 </tbody></table>
 ${provenance(mission)}
 </div></body></html>`;
@@ -144,7 +216,7 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
 ${PROV_CSS}
 .prov{display:none}
-</style></head><body>
+</style></head><body>${partialBanner(mission)}
 <div class="deck" id="deck">${slideHtml}</div>
 <p class="hint">← → arrow keys · click to advance</p>
 <script>
@@ -190,7 +262,7 @@ repeating-linear-gradient(-35deg,transparent 0 26px,rgba(255,255,255,.09) 26px 2
 footer{padding:2rem 5vw;font-size:.85rem;color:#6c7a70;max-width:72rem;margin:0 auto}
 @media(max-width:800px){.hero{grid-template-columns:1fr;padding-top:5vh}.why{grid-template-columns:1fr;gap:2rem}}
 ${PROV_CSS}
-</style></head><body>
+</style></head><body>${partialBanner(mission)}
 <nav><span class="logo">${t.split(/\s+/).slice(0, 2).join(' ')}</span><a class="cta" href="#join">Get early access</a></nav>
 <header class="hero">
   <div>
@@ -254,7 +326,7 @@ h1{font-size:2rem;letter-spacing:-.015em;margin:0 0 .3rem}
 svg{width:100%;height:auto;display:block}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 ${PROV_CSS}
-</style></head><body><div class="wrap">
+</style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
 <p class="docline">Praxis analysis · ${esc(mission.serial)} · sample data, marked</p>
 <p class="read">The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong — the driver is mix shift, not performance. Everything below defends that paragraph.</p>

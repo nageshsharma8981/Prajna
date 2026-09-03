@@ -589,6 +589,7 @@ a { color: inherit; }
 .sflap.OPEN { color: var(--blue); }
 .sflap.QUEUED { color: #8d938a; }
 .sflap.FAILED, .sflap.KILLED { color: var(--red); }
+.sflap.PAUSED_ATTENTION, .sflap.PAUSED_CEILING { color: var(--rose); text-shadow: 0 0 8px rgba(227, 130, 111, 0.4); }
 .sflap.flip { animation: sflip 0.32s var(--ease); }
 @keyframes sflip {
   0% { transform: rotateX(80deg); filter: brightness(1.6); }
@@ -624,6 +625,89 @@ a { color: inherit; }
 .telemetry .v small { font-size: 0.85rem; color: #b18a3d; }
 .telemetry .v.ok { color: var(--green); text-shadow: 0 0 12px rgba(127, 191, 154, 0.4); }
 .telemetry .spacer { margin-left: auto; }
+
+/* burn-down: reserved track, estimate tick, settled fill */
+.burnrow { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem; margin-top: 0.35rem; }
+.burnbar {
+  position: relative; flex: 1; height: 10px;
+  background: #131711;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.burn-fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #8a6510, var(--led));
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+  transition: width 0.5s var(--ease);
+}
+.burn-est {
+  position: absolute; top: -2px; bottom: -2px; width: 2px;
+  background: #cfae62;
+}
+.burn-read { font-family: var(--mono); font-size: 0.68rem; color: #cfae62; white-space: nowrap; }
+.burn-read b.over { color: var(--rose); }
+.burn-read b.under { color: var(--green); }
+
+/* kill switch */
+.kill-btn { border-color: color-mix(in srgb, var(--red) 55%, var(--line-strong)); color: var(--rose); padding: 0.45rem 0.9rem; }
+.kill-btn:hover { color: #fff; background: color-mix(in srgb, var(--red) 25%, transparent); border-color: var(--red); }
+
+/* council gate grid */
+.gate {
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--hall);
+  margin: 0.55rem 0;
+  overflow: hidden;
+  animation: tapein 0.4s var(--ease) both;
+}
+.gate-head {
+  padding: 0.5rem 1rem;
+  font-stretch: 110%; font-weight: 750; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.gate.cleared .gate-head { color: var(--green); }
+.gate.blocked .gate-head { color: var(--rose); }
+.gate-grid { display: grid; gap: 1px; background: var(--line); padding: 1px; }
+.gate-grid > span { background: var(--hall); padding: 0.35rem 0.7rem; font-size: 0.7rem; }
+.gate-grid .gh { font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.58rem; color: var(--bone-dim); }
+.gate-grid .gm { font-weight: 650; color: var(--bone); white-space: nowrap; }
+.gate-grid .gv { font-family: var(--mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-align: center; cursor: help; }
+.gate-grid .gv.pass { color: var(--green); }
+.gate-grid .gv.fail, .gate-grid .gv.unverifiable { color: var(--rose); }
+.gate-note { margin: 0; padding: 0.5rem 1rem 0.65rem; font-size: 0.76rem; color: var(--bone-dim); }
+
+/* attention decision card */
+.attn-card {
+  border: 1px solid color-mix(in srgb, var(--rose) 55%, var(--line));
+  background: color-mix(in srgb, var(--rose) 7%, var(--hall));
+  border-radius: 6px;
+  padding: 0.9rem 1.1rem 1rem;
+  margin: 0.6rem 0;
+  animation: tapein 0.4s var(--ease) both;
+}
+.attn-head {
+  font-stretch: 110%; font-weight: 750; font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--rose);
+  margin-bottom: 0.4rem;
+}
+.attn-prompt { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.attn-gap { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--bone-dim); font-family: var(--mono); }
+.attn-just {
+  width: 100%;
+  background: var(--ground);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.86rem;
+  margin-bottom: 0.7rem;
+}
+.attn-just:focus { outline: none; border-color: var(--led); }
+.attn-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.attn-btn { padding: 0.55rem 1rem; font-size: 0.7rem; }
+.attn-error { margin: 0.5rem 0 0; color: var(--rose); font-size: 0.78rem; }
 
 .tape {
   background: var(--panel);

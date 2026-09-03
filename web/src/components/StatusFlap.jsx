@@ -12,5 +12,6 @@ export default function StatusFlap({ status }) {
       return () => clearTimeout(t);
     }
   }, [status]);
-  return <span className={`sflap ${status}${flip ? ' flip' : ''}`}>{status}</span>;
+  const LABELS = { PAUSED_ATTENTION: 'ATTN', PAUSED_CEILING: 'CEILING' };
+  return <span className={`sflap ${status}${flip ? ' flip' : ''}`}>{LABELS[status] || status}</span>;
 }

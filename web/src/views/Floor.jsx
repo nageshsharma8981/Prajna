@@ -106,7 +106,7 @@ export default function Floor() {
     }
   };
 
-  const open = s.missions.filter((m) => m.status === 'LIVE' || m.status === 'OPEN');
+  const open = s.missions.filter((m) => m.status === 'LIVE' || m.status === 'OPEN' || m.status.startsWith('PAUSED'));
   const fills = s.missions.filter((m) => m.status === 'FILLED').slice(0, 6);
 
   return (
@@ -206,7 +206,7 @@ export default function Floor() {
 
       {ticket && <Ticket mission={ticket} onFill={fill} onVoid={() => setTicket(null)} filling={filling} />}
       {ticket && error && (
-        <p role="alert" style={{ color: 'var(--rose)', fontSize: '0.85rem', margin: '0.8rem 0 0' }}>{error}</p>
+        <p role="alert" style={{ color: 'var(--rose)', fontSize: '0.86rem', margin: '0.8rem 0 0' }}>{error}</p>
       )}
 
       <section className="board section-gap" aria-label="Positions board">

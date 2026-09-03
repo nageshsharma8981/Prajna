@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById } from './catalog.js';
-import { writeContract, launchMission } from './engine.js';
+import { writeContract, launchMission, killMission, decideAttention } from './engine.js';
 import { GENERATORS } from './artifacts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +49,7 @@ const subscribers = new Map(); // missionId → Set<res>
 function notify(missionId, event) {
   const subs = subscribers.get(missionId);
   if (!subs) return;
-  const line = `data: ${JSON.stringify(event)}\n\n`;
+  const line = `${event.seq ? `id: ${event.seq}\n` : ''}data: ${JSON.stringify(event)}\n\n`;
   for (const res of subs) res.write(line);
 }
 
@@ -120,6 +120,28 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  const killMatch = p.match(/^\/api\/missions\/([\w]+)\/kill$/);
+  if (killMatch && req.method === 'POST') {
+    const m = killMission(killMatch[1], notify);
+    if (!m) return json(res, 404, { error: 'Only a live or paused position can be killed.' });
+    return json(res, 200, { ok: true });
+  }
+
+  const attnMatch = p.match(/^\/api\/missions\/([\w]+)\/attention\/([\w]+)$/);
+  if (attnMatch && req.method === 'POST') {
+    const body = await readBody(req);
+    const result = decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify);
+    return json(res, result.error ? 400 : 200, result);
+  }
+
+  const eventsMatch = p.match(/^\/api\/missions\/([\w]+)\/events$/);
+  if (eventsMatch) {
+    const m = store.mission(eventsMatch[1]);
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    const after = Number(url.searchParams.get('after') || 0);
+    return json(res, 200, { events: (m.events || []).filter((e) => (e.seq || 0) > after) });
+  }
+
   const voidMatch = p.match(/^\/api\/missions\/([\w]+)\/void$/);
   if (voidMatch && req.method === 'POST') {
     const m = store.mission(voidMatch[1]);
@@ -136,7 +158,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive',
     });
-    res.write(`data: ${JSON.stringify({ type: 'snapshot', mission: m })}\n\n`);
+    // Ledger replay: honor Last-Event-ID so a reconnecting client resumes from
+    // its last seen seq; a fresh client gets the snapshot (full event history).
+    const lastSeq = Number(req.headers['last-event-id'] || 0);
+    if (lastSeq > 0) {
+      for (const e of (m.events || []).filter((x) => (x.seq || 0) > lastSeq)) {
+        res.write(`id: ${e.seq}\ndata: ${JSON.stringify(e)}\n\n`);
+      }
+    } else {
+      res.write(`data: ${JSON.stringify({ type: 'snapshot', mission: m })}\n\n`);
+    }
     if (!subscribers.has(m.id)) subscribers.set(m.id, new Set());
     subscribers.get(m.id).add(res);
     const ping = setInterval(() => res.write(': ping\n\n'), 25000);

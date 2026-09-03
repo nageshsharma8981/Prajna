@@ -52,6 +52,14 @@ export const store = {
     this.flushArtifacts();
     return meta;
   },
+  refreshArtifact(id, meta, html) {
+    const a = this.artifact(id);
+    if (!a) return null;
+    Object.assign(a, meta);
+    fs.writeFileSync(path.join(ARTIFACT_DIR, `${id}.html`), html);
+    this.flushArtifacts();
+    return a;
+  },
   artifactHtml(id) {
     try {
       return fs.readFileSync(path.join(ARTIFACT_DIR, `${id}.html`), 'utf8');

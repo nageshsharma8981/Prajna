@@ -12,11 +12,96 @@ function fmtElapsed(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+// Decision card for a pending attention item — justification is mandatory
+// and goes on the record (ledger + artifact provenance).
+function AttentionCard({ missionId, ev, decided }) {
+  const [justification, setJustification] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  if (decided) return null;
+
+  const decide = async (decision) => {
+    if (!justification.trim()) {
+      setError('A justification is required — it goes on the record.');
+      return;
+    }
+    setSending(true);
+    setError(null);
+    const r = await fetch(`/api/missions/${missionId}/attention/${ev.requestId}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ decision, justification }),
+    });
+    if (!r.ok) {
+      setError((await r.json()).error || 'The decision was refused.');
+      setSending(false);
+    }
+  };
+
+  const LABELS = {
+    'raise-ceiling': 'Raise ceiling +40%',
+    'abort-with-partial': 'Abort — take partial artifact',
+    'accept-gap': 'Accept gap on the record',
+    'void-artifact': 'Void the artifact',
+  };
+
+  return (
+    <div className="attn-card" role="group" aria-label="Decision required">
+      <div className="attn-head">Decision required — the run is holding</div>
+      <p className="attn-prompt">{ev.prompt}</p>
+      {ev.gaps?.map((g) => (
+        <p key={g.id} className="attn-gap"><b>{g.id}</b> ({g.severity}) — {g.description}</p>
+      ))}
+      <input
+        className="attn-just"
+        placeholder="Justification — recorded in the ledger and the artifact"
+        value={justification}
+        onChange={(e) => setJustification(e.target.value)}
+        aria-label="Justification for your decision"
+      />
+      <div className="attn-actions">
+        {ev.options.map((o) => (
+          <button key={o} className={o.startsWith('raise') || o.startsWith('accept') ? 'btn-stamp attn-btn' : 'btn-quiet'} disabled={sending} onClick={() => decide(o)}>
+            {LABELS[o] || o}
+          </button>
+        ))}
+      </div>
+      {error && <p className="attn-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function GateGrid({ ev }) {
+  const dims = [...new Set(ev.rows.map((r) => r.dimension))];
+  const members = [...new Set(ev.rows.map((r) => r.member))];
+  const cell = (m, d) => ev.rows.find((r) => r.member === m && r.dimension === d);
+  return (
+    <div className={`gate ${ev.cleared ? 'cleared' : 'blocked'}`}>
+      <div className="gate-head">
+        Council gate — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}
+      </div>
+      <div className="gate-grid" style={{ gridTemplateColumns: `minmax(7rem,auto) repeat(${dims.length}, 1fr)` }}>
+        <span className="gh" />
+        {dims.map((d) => <span key={d} className="gh">{d}</span>)}
+        {members.map((m) => (
+          [<span key={m} className="gm">{m}</span>,
+            ...dims.map((d) => {
+              const c = cell(m, d);
+              return <span key={m + d} className={`gv ${c?.verdict}`} title={c?.rationale}>{c?.verdict === 'pass' ? 'PASS' : c?.verdict === 'fail' ? 'FAIL' : 'UNVER'}</span>;
+            })]
+        ))}
+      </div>
+      <p className="gate-note">{ev.note}</p>
+    </div>
+  );
+}
+
 export default function Run({ id }) {
   const store = useStore();
   const [mission, setMission] = useState(null);
   const [events, setEvents] = useState([]);
   const [now, setNow] = useState(Date.now());
+  const [burn, setBurn] = useState(null); // {total, estimateSoFar, variance}
   const feedRef = useRef(null);
   const esRef = useRef(null);
 
@@ -30,6 +115,8 @@ export default function Run({ id }) {
       if (ev.type === 'snapshot') {
         setMission(ev.mission);
         setEvents(ev.mission.events || []);
+        const lastCost = [...(ev.mission.events || [])].reverse().find((e) => e.type === 'cost');
+        if (lastCost) setBurn({ total: lastCost.total, estimateSoFar: lastCost.estimateSoFar, variance: lastCost.variance });
       } else {
         setEvents((prev) => [...prev, ev]);
         if (ev.type === 'run.launched') {
@@ -42,8 +129,18 @@ export default function Run({ id }) {
             return { ...m, status: 'LIVE', contract: { ...m.contract, plan } };
           });
         }
-        if (ev.type === 'cost') setMission((m) => (m ? { ...m, spent: ev.total } : m));
+        if (ev.type === 'cost') {
+          setMission((m) => (m ? { ...m, spent: ev.total } : m));
+          setBurn({ total: ev.total, estimateSoFar: ev.estimateSoFar, variance: ev.variance });
+        }
         if (ev.type === 'artifact.ready') setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m));
+        if (ev.type === 'attention.raised') setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m));
+        if (ev.type === 'attention.resolved') setMission((m) => (m ? { ...m, status: 'LIVE' } : m));
+        if (ev.type === 'ceiling.raised') setMission((m) => (m ? { ...m, contract: { ...m.contract, ceiling: ev.ceiling } } : m));
+        if (ev.type === 'run.killed') {
+          setMission((m) => (m ? { ...m, status: 'KILLED' } : m));
+          store.refresh();
+        }
         if (ev.type === 'run.done') {
           setMission((m) => (m ? { ...m, status: 'FILLED', filledAt: ev.at } : m));
           store.refresh();
@@ -74,6 +171,12 @@ export default function Run({ id }) {
 
   const live = mission.status === 'LIVE';
   const filled = mission.status === 'FILLED';
+  const paused = mission.status.startsWith('PAUSED');
+  const killed = mission.status === 'KILLED';
+  const decidedIds = new Set(events.filter((e) => e.type === 'attention.resolved').map((e) => e.requestId));
+  const kill = async () => {
+    await fetch(`/api/missions/${mission.id}/kill`, { method: 'POST' });
+  };
   const elapsed = mission.launchedAt ? (filled && mission.filledAt ? mission.filledAt - mission.launchedAt : now - mission.launchedAt) : 0;
   const stepsFilled = mission.contract.plan.filter((p) => p.status === 'FILLED').length;
   const artifact = filled || mission.artifactId ? (store.artifacts || []).find((a) => a.id === mission.artifactId) : null;
@@ -84,6 +187,11 @@ export default function Run({ id }) {
         <Link to="/" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to the floor"><BackIcon /> Floor</Link>
         <SplitFlap text={mission.serial} size="0.9rem" />
         <StatusFlap status={mission.status} />
+        {(live || paused) && (
+          <button className="btn-quiet kill-btn" onClick={kill} title="Stops the run now. Spent credits stay spent; completed work ships as a partial artifact.">
+            Kill position
+          </button>
+        )}
       </div>
 
       <div className="telemetry" role="status" aria-label="Run telemetry">
@@ -91,6 +199,19 @@ export default function Run({ id }) {
         <div className="cell"><span className="k">Ceiling</span><span className="v">{mission.contract.ceiling}<small> cr</small></span></div>
         <div className="cell"><span className="k">Elapsed</span><span className="v">{fmtElapsed(elapsed)}</span></div>
         <div className="cell"><span className="k">Steps</span><span className={`v${filled ? ' ok' : ''}`}>{stepsFilled}<small> / {mission.contract.plan.length}</small></span></div>
+        <div className="burnrow" aria-label={`Burn-down: ${mission.spent.toFixed(1)} of ${mission.contract.ceiling} credits reserved`}>
+          <div className="burnbar">
+            <div className="burn-fill" style={{ width: `${Math.min(100, (mission.spent / mission.contract.ceiling) * 100)}%` }} />
+            <div className="burn-est" style={{ left: `${Math.min(100, (mission.contract.estimate / mission.contract.ceiling) * 100)}%` }} title={`Estimate: ${mission.contract.estimate}cr`} />
+          </div>
+          <span className="burn-read">
+            {burn
+              ? <>settled {burn.total.toFixed(1)} vs est {burn.estimateSoFar} · variance <b className={burn.variance > 0 ? 'over' : 'under'}>{burn.variance > 0 ? '+' : ''}{burn.variance.toFixed(1)}cr</b></>
+              : mission.settlement
+                ? <>reserved {mission.settlement.reserved} · settled {mission.settlement.settled.toFixed(1)} · released {mission.settlement.released.toFixed(1)}cr</>
+                : 'reservation held — nothing settled yet'}
+          </span>
+        </div>
       </div>
 
       <div className="deckgrid">
@@ -171,6 +292,65 @@ export default function Run({ id }) {
                     <Link to={`/artifact/${ev.artifactId}`} className="btn-stamp" style={{ padding: '0.55rem 1rem', fontSize: '0.72rem' }}>
                       <OpenIcon /> Open
                     </Link>
+                  </div>
+                );
+              }
+              if (ev.type === 'council.gate') {
+                return <GateGrid key={i} ev={ev} />;
+              }
+              if (ev.type === 'council.patch') {
+                return (
+                  <div key={i} className="quote verdict">
+                    <div className="who"><span className="sym">{ev.symbol}</span><b>{ev.model}</b><span className="role">patch</span></div>
+                    <p>{ev.text}</p>
+                  </div>
+                );
+              }
+              if (ev.type === 'council.revote') {
+                return (
+                  <div key={i} className="tape-line">
+                    <span className="ts">{new Date(ev.at).toLocaleTimeString('en-GB', { hour12: false }).slice(3)}</span>
+                    <span className="op">re-vote</span>
+                    <span className="detail">{ev.member} on {ev.dimension}: {ev.verdict.toUpperCase()} — {ev.rationale}</span>
+                  </div>
+                );
+              }
+              if (ev.type === 'ceiling.reached') {
+                return <div key={i} className="tape-step"><span style={{ color: 'var(--red)' }}>{ev.note}</span><span className="rule" /></div>;
+              }
+              if (ev.type === 'ceiling.raised') {
+                return <div key={i} className="tape-step"><span>Ceiling raised to {ev.ceiling}cr — on the record</span><span className="rule" /></div>;
+              }
+              if (ev.type === 'attention.raised') {
+                return <AttentionCard key={i} missionId={mission.id} ev={ev} decided={decidedIds.has(ev.requestId) || killed} />;
+              }
+              if (ev.type === 'attention.resolved') {
+                return (
+                  <div key={i} className="tape-line">
+                    <span className="ts">{new Date(ev.at).toLocaleTimeString('en-GB', { hour12: false }).slice(3)}</span>
+                    <span className="op">decision</span>
+                    <span className="detail">{ev.kind}: {ev.decision} — “{ev.justification}”</span>
+                  </div>
+                );
+              }
+              if (ev.type === 'review.terminal') {
+                return (
+                  <div key={i} className={`quote ${ev.verdict === 'pass' ? 'verdict' : 'challenge'}`}>
+                    <div className="who"><span className="sym">REV</span><b>Terminal review</b><span className="role">saw only the goal and the artifact</span></div>
+                    <p>{ev.verdict === 'pass'
+                      ? 'Fresh-eyes pass: the artifact answers the goal as stated. No gaps.'
+                      : `Fresh-eyes review found ${ev.gaps.length} gap(s) — a reviewer who never saw the work judged the work.`}</p>
+                  </div>
+                );
+              }
+              if (ev.type === 'review.accepted' || ev.type === 'artifact.voided' || ev.type === 'run.killed') {
+                return <div key={i} className="tape-step"><span style={{ color: ev.type === 'review.accepted' ? 'var(--bone)' : 'var(--rose)' }}>{ev.note}</span><span className="rule" /></div>;
+              }
+              if (ev.type === 'settlement') {
+                return (
+                  <div key={i} className="tape-step">
+                    <span style={{ color: 'var(--led)' }}>Settlement · reserved {ev.reserved}cr · settled {ev.settled.toFixed(1)}cr · released {ev.released.toFixed(1)}cr back to the house</span>
+                    <span className="rule" />
                   </div>
                 );
               }
