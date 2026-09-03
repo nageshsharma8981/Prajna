@@ -125,8 +125,17 @@ git worktree add ../prajna-v0.1 v0.1.0
 
 Data note: `data/` is gitignored runtime state; deleting it reseeds the demo workspace.
 
-## Deploy
+## Deploy (Railway)
 
-Single process, port from `PORT` (default 3005), no external services. Point any
-Node host (Railway etc.) at `node server/server.js` after building `web/dist`.
-Set `PRAJNA_DATA_DIR` for persistent storage.
+Live at https://prajna-production.up.railway.app — Railway project **Prajna**,
+service `prajna`, a persistent volume mounted at `/data` (`PRAJNA_DATA_DIR=/data`),
+Nixpacks build via `railway.json` (`npm run build` → `npm start`, health check on
+`/api/bootstrap`). Deploys are CLI-driven from this directory:
+
+```bash
+railway up --service prajna --detach
+```
+
+Custom domain: `railway domain yourdomain.com` prints the CNAME target; add that
+record at your DNS host and Railway issues the certificate automatically.
+Single process, port from `PORT`, no external services.
