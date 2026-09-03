@@ -42,6 +42,31 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   `prajna.provenance.v1` — contract, settlement, gate table, review, decisions,
   honest `mode: "scripted"` label — refreshed at settlement.
 
+## v0.3 — perfected after a 100-agent full-app audit
+
+- **Vocabulary rule: world-nouns stay, workflow-verbs go plain.** Open a
+  *mission*, *stamp & run*, *stop run*, DONE / STOPPED / HOLDING, *Connectors*
+  (not "instruments"). Tickets, ledger, tape, council, desks, credits are
+  unchanged — they explain themselves and carry the world.
+- **Real reservations.** Stamping a ticket reserves its ceiling from house
+  credits; each cost settles from the reservation; closing releases the rest.
+  `credits + reserved + spent` always reconciles to the funded pool, and the
+  house refuses to stamp a ticket it cannot fund.
+- **Skills shape plans.** A skill on the desk is a plan step on every future
+  ticket; take it off and the step disappears from the next contract.
+- **Hardened API**: bounded, object-only body parsing; a process-level fault
+  guard; catalog-validated desks, models, skills and connectors; validated
+  ledger cursors; artifact download.
+- **Honest client**: SPA links that never full-reload, palette desk hand-off
+  via URL, real void from the floor, stale deep links get a not-found state,
+  live polling keeps every surface current during a run, a two-step stop,
+  honest copy on connectors (queued intent, OAuth on the roadmap).
+- **Accessibility**: a real radio group for desks, explicit Lead buttons on
+  council chips (no double-click-only path), a modal palette with focus trap
+  and announced selection, drawer focus management and `inert`, focus + title
+  + scroll reset on route change, a quiet live region instead of a chatty one,
+  gate votes as a real table with readable rationale, a pausable ticker.
+
 ## The world
 
 Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,

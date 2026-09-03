@@ -1,4 +1,4 @@
-// The ledger: every artifact the house has ever filled, with provenance.
+// The ledger: every artifact the house has ever delivered, with provenance.
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
@@ -6,33 +6,36 @@ const KIND_LABEL = { brief: 'Decision brief', deck: 'Slide deck', site: 'Landing
 
 export default function Ledger() {
   const s = useStore();
-  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }}>Opening the ledger…</p></div>;
+  if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>The ledger is unreachable: {s.error}.</p></div>;
+  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening the ledger…</p></div>;
 
   return (
     <div className="page">
       <h1 className="pg-title">The ledger</h1>
       <p className="lede">
         Every mission ends here or it didn't happen. Artifacts are first-class objects —
-        versioned, exportable, and stamped with exactly how they were made and what they cost.
+        downloadable, stamped with exactly how they were made and what they cost, and
+        retained even when a review voids them.
       </p>
       <section className="board section-gap" aria-label="Artifacts">
         <div className="board-title">
-          <span className="brd-sm">Filled artifacts</span>
+          <span className="brd-sm">Delivered artifacts</span>
           <span className="count">{s.artifacts.length}</span>
         </div>
         <div className="board-rows">
           {s.artifacts.length === 0 && (
-            <div className="board-empty">Nothing in the ledger yet. Open a position on the floor — every fill lands here.</div>
+            <div className="board-empty">Nothing in the ledger yet. Open a mission on the floor — every delivery lands here.</div>
           )}
           {s.artifacts.map((a) => (
-            <Link key={a.id} to={`/artifact/${a.id}`} className="board-row">
+            <Link key={a.id} to={`/artifact/${a.id}`} className={`board-row${a.voided ? ' voided' : ''}`}>
               <span className={`sym tint-${a.tint}`}>{a.serial}</span>
               <span className="what">
-                <b>{a.title}</b>
-                <span>{KIND_LABEL[a.kind]} · v{a.version} · council: {a.council.join(' · ')}</span>
+                <b>{a.title.replace(/^VOID · /, '')}</b>
+                <span>{KIND_LABEL[a.kind]}{a.partial ? ' · partial' : ''} · council: {a.council.join(' · ')}</span>
               </span>
               <span className="num">{a.cost.toFixed(1)} cr</span>
               <span className="num">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+              {a.voided ? <span className="sflap KILLED">VOID</span> : a.partial ? <span className="sflap PAUSED_ATTENTION">PARTIAL</span> : <span className="sflap FILLED">DONE</span>}
             </Link>
           ))}
         </div>

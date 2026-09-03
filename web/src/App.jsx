@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRoute, Link, navigate } from './lib/router.jsx';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
@@ -10,7 +10,16 @@ import Run from './views/Run.jsx';
 import Ledger from './views/Ledger.jsx';
 import ArtifactView from './views/ArtifactView.jsx';
 import Skills from './views/Skills.jsx';
-import Instruments from './views/Instruments.jsx';
+import Connectors from './views/Instruments.jsx';
+
+const TITLES = [
+  ['/run/', 'Mission'],
+  ['/artifact/', 'Artifact'],
+  ['/ledger', 'Ledger'],
+  ['/skills', 'Skills'],
+  ['/connectors', 'Connectors'],
+  ['/instruments', 'Connectors'],
+];
 
 function Clock() {
   const [now, setNow] = useState(new Date());
@@ -21,51 +30,66 @@ function Clock() {
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
-  return <div className="clock" aria-label="Local time">{hh}:{mm}:{ss}</div>;
+  return <div className="clock" aria-hidden="true">{hh}:{mm}:{ss}</div>;
 }
 
-function Rail({ open, onClose, theme, setTheme }) {
+function Rail({ open, onClose, theme, setTheme, menuRef }) {
   const s = useStore();
   const path = useRoute();
+  const firstRef = useRef(null);
   const items = [
     { to: '/', label: 'The floor', icon: FloorIcon, kbd: 'F' },
     { to: '/ledger', label: 'Ledger', icon: LedgerIcon, kbd: 'L' },
     { to: '/skills', label: 'Skills', icon: SkillIcon, kbd: 'S' },
-    { to: '/instruments', label: 'Instruments', icon: SeatIcon, kbd: 'I' },
+    { to: '/connectors', label: 'Connectors', icon: SeatIcon, kbd: 'C' },
   ];
-  const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to));
+  const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to) || (to === '/connectors' && path.startsWith('/instruments')));
+  const mobile = typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
+
+  // Drawer a11y: focus moves in on open, Escape closes, focus returns to the
+  // menu button; while closed on mobile the rail is inert to the Tab order.
+  useEffect(() => {
+    if (!open) return;
+    firstRef.current?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') { onClose(); menuRef.current?.focus(); } };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [open, onClose, menuRef]);
+
+  const w = s.ready ? s.workspace : null;
+
   return (
     <>
       {open && <div className="rail-veil" onClick={onClose} />}
-      <nav className={`rail${open ? ' open' : ''}`} aria-label="Primary">
+      <nav className={`rail${open ? ' open' : ''}`} aria-label="Primary" inert={mobile && !open}>
         <div className="rail-logo">
           <span className="mark">PRAJÑĀ</span>
           <span className="sub">Outcome Exchange</span>
         </div>
         <div className="rail-nav">
-          {items.map(({ to, label, icon: Icon, kbd }) => (
-            <Link key={to} to={to} className={`rail-item${active(to) ? ' on' : ''}`} onClick={onClose}>
+          {items.map(({ to, label, icon: Icon, kbd }, i) => (
+            <Link key={to} to={to} className={`rail-item${active(to) ? ' on' : ''}`} onClick={onClose} ref={i === 0 ? firstRef : undefined} aria-current={active(to) ? 'page' : undefined}>
               <Icon className="rail-glyph" />
               <span className="brd-sm">{label}</span>
-              <span className="rail-kbd">{kbd}</span>
+              <span className="rail-kbd" aria-hidden="true">{kbd}</span>
             </Link>
           ))}
         </div>
         <div className="rail-foot">
-          <div className="credit-meter">
+          <div className="credit-meter" aria-label={w ? `House credits ${w.credits.toFixed(0)} available, ${w.reserved.toFixed(0)} reserved, ${w.spent.toFixed(0)} spent to date` : 'House credits'}>
             <div className="lbl">House credits</div>
-            <div className="val">{s.ready ? s.workspace.credits.toFixed(0) : '····'}</div>
-            <div className="unit">{s.ready ? `${s.workspace.spent.toFixed(0)} spent to date` : ''}</div>
+            <div className="val">{w ? w.credits.toFixed(0) : '····'}</div>
+            <div className="unit">{w ? `${w.reserved > 0 ? `${w.reserved.toFixed(0)} reserved · ` : ''}${w.spent.toFixed(0)} spent to date` : ''}</div>
           </div>
           <button className="theme-btn" onClick={() => setTheme(theme === 'day' ? 'night' : 'day')}>
             {theme === 'day' ? <MoonIcon /> : <SunIcon />}
             {theme === 'day' ? 'Night hall' : 'Day desk'}
           </button>
           <div className="rail-user">
-            <span className="seat">N</span>
+            <span className="seat" aria-hidden="true">N</span>
             <span className="who">
-              <b>{s.ready ? s.workspace.name : '—'}</b>
-              <span>{s.ready ? s.workspace.seat : ''}</span>
+              <b>{w ? w.name : '—'}</b>
+              <span>{w ? w.seat : ''}</span>
             </span>
           </div>
         </div>
@@ -74,11 +98,11 @@ function Rail({ open, onClose, theme, setTheme }) {
   );
 }
 
-function Masthead({ onMenu, onPalette }) {
+function Masthead({ onMenu, onPalette, menuRef }) {
   return (
     <>
       <header className="masthead">
-        <button className="menu-btn" onClick={onMenu} aria-label="Open navigation">
+        <button className="menu-btn" onClick={onMenu} aria-label="Open navigation" ref={menuRef}>
           <MenuIcon />
         </button>
         <div className="title">
@@ -103,28 +127,54 @@ function Router() {
   if (path.startsWith('/artifact/')) return <ArtifactView id={path.split('/')[2]} />;
   if (path.startsWith('/ledger')) return <Ledger />;
   if (path.startsWith('/skills')) return <Skills />;
-  if (path.startsWith('/instruments')) return <Instruments />;
+  if (path.startsWith('/connectors') || path.startsWith('/instruments')) return <Connectors />;
   return <Floor />;
 }
 
+function readTheme() {
+  const q = new URLSearchParams(location.search).get('theme');
+  if (q === 'day' || q === 'night') {
+    // View-only override: honored for this load, never persisted, and stripped
+    // from the URL so a reload returns to the saved preference.
+    const url = new URL(location.href);
+    url.searchParams.delete('theme');
+    history.replaceState(null, '', url.pathname + url.search);
+    return q;
+  }
+  const saved = localStorage.getItem('prajna-theme');
+  return saved === 'day' ? 'day' : 'night';
+}
+
 function Shell() {
-  const [theme, setTheme] = useState(() => {
-    const q = new URLSearchParams(location.search).get('theme');
-    return q || localStorage.getItem('prajna-theme') || 'night';
-  });
+  const [theme, setThemeState] = useState(readTheme);
   const [railOpen, setRailOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   const path = useRoute();
+  const menuRef = useRef(null);
+  const mainRef = useRef(null);
+
+  const setTheme = (t) => {
+    setThemeState(t);
+    localStorage.setItem('prajna-theme', t);
+  };
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme === 'day' ? 'day' : '';
     if (theme === 'day') document.documentElement.setAttribute('data-theme', 'day');
     else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('prajna-theme', theme);
   }, [theme]);
 
+  // Route change: title, scroll to top, and focus lands on the main region so
+  // keyboard and screen-reader users start at the new content.
   useEffect(() => {
-    const NAV_KEYS = { f: '/', l: '/ledger', s: '/skills', i: '/instruments' };
+    const t = TITLES.find(([prefix]) => path.startsWith(prefix));
+    document.title = `${t ? `${t[1]} · ` : ''}Prajñā — The Outcome Exchange`;
+    const scroller = mainRef.current?.querySelector('.scroll');
+    if (scroller) scroller.scrollTop = 0;
+    mainRef.current?.focus({ preventScroll: true });
+  }, [path]);
+
+  useEffect(() => {
+    const NAV_KEYS = { f: '/', l: '/ledger', s: '/skills', c: '/connectors' };
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -132,8 +182,11 @@ function Shell() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Single-key navigation only fires when nothing interactive has focus —
+      // never from inside a form, a chip, or a decision card.
       const t = e.target;
-      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+      const interactive = t !== document.body && t !== mainRef.current && !t.classList?.contains('scroll');
+      if (interactive) return;
       const to = NAV_KEYS[e.key.toLowerCase()];
       if (to) {
         e.preventDefault();
@@ -148,9 +201,9 @@ function Shell() {
 
   return (
     <div className="shell">
-      <Rail open={railOpen} onClose={() => setRailOpen(false)} theme={theme} setTheme={setTheme} />
-      <div className="main">
-        {!artifactFull && <Masthead onMenu={() => setRailOpen(true)} onPalette={() => setPalette(true)} />}
+      <Rail open={railOpen} onClose={() => setRailOpen(false)} theme={theme} setTheme={setTheme} menuRef={menuRef} />
+      <div className="main" ref={mainRef} tabIndex={-1} id="main">
+        {!artifactFull && <Masthead onMenu={() => setRailOpen(true)} onPalette={() => setPalette(true)} menuRef={menuRef} />}
         {artifactFull ? (
           <Router />
         ) : (

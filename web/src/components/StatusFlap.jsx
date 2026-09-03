@@ -1,5 +1,13 @@
-// Small board-flap status chip; flips when its status changes.
+// Small board-flap status chip; flips when its status changes. Internal
+// enums stay (FILLED/KILLED); the lettering speaks plainly.
 import { useEffect, useRef, useState } from 'react';
+
+const LABELS = {
+  FILLED: 'DONE',
+  KILLED: 'STOPPED',
+  PAUSED_ATTENTION: 'ATTN',
+  PAUSED_CEILING: 'CEILING',
+};
 
 export default function StatusFlap({ status }) {
   const [flip, setFlip] = useState(false);
@@ -12,6 +20,5 @@ export default function StatusFlap({ status }) {
       return () => clearTimeout(t);
     }
   }, [status]);
-  const LABELS = { PAUSED_ATTENTION: 'ATTN', PAUSED_CEILING: 'CEILING' };
   return <span className={`sflap ${status}${flip ? ' flip' : ''}`}>{LABELS[status] || status}</span>;
 }

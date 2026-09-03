@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById } from './catalog.js';
-import { writeContract, launchMission, killMission, decideAttention, rehydrate, DIMENSIONS } from './engine.js';
+import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, DIMENSIONS } from './engine.js';
 import { GENERATORS } from './artifacts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -51,6 +51,8 @@ function seed() {
       cost: m.spent, council: m.councilNames,
     }, html);
     m.artifactId = artifactId;
+    // Seed history is real history: what they settled was debited from the pool.
+    store.debitCredits(s.spent);
   }
   store.flushMissions();
 }
@@ -81,13 +83,29 @@ function json(res, code, body) {
   res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' });
   res.end(data);
 }
+// Bounded, object-only body parsing: a hostile or malformed body must never
+// crash the process or hang a handler.
+const BODY_LIMIT = 64 * 1024;
 function readBody(req) {
   return new Promise((resolve) => {
     let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => {
-      try { resolve(JSON.parse(data || '{}')); } catch { resolve({}); }
+    let settled = false;
+    const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+    req.on('data', (c) => {
+      data += c;
+      if (data.length > BODY_LIMIT) {
+        done({ __tooLarge: true });
+        req.destroy();
+      }
     });
+    req.on('end', () => {
+      try {
+        const v = JSON.parse(data || '{}');
+        done(v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+      } catch { done({}); }
+    });
+    req.on('error', () => done({}));
+    req.on('aborted', () => done({}));
   });
 }
 
@@ -106,7 +124,15 @@ function connectorState() {
 
 /* ---------------------------------- server -------------------------------- */
 
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
+  handle(req, res).catch((e) => {
+    console.error('prajna: request failed', e);
+    if (!res.headersSent) json(res, 500, { error: 'The house hit an internal fault; nothing was changed.' });
+    else res.end();
+  });
+});
+
+async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
 
@@ -126,16 +152,30 @@ const server = http.createServer(async (req, res) => {
 
   if (p === '/api/missions' && req.method === 'POST') {
     const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400);
     if (!goal) return json(res, 400, { error: 'A goal is required to write a ticket.' });
+    // Strict catalog lookups: a typo must not silently book the wrong desk or council.
+    if (body.deskId && !DESKS.some((d) => d.id === body.deskId)) return json(res, 400, { error: `Unknown desk "${String(body.deskId).slice(0, 40)}".` });
+    if (body.lead && !MODELS.some((m) => m.id === body.lead)) return json(res, 400, { error: `Unknown lead model "${String(body.lead).slice(0, 40)}".` });
+    const rawAdvisers = Array.isArray(body.advisers) ? body.advisers : [];
+    const badAdviser = rawAdvisers.find((a) => !MODELS.some((m) => m.id === a));
+    if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
-    const advisers = (Array.isArray(body.advisers) ? body.advisers : []).map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId, lead, advisers });
-    return json(res, 200, mission);
+    const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills });
+    return json(res, 200, pub(mission));
   }
 
   const launchMatch = p.match(/^\/api\/missions\/([\w]+)\/launch$/);
   if (launchMatch && req.method === 'POST') {
+    const pending = store.mission(launchMatch[1]);
+    if (!pending || pending.status !== 'OPEN') return json(res, 404, { error: 'Mission not found or not open.' });
+    // The house never runs what it cannot fund: the ceiling must be covered.
+    const credits = store.workspace().credits;
+    if (credits < pending.contract.ceiling) {
+      return json(res, 402, { error: `House credits (${credits.toFixed(0)}) are below this ticket's ceiling (${pending.contract.ceiling}). Top up or void the ticket — nothing was spent.` });
+    }
     const m = launchMission(launchMatch[1], notify);
     if (!m) return json(res, 404, { error: 'Mission not found or not open.' });
     return json(res, 200, { ok: true });
@@ -151,6 +191,7 @@ const server = http.createServer(async (req, res) => {
   const attnMatch = p.match(/^\/api\/missions\/([\w]+)\/attention\/([\w]+)$/);
   if (attnMatch && req.method === 'POST') {
     const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const result = decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify);
     return json(res, result.error ? 400 : 200, result);
   }
@@ -160,15 +201,14 @@ const server = http.createServer(async (req, res) => {
     const m = store.mission(eventsMatch[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     const after = Number(url.searchParams.get('after') || 0);
+    if (!Number.isFinite(after) || after < 0) return json(res, 400, { error: '"after" must be a non-negative number (the last seq you have).' });
     return json(res, 200, { events: (m.events || []).filter((e) => (e.seq || 0) > after) });
   }
 
   const voidMatch = p.match(/^\/api\/missions\/([\w]+)\/void$/);
   if (voidMatch && req.method === 'POST') {
-    const m = store.mission(voidMatch[1]);
-    if (!m || m.status !== 'OPEN') return json(res, 404, { error: 'Only an open ticket can be voided.' });
-    m.status = 'KILLED';
-    store.flushMissions();
+    const m = voidTicket(voidMatch[1], notify);
+    if (!m) return json(res, 404, { error: 'Only an open ticket can be voided.' });
     return json(res, 200, { ok: true });
   }
 
@@ -213,14 +253,21 @@ const server = http.createServer(async (req, res) => {
   if (artifactHtml) {
     const html = store.artifactHtml(artifactHtml[1]);
     if (!html) return json(res, 404, { error: 'Artifact not found.' });
-    res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' });
+    const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' };
+    if (url.searchParams.get('download') === '1') {
+      const meta = store.artifact(artifactHtml[1]);
+      const name = (meta?.title || 'artifact').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 80) || 'artifact';
+      headers['content-disposition'] = `attachment; filename="${meta?.serial || 'PJ'}-${name}.html"`;
+    }
+    res.writeHead(200, headers);
     return res.end(html);
   }
 
   const connectMatch = p.match(/^\/api\/connectors\/([\w-]+)\/toggle$/);
   if (connectMatch && req.method === 'POST') {
-    const cs = connectorState();
     const cid = connectMatch[1];
+    if (!CONNECTORS.some((c) => c.id === cid)) return json(res, 404, { error: 'Unknown connector.' });
+    const cs = connectorState();
     cs.connected = cs.connected.includes(cid) ? cs.connected.filter((c) => c !== cid) : [...cs.connected, cid];
     store.flushConnectors();
     return json(res, 200, { connected: cs.connected.includes(cid) });
@@ -228,8 +275,9 @@ const server = http.createServer(async (req, res) => {
 
   const skillMatch = p.match(/^\/api\/skills\/([\w-]+)\/toggle$/);
   if (skillMatch && req.method === 'POST') {
-    const cs = connectorState();
     const sid = skillMatch[1];
+    if (!SKILLS.some((s) => s.id === sid)) return json(res, 404, { error: 'Unknown skill.' });
+    const cs = connectorState();
     cs.skills = cs.skills.includes(sid) ? cs.skills.filter((s) => s !== sid) : [...cs.skills, sid];
     store.flushConnectors();
     return json(res, 200, { installed: cs.skills.includes(sid) });
@@ -249,7 +297,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(503, { 'content-type': 'text/plain' });
     res.end('Prajñā web bundle not built yet. Run: cd web && npx vite build');
   }
-});
+}
 
 rehydrate(notify);
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

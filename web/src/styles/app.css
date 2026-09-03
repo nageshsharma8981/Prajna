@@ -893,6 +893,75 @@ h1.pg-title {
 .palette-item .t { flex: 1; font-size: 0.88rem; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .palette-empty { padding: 1.4rem; text-align: center; color: var(--bone-faint); font-size: 0.85rem; }
 
+/* --------------------------- v0.3 additions -------------------------------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.main:focus, .main:focus-visible { outline: none; box-shadow: none; }
+.soft-banner {
+  margin: 0 0 1rem; padding: 0.55rem 0.9rem;
+  border: 1px dashed var(--line-strong); border-radius: 4px;
+  font-size: 0.8rem; color: var(--bone-dim);
+}
+.ticket-error { color: var(--rose); font-size: 0.86rem; margin: 0.8rem 1.4rem 0 1.9rem; }
+
+/* ticker pause control */
+.ticker { position: relative; }
+.ticker-pause {
+  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 3px;
+  display: grid; place-items: center;
+  color: #cfae62; background: var(--led-bg);
+  border: 1px solid var(--line-strong);
+  opacity: 0.75;
+}
+.ticker-pause:hover, .ticker-pause:focus-visible { opacity: 1; color: var(--led); }
+
+/* council chip: seat button + explicit lead control */
+.model-chip { padding: 0; gap: 0; overflow: hidden; }
+.model-chip .chip-main {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
+  color: inherit;
+}
+.model-chip .chip-main:disabled { cursor: default; }
+.model-chip .chip-lead {
+  font-size: 0.55rem; letter-spacing: 0.16em; font-weight: 700; text-transform: uppercase;
+  color: var(--bone-faint);
+  padding: 0.4rem 0.6rem;
+  border-left: 1px solid var(--line);
+  transition: color 0.15s, background 0.15s;
+}
+.model-chip .chip-lead:hover, .model-chip .chip-lead:focus-visible { color: var(--led); background: color-mix(in srgb, var(--led) 8%, transparent); }
+.model-chip .tag { padding: 0.4rem 0.6rem; border-left: 1px solid color-mix(in srgb, var(--led) 40%, var(--line)); }
+
+/* stop-run confirmation */
+.stop-confirm {
+  display: inline-flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+  font-size: 0.78rem; color: var(--bone-dim);
+  border: 1px solid color-mix(in srgb, var(--red) 55%, var(--line-strong));
+  border-radius: 4px;
+  padding: 0.45rem 0.8rem;
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+}
+.stop-confirm > span { max-width: 46ch; }
+
+/* gate table (replaces the css grid) */
+.gate-table { width: 100%; border-collapse: collapse; }
+.gate-table th, .gate-table td { padding: 0.32rem 0.7rem; border-top: 1px solid var(--line); font-size: 0.7rem; text-align: left; }
+.gate-table thead th { font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.58rem; color: var(--bone-dim); border-top: none; }
+.gate-table tbody th { font-weight: 650; color: var(--bone); white-space: nowrap; }
+.gate-table td { text-align: center; }
+.gate-table .gv {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+  padding: 0.2rem 0.5rem; border-radius: 3px;
+  border: 1px solid transparent;
+}
+.gate-table .gv.pass { color: var(--green); }
+.gate-table .gv.fail, .gate-table .gv.unverifiable { color: var(--rose); }
+.gate-table .gv:hover, .gate-table .gv.picked { border-color: var(--line-strong); background: var(--panel); }
+
+/* voided ledger rows */
+.board-row.voided .what b { text-decoration: line-through; color: var(--bone-dim); }
+
 /* -------------------------------- utilities -------------------------------- */
 .fade-up { animation: fadeup 0.5s var(--ease) both; }
 @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

@@ -10,7 +10,7 @@
 
 import crypto from 'node:crypto';
 import { store } from './store.js';
-import { deskById, modelById } from './catalog.js';
+import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 
 // Serial counter continues from the persisted ledger so restarts never mint
@@ -66,10 +66,17 @@ export const DIMENSIONS = {
   analysis: ['Honest chart forms', 'Caveats attached', 'Segment coverage'],
 };
 
-export function writeContract({ goal, deskId, lead, advisers }) {
+// Plan steps that are skills (cite-guard, steelman, deck-doctor, copy-cutter,
+// a11y-audit, chart-smith …) only appear when that skill is on the desk — so
+// installing a skill genuinely changes every future ticket.
+const SKILL_TOOLS = new Set(SKILLS.map((s) => s.id));
+
+export function writeContract({ goal, deskId, lead, advisers, installedSkills }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
+  const installed = installedSkills ? new Set(installedSkills) : null;
   const plan = PLANS[desk.id](subject.length > 52 ? subject.slice(0, 49) + '…' : subject)
+    .filter((p) => !installed || !SKILL_TOOLS.has(p.tool) || installed.has(p.tool))
     .map((p, i) => ({ id: `s${i + 1}`, status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), ...p }));
   const estimate = plan.reduce((a, p) => a + p.cost, 0);
   const councilIds = [lead, ...advisers.filter((a) => a !== lead)];
@@ -301,6 +308,7 @@ function settle(m, notify) {
     settled: Math.round(m.spent * 10) / 10,
     released: Math.round((m.contract.ceiling - m.spent) * 10) / 10,
   };
+  store.releaseReserve(m.settlement.released);
   pushEvent(m, { type: 'settlement', ...m.settlement }, notify);
   // The artifact of record carries the FINAL provenance: settlement, review
   // verdict, and every human decision. Regenerate it now that they exist.
@@ -337,7 +345,7 @@ function applyEvent(m, ev, notify, runner) {
       pushEvent(m, { type: 'ceiling.reached', stepId: ev.stepId, wouldBe, ceiling: m.contract.ceiling, note: `Step ${stepIdx + 1} of ${m.contract.plan.length} would take spend to ${wouldBe}cr — over the ${m.contract.ceiling}cr ceiling. Nothing further is spent without a decision.` }, notify);
       runner.deferredCost = ev;
       raiseAttention(m, notify, {
-        kind: 'ceiling', prompt: `The hard ceiling (${m.contract.ceiling}cr) stops this run at step ${stepIdx + 1}. Raise it, or take the partial artifact?`,
+        kind: 'ceiling', prompt: `The hard ceiling (${m.contract.ceiling}cr) stops this mission at step ${stepIdx + 1}. Raise it, or take the partial artifact?`,
         options: ['raise-ceiling', 'abort-with-partial'],
       });
       m.status = 'PAUSED_CEILING';
@@ -348,7 +356,7 @@ function applyEvent(m, ev, notify, runner) {
     record.total = m.spent;
     record.estimateSoFar = estimateSoFar(m);
     record.variance = Math.round((m.spent - record.estimateSoFar) * 10) / 10;
-    store.spendCredits(ev.delta);
+    store.settleFromReserve(ev.delta);
   }
 
   if (ev.type === 'council.gate') m.gate = { rows: ev.rows, cleared: ev.cleared };
@@ -419,6 +427,7 @@ function scheduleNext(missionId) {
 export function launchMission(missionId, notify) {
   const mission = store.mission(missionId);
   if (!mission || mission.status !== 'OPEN') return null;
+  if (!store.reserveCredits(mission.contract.ceiling)) return null;
   mission.status = 'LIVE';
   mission.launchedAt = Date.now();
   if (mission.eventSeq === undefined) mission.eventSeq = 0;
@@ -471,7 +480,7 @@ export function killMission(missionId, notify) {
   // the open question stays on the record instead of vanishing.
   for (const req of (m.attention || []).filter((r) => !r.decision)) {
     req.decision = 'voided-by-kill';
-    req.justification = 'Run killed before a decision was made.';
+    req.justification = 'Run stopped before a decision was made.';
     req.decidedAt = Date.now();
   }
 
@@ -482,13 +491,25 @@ export function killMission(missionId, notify) {
   const artifactNote = m.artifactId
     ? 'The artifact already produced is retained.'
     : 'Completed work is kept — a partial artifact follows.';
-  pushEvent(m, { type: 'run.killed', note: `Position killed at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. ${artifactNote} Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
+  pushEvent(m, { type: 'run.killed', note: `Run stopped at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. ${artifactNote} Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
   if (!m.artifactId) {
     const a = makeArtifact(m, notify);
     pushEvent(m, { type: 'artifact.ready', ...a, partial: true }, notify);
   }
   settle(m, notify);
   store.flushMissions();
+  return m;
+}
+
+// Void an OPEN ticket: nothing ran, nothing was spent, the serial is retired.
+// Pushed as an event so any open stream (e.g. a Run tab) updates live.
+export function voidTicket(missionId, notify) {
+  const m = store.mission(missionId);
+  if (!m || m.status !== 'OPEN') return null;
+  m.status = 'KILLED';
+  m.voidedBeforeRun = true;
+  if (m.eventSeq === undefined) m.eventSeq = 0;
+  pushEvent(m, { type: 'ticket.voided', note: 'Ticket voided before any spend. The serial is retired.' }, notify);
   return m;
 }
 
@@ -504,6 +525,15 @@ export function decideAttention(missionId, requestId, decision, justification, n
   if (!req.options.includes(decision)) return { error: `Decision must be one of: ${req.options.join(', ')}` };
   if (!justification || !justification.trim()) return { error: 'A justification is required — it goes on the record.' };
 
+  // Fund a raised ceiling BEFORE anything is recorded; a refusal changes nothing.
+  let raisedCeiling = null;
+  if (req.kind === 'ceiling' && decision === 'raise-ceiling') {
+    raisedCeiling = Math.ceil(m.contract.ceiling * 1.4);
+    if (!store.reserveCredits(raisedCeiling - m.contract.ceiling)) {
+      return { error: `House credits cannot fund the raised ceiling (${raisedCeiling}cr). Abort with the partial artifact, or top up first.` };
+    }
+  }
+
   req.decision = decision;
   req.justification = justification.trim().slice(0, 300);
   req.decidedAt = Date.now();
@@ -513,7 +543,7 @@ export function decideAttention(missionId, requestId, decision, justification, n
 
   if (req.kind === 'ceiling') {
     if (decision === 'raise-ceiling') {
-      m.contract.ceiling = Math.ceil(m.contract.ceiling * 1.4);
+      m.contract.ceiling = raisedCeiling;
       m.partial = false;
       m.status = 'LIVE';
       pushEvent(m, { type: 'ceiling.raised', ceiling: m.contract.ceiling }, notify);

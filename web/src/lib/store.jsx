@@ -1,17 +1,33 @@
 // Workspace store: bootstrap payload + helpers, exposed via context.
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 const Ctx = createContext(null);
+
+async function post(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || `The house refused the request (${r.status}).`);
+  }
+  return r.json().catch(() => ({}));
+}
 
 export function StoreProvider({ children }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const dataRef = useRef(null);
 
   const refresh = useCallback(async () => {
     try {
       const r = await fetch('/api/bootstrap');
       if (!r.ok) throw new Error(`bootstrap ${r.status}`);
-      setData(await r.json());
+      const next = await r.json();
+      dataRef.current = next;
+      setData(next);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -22,36 +38,39 @@ export function StoreProvider({ children }) {
     refresh();
   }, [refresh]);
 
+  // While anything is running, the credit meter, ticker and boards keep pace
+  // with the ledger on a light poll — every surface, not just the run tape.
+  useEffect(() => {
+    const busy = (data?.missions || []).some((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
+    if (!busy) return;
+    const t = setInterval(refresh, 4000);
+    return () => clearInterval(t);
+  }, [data, refresh]);
+
   const api = {
     ...(data || {}),
     ready: !!data,
     error,
     refresh,
     async writeTicket(body) {
-      const r = await fetch('/api/missions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error((await r.json()).error || 'Ticket refused');
-      const mission = await r.json();
+      const mission = await post('/api/missions', body);
       await refresh();
       return mission;
     },
     async launch(id) {
-      await fetch(`/api/missions/${id}/launch`, { method: 'POST' });
+      await post(`/api/missions/${id}/launch`);
       await refresh();
     },
     async voidTicket(id) {
-      await fetch(`/api/missions/${id}/void`, { method: 'POST' });
+      await post(`/api/missions/${id}/void`);
       await refresh();
     },
     async toggleConnector(id) {
-      await fetch(`/api/connectors/${id}/toggle`, { method: 'POST' });
+      await post(`/api/connectors/${id}/toggle`);
       await refresh();
     },
     async toggleSkill(id) {
-      await fetch(`/api/skills/${id}/toggle`, { method: 'POST' });
+      await post(`/api/skills/${id}/toggle`);
       await refresh();
     },
   };

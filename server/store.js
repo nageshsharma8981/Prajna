@@ -81,14 +81,44 @@ export const store = {
 
   workspace() {
     if (!this.state.workspace) {
-      this.state.workspace = { credits: 2400, spent: 0, name: 'Nagesh Sharma', seat: 'SEAT 001' };
+      this.state.workspace = { credits: 2400, reserved: 0, spent: 0, name: 'Nagesh Sharma', seat: 'SEAT 001' };
       this.flushWorkspace();
     }
+    if (this.state.workspace.reserved === undefined) this.state.workspace.reserved = 0;
     return this.state.workspace;
   },
-  spendCredits(n) {
+  // Real reservation accounting: credits + reserved + spent always reconciles
+  // to the funded pool. A stamped ticket RESERVES its ceiling; each cost event
+  // SETTLES from the reservation; closing the run RELEASES the remainder.
+  reserveCredits(n) {
     const w = this.workspace();
-    w.credits = Math.max(0, Math.round((w.credits - n) * 10) / 10);
+    if (w.credits < n) return null;
+    w.credits = Math.round((w.credits - n) * 10) / 10;
+    w.reserved = Math.round((w.reserved + n) * 10) / 10;
+    this.flushWorkspace();
+    return w;
+  },
+  settleFromReserve(n) {
+    const w = this.workspace();
+    const take = Math.min(n, w.reserved);
+    w.reserved = Math.round((w.reserved - take) * 10) / 10;
+    w.spent = Math.round((w.spent + n) * 10) / 10;
+    if (take < n) w.credits = Math.round((w.credits - (n - take)) * 10) / 10;
+    this.flushWorkspace();
+    return w;
+  },
+  releaseReserve(n) {
+    const w = this.workspace();
+    const give = Math.min(Math.max(0, n), w.reserved);
+    w.reserved = Math.round((w.reserved - give) * 10) / 10;
+    w.credits = Math.round((w.credits + give) * 10) / 10;
+    this.flushWorkspace();
+    return w;
+  },
+  // Direct debit (seed history only): spent that was never reserved.
+  debitCredits(n) {
+    const w = this.workspace();
+    w.credits = Math.round((w.credits - n) * 10) / 10;
     w.spent = Math.round((w.spent + n) * 10) / 10;
     this.flushWorkspace();
     return w;

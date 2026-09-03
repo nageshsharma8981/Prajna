@@ -60,6 +60,22 @@ export const SearchIcon = (p) => (
     <path d="M13 13l4 4" />
   </I>
 );
+export const DownloadIcon = (p) => (
+  <I {...p}>
+    <path d="M10 3v9M6.5 8.5 10 12l3.5-3.5" />
+    <path d="M4 14.5v2h12v-2" />
+  </I>
+);
+export const PauseIcon = (p) => (
+  <I {...p}>
+    <path d="M7 4.5v11M13 4.5v11" strokeWidth="2.2" />
+  </I>
+);
+export const PlayIcon = (p) => (
+  <I {...p}>
+    <path d="M6.5 4.5v11l9-5.5z" fill="currentColor" strokeWidth="1" />
+  </I>
+);
 export const BackIcon = (p) => (
   <I {...p}>
     <path d="M12.5 4 6.5 10l6 6" />
