@@ -41,6 +41,23 @@ Dev loop: `cd web && npm run dev` (Vite on 5205, proxying /api to 3005).
 - Demo mode ships scripted runs that produce real artifacts; the engine has a seam
   for live model calls when `ANTHROPIC_API_KEY` is present (future work).
 
+## Rollback
+
+Every release is tagged; `stable-v0.1` is a frozen branch of the reviewed v0.1 baseline.
+
+```bash
+git checkout v0.1.0          # inspect the baseline
+git reset --hard v0.1.0      # roll main back to it (then: git push --force-with-lease)
+```
+
+Or run the old version side-by-side without touching main:
+
+```bash
+git worktree add ../praxis-v0.1 v0.1.0
+```
+
+Data note: `data/` is gitignored runtime state; deleting it reseeds the demo workspace.
+
 ## Deploy
 
 Single process, port from `PORT` (default 3005), no external services. Point any
