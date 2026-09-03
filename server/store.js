@@ -8,6 +8,8 @@ export const DATA_DIR = process.env.PRAJNA_DATA_DIR || path.join(__dirname, '..'
 const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 
 fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
+// BYOK keys are never stored on disk; remove any file an earlier build wrote.
+try { fs.rmSync(path.join(DATA_DIR, 'keys.json'), { force: true }); } catch {}
 
 function readJson(file, fallback) {
   const full = path.join(DATA_DIR, file);
@@ -37,7 +39,7 @@ export const store = {
     artifacts: readJson('artifacts.json', []),
     workspace: readJson('workspace.json', null),
     connectors: readJson('connectors.json', null),
-    keys: readJson('keys.json', {}),          // BYOK: { provider: { key, baseUrl, addedAt } } — server-only, never sent to clients
+    keys: {},                                 // BYOK: memory-only. Never written to disk, never sent to clients, gone on restart.
     customModels: readJson('models.json', []), // user-added panel seats
   },
 
@@ -45,7 +47,7 @@ export const store = {
   flushArtifacts() { writeJson('artifacts.json', this.state.artifacts); },
   flushWorkspace() { writeJson('workspace.json', this.state.workspace); },
   flushConnectors() { writeJson('connectors.json', this.state.connectors); },
-  flushKeys() { writeJson('keys.json', this.state.keys); },
+  flushKeys() { /* deliberately no-op: keys are never persisted */ },
   flushModels() { writeJson('models.json', this.state.customModels); },
 
   keys() { return this.state.keys; },

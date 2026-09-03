@@ -70,8 +70,8 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 ## v0.4 — bring your own keys (BYOK)
 
 - **Your keys** page: Anthropic, OpenAI-compatible (OpenAI, DeepSeek, Groq,
-  Together, Ollama… via base URL) and Google Gemini keys, stored only in
-  `data/keys.json`, masked after save, never sent to the browser. **Test** proves
+  Together, Ollama… via base URL) and Google Gemini keys — **never saved**: held in
+  server memory for the session only, masked in every response, never sent to the browser, gone on restart. **Test** proves
   a key with a real round-trip.
 - **Your models**: add any model id your provider serves; it becomes a panel
   seat like a house seat.

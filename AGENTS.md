@@ -13,8 +13,9 @@
 5. **Honesty over polish.** Scripted output is labeled `mode: scripted`; a live
    call that fails falls back visibly with the error on the tape. Never present
    a fake pass as a real-provider pass.
-6. **Keys never leave the server.** BYOK keys are read from `data/keys.json`,
-   masked in every API response, and used only for a seat that sits on a panel.
+6. **Keys are never saved.** BYOK keys live only in server memory for the
+   session (`store.state.keys`), are masked in every API response, never written
+   to disk, and used only for a seat that sits on a panel.
 7. **Vocabulary rule:** world-nouns stay (ticket, tape, panel, desk, credits);
    workflow-verbs go plain (mission, stamp & run, stop run, DONE / STOPPED).
 8. **External steps always hold for approval.** `access: 'external'` implies

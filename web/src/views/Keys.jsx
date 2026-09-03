@@ -21,7 +21,7 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
 
   const save = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(`Saved as ${r.masked}. Seats on ${meta.label} are now live.`); setKey(''); await onChange(); }
+    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(`Loaded as ${r.masked} for this session (not saved to disk). Seats on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const test = async () => {
@@ -42,14 +42,14 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
         <span className={`sflap ${saved ? 'LIVE' : 'QUEUED'}`}>{saved ? 'LIVE' : 'NO KEY'}</span>
       </div>
       <p className="key-hint">{meta.hint}</p>
-      {saved && <p className="key-saved">On file: <code>{saved.masked}</code>{saved.baseUrl ? <> · base URL <code>{saved.baseUrl}</code></> : null}</p>}
+      {saved && <p className="key-saved">In memory this session: <code>{saved.masked}</code>{saved.baseUrl ? <> · base URL <code>{saved.baseUrl}</code></> : null}</p>}
       <div className="key-form">
         <input type="password" autoComplete="off" className="key-input" placeholder={saved ? 'Replace key…' : 'Paste key…'} value={key} onChange={(e) => setKey(e.target.value)} aria-label={`${meta.label} API key`} />
         {id === 'openai' && (
           <input className="key-input" placeholder="Base URL (optional, e.g. https://api.deepseek.com/v1)" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} aria-label="Base URL" />
         )}
         <div className="key-actions">
-          <button className="btn-stamp attn-btn" onClick={save} disabled={busy || !key}>Save key</button>
+          <button className="btn-stamp attn-btn" onClick={save} disabled={busy || !key}>Use key this session</button>
           <button className="btn-quiet" onClick={test} disabled={busy || (!key && !saved)} title={houseSeat ? `Pings ${houseSeat.modelId}` : ''}>Test</button>
           {saved && <button className="btn-quiet" onClick={remove} disabled={busy}>Remove</button>}
         </div>
@@ -88,8 +88,9 @@ export default function Keys() {
       <p className="lede">
         Bring your own keys and your own models. Any panel seat whose provider has a key here goes
         <b> live</b>: its position on the tape is a real model call, billed to your provider — not to
-        house credits. Keys are stored only on this machine, never shown again in full, and never sent
-        to the browser.
+        house credits. <b>Keys are never saved.</b> They are held in the server's memory for this
+        session only, never written to disk, never sent back to the browser, and gone the moment the
+        server restarts — you re-enter them when you need them.
       </p>
 
       <section className="section-gap" aria-label="Provider keys">
