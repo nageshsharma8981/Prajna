@@ -14,10 +14,10 @@ export default function Ticker() {
   const done = s.missions.filter((m) => m.status === 'FILLED');
   const items = [
     `CREDITS ${s.workspace.credits.toFixed(0)}${s.workspace.reserved ? ` · RESERVED ${s.workspace.reserved.toFixed(0)}` : ''}`,
-    live.length ? `LIVE MISSIONS ${live.length}` : 'FLOOR QUIET · NO LIVE MISSIONS',
+    live.length ? `LIVE MISSIONS ${live.length}` : 'ALL QUIET · NO LIVE MISSIONS',
     ...live.map((m) => `${m.serial} ${m.deskCode} ${m.status.startsWith('PAUSED') ? 'HOLDING' : 'RUNNING'} · ${m.spent.toFixed(0)}cr`),
     ...done.slice(0, 3).map((m) => `${m.serial} DONE ▲ ${m.deliverable.toUpperCase()}`),
-    `LEDGER ${s.artifacts.length} ARTIFACTS`,
+    `${s.artifacts.length} ARTIFACTS DELIVERED`,
     'CONTRACT BEFORE ACTION · WORK IN THE OPEN · ARTIFACTS NOT ANSWERS',
   ];
   const strip = items.join('      •      ') + '      •      ';

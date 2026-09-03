@@ -60,7 +60,7 @@ function AttentionCard({ missionId, ev, decided }) {
       ))}
       <input
         className="attn-just"
-        placeholder="Justification — recorded in the ledger and the artifact"
+        placeholder="Justification — goes on the record and into the artifact"
         value={justification}
         onChange={(e) => setJustification(e.target.value)}
         aria-label="Justification for your decision"
@@ -173,7 +173,7 @@ export default function Run({ id }) {
           setMission((m) => (m ? { ...m, spent: ev.total } : m));
           if (ev.estimateSoFar != null) setBurn({ total: ev.total, estimateSoFar: ev.estimateSoFar, variance: ev.variance ?? 0 });
         }
-        if (ev.type === 'artifact.ready') { setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m)); setAnnounce('Artifact ready in the ledger.'); }
+        if (ev.type === 'artifact.ready') { setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m)); setAnnounce('Artifact delivered.'); }
         if (ev.type === 'attention.raised') { setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m)); setAnnounce('Decision required — the run is holding.'); }
         if (ev.type === 'attention.resolved') setMission((m) => (m ? { ...m, status: 'LIVE' } : m));
         if (ev.type === 'ceiling.raised') setMission((m) => (m ? { ...m, contract: { ...m.contract, ceiling: ev.ceiling } } : m));
@@ -225,7 +225,7 @@ export default function Run({ id }) {
     return (
       <div className="page">
         <p role="alert" style={{ color: 'var(--rose)' }}>No mission with serial id “{id}” is on the books — the link may be stale or the workspace was reset.</p>
-        <Link to="/" className="btn-quiet" style={{ marginTop: '1rem', display: 'inline-flex' }}><BackIcon /> Back to the floor</Link>
+        <Link to="/" className="btn-quiet" style={{ marginTop: '1rem', display: 'inline-flex' }}><BackIcon /> Back to missions</Link>
       </div>
     );
   }
@@ -270,7 +270,7 @@ export default function Run({ id }) {
     <div className="page">
       <div className="sr-only" aria-live="polite" role="status">{announce}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to="/" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to the floor"><BackIcon /> Floor</Link>
+        <Link to="/" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to missions"><BackIcon /> Missions</Link>
         <SplitFlap text={mission.serial} size="0.9rem" />
         <StatusFlap status={mission.status} />
         {(live || paused) && !confirmStop && (
@@ -429,7 +429,7 @@ export default function Run({ id }) {
                   <div key={i} className="artifact-card">
                     <div className="t">
                       <b>{ev.title}</b>
-                      <span>{ev.partial ? 'partial artifact · in the ledger' : 'versioned artifact · in the ledger'}</span>
+                      <span>{ev.partial ? 'partial artifact · delivered' : 'versioned artifact · delivered'}</span>
                     </div>
                     <Link to={`/artifact/${ev.artifactId}`} className="btn-stamp" style={{ padding: '0.55rem 1rem', fontSize: '0.72rem' }}>
                       <OpenIcon /> Open

@@ -1,4 +1,4 @@
-// The ledger: every artifact the house has ever delivered, with provenance.
+// Artifacts: everything the house has ever delivered, with provenance.
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
@@ -6,12 +6,12 @@ const KIND_LABEL = { brief: 'Decision brief', deck: 'Slide deck', site: 'Landing
 
 export default function Ledger() {
   const s = useStore();
-  if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>The ledger is unreachable: {s.error}.</p></div>;
-  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening the ledger…</p></div>;
+  if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>Artifacts are unreachable: {s.error}.</p></div>;
+  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening artifacts…</p></div>;
 
   return (
     <div className="page">
-      <h1 className="pg-title">The ledger</h1>
+      <h1 className="pg-title">Artifacts</h1>
       <p className="lede">
         Every mission ends here or it didn't happen. Artifacts are first-class objects —
         downloadable, stamped with exactly how they were made and what they cost, and
@@ -24,7 +24,7 @@ export default function Ledger() {
         </div>
         <div className="board-rows">
           {s.artifacts.length === 0 && (
-            <div className="board-empty">Nothing in the ledger yet. Open a mission on the floor — every delivery lands here.</div>
+            <div className="board-empty">Nothing delivered yet. Open a mission — every delivery lands here.</div>
           )}
           {s.artifacts.map((a) => (
             <Link key={a.id} to={`/artifact/${a.id}`} className={`board-row${a.voided ? ' voided' : ''}`}>

@@ -23,13 +23,13 @@ export default function ArtifactView({ id }) {
   return (
     <div className="artifact-shell">
       <div className="artifact-bar">
-        <Link to="/ledger" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to ledger"><BackIcon /> Ledger</Link>
+        <Link to="/artifacts" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to artifacts"><BackIcon /> Artifacts</Link>
         <div className="meta">
           <b>{artifact ? artifact.title : missing ? 'Artifact not found' : 'Artifact'}</b>
           <span>
             {artifact
               ? `${artifact.serial} · v${artifact.version}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · council: ${artifact.council.join(' · ')}`
-              : missing ? 'no artifact with this id is in the ledger — the link may be stale' : 'loading provenance…'}
+              : missing ? 'no artifact with this id has been delivered — the link may be stale' : 'loading provenance…'}
           </span>
         </div>
         {artifact && (
@@ -44,7 +44,7 @@ export default function ArtifactView({ id }) {
         )}
       </div>
       {missing ? (
-        <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>Nothing on the books for “{id}”. <Link to="/ledger">See the ledger</Link>.</p></div>
+        <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>Nothing delivered under “{id}”. <Link to="/artifacts">See all artifacts</Link>.</p></div>
       ) : (
         <iframe className="artifact-frame" sandbox="allow-scripts" src={`/api/artifacts/${id}/html`} title={artifact?.title || 'Artifact document'} />
       )}

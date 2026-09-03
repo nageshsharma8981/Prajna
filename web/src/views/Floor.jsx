@@ -78,13 +78,13 @@ export default function Floor() {
   if (s.error && !s.ready) {
     return (
       <div className="page">
-        <p role="alert" style={{ color: 'var(--rose)' }}>The hall is unreachable: {s.error}. Is the server running on port 3005?</p>
+        <p role="alert" style={{ color: 'var(--rose)' }}>The server is unreachable: {s.error}. Is Prajñā running on port 3005?</p>
         <button className="btn-quiet" onClick={s.refresh} style={{ marginTop: '1rem' }}>Try again</button>
       </div>
     );
   }
   if (!s.ready) {
-    return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening the hall…</p></div>;
+    return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening your missions…</p></div>;
   }
 
   const toggleAdviser = (id) => {
@@ -165,7 +165,7 @@ export default function Floor() {
   return (
     <div className="page">
       {s.error && (
-        <p role="status" className="soft-banner">Live updates paused — the house is unreachable ({s.error}). Your work here is kept.</p>
+        <p role="status" className="soft-banner">Live updates paused — the server is unreachable ({s.error}). Your work here is kept.</p>
       )}
       <h1 className="pg-title">Open a mission</h1>
       <p className="lede">

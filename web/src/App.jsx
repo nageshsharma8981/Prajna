@@ -15,7 +15,8 @@ import Connectors from './views/Instruments.jsx';
 const TITLES = [
   ['/run/', 'Mission'],
   ['/artifact/', 'Artifact'],
-  ['/ledger', 'Ledger'],
+  ['/artifacts', 'Artifacts'],
+  ['/ledger', 'Artifacts'],
   ['/skills', 'Skills'],
   ['/connectors', 'Connectors'],
   ['/instruments', 'Connectors'],
@@ -38,12 +39,12 @@ function Rail({ open, onClose, theme, setTheme, menuRef }) {
   const path = useRoute();
   const firstRef = useRef(null);
   const items = [
-    { to: '/', label: 'The floor', icon: FloorIcon, kbd: 'F' },
-    { to: '/ledger', label: 'Ledger', icon: LedgerIcon, kbd: 'L' },
+    { to: '/', label: 'Missions', icon: FloorIcon, kbd: 'M' },
+    { to: '/artifacts', label: 'Artifacts', icon: LedgerIcon, kbd: 'A' },
     { to: '/skills', label: 'Skills', icon: SkillIcon, kbd: 'S' },
     { to: '/connectors', label: 'Connectors', icon: SeatIcon, kbd: 'C' },
   ];
-  const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to) || (to === '/connectors' && path.startsWith('/instruments')));
+  const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to) || (to === '/connectors' && path.startsWith('/instruments')) || (to === '/artifacts' && (path.startsWith('/ledger') || path.startsWith('/artifact/'))));
   const mobile = typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
 
   // Drawer a11y: focus moves in on open, Escape closes, focus returns to the
@@ -125,7 +126,7 @@ function Router() {
   const path = useRoute();
   if (path.startsWith('/run/')) return <Run id={path.split('/')[2]} />;
   if (path.startsWith('/artifact/')) return <ArtifactView id={path.split('/')[2]} />;
-  if (path.startsWith('/ledger')) return <Ledger />;
+  if (path.startsWith('/artifacts') || path.startsWith('/ledger')) return <Ledger />;
   if (path.startsWith('/skills')) return <Skills />;
   if (path.startsWith('/connectors') || path.startsWith('/instruments')) return <Connectors />;
   return <Floor />;
@@ -174,7 +175,7 @@ function Shell() {
   }, [path]);
 
   useEffect(() => {
-    const NAV_KEYS = { f: '/', l: '/ledger', s: '/skills', c: '/connectors' };
+    const NAV_KEYS = { m: '/', a: '/artifacts', s: '/skills', c: '/connectors' };
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();

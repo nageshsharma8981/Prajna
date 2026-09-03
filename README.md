@@ -14,7 +14,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 2. **Work in the open.** The run deck streams the tape live: tool calls, the model
    council's positions, challenges, verdict — and recorded dissent, never erased.
 3. **Artifacts, not answers.** Every mission ends in a versioned artifact in the
-   ledger (decision brief, deck, landing page, analysis) with provenance and cost
+   Artifacts list (decision brief, deck, landing page, analysis) with provenance and cost
    stamped on it. A mission that ends in prose has failed.
 
 ## v0.2 — the contract made mechanical
@@ -46,7 +46,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 
 - **Vocabulary rule: world-nouns stay, workflow-verbs go plain.** Open a
   *mission*, *stamp & run*, *stop run*, DONE / STOPPED / HOLDING, *Connectors*
-  (not "instruments"). Tickets, ledger, tape, council, desks, credits are
+  (not "instruments"), *Missions* (not "the floor"), *Artifacts* (not "ledger"). Tickets, tape, council, desks, credits are
   unchanged — they explain themselves and carry the world.
 - **Real reservations.** Stamping a ticket reserves its ceiling from house
   credits; each cost settles from the reservation; closing releases the rest.
@@ -58,7 +58,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   guard; catalog-validated desks, models, skills and connectors; validated
   ledger cursors; artifact download.
 - **Honest client**: SPA links that never full-reload, palette desk hand-off
-  via URL, real void from the floor, stale deep links get a not-found state,
+  via URL, real void from the missions page, stale deep links get a not-found state,
   live polling keeps every surface current during a run, a two-step stop,
   honest copy on connectors (queued intent, OAuth on the roadmap).
 - **Accessibility**: a real radio group for desks, explicit Lead buttons on

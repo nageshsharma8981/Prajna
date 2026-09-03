@@ -21,8 +21,8 @@ export default function Palette({ onClose }) {
 
   const items = useMemo(() => {
     const base = [
-      { k: 'GO', t: 'The floor — open a mission', to: '/' },
-      { k: 'GO', t: 'Ledger — every artifact', to: '/ledger' },
+      { k: 'GO', t: 'Missions — open a new mission', to: '/' },
+      { k: 'GO', t: 'Artifacts — everything delivered', to: '/artifacts' },
       { k: 'GO', t: 'Skills — the house playbook', to: '/skills' },
       { k: 'GO', t: 'Connectors — evidence sources', to: '/connectors' },
       ...(s.desks || []).map((d) => ({ k: d.code, t: `Open a ${d.name.toLowerCase()} mission`, to: `/?desk=${d.id}` })),

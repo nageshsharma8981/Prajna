@@ -569,7 +569,7 @@ export function decideAttention(missionId, requestId, decision, justification, n
         const a = store.artifact(m.artifactId);
         store.refreshArtifact(m.artifactId, { voided: true, title: a && !a.title.startsWith('VOID') ? `VOID · ${a.title}` : a?.title }, GENERATORS[m.desk](m).html);
       }
-      pushEvent(m, { type: 'artifact.voided', note: 'Artifact VOIDED on terminal review — retained in the ledger for audit, stamped void. The run closes with the void on the record.' }, notify);
+      pushEvent(m, { type: 'artifact.voided', note: 'Artifact VOIDED on terminal review — kept in Artifacts for audit, stamped void. The run closes with the void on the record.' }, notify);
       scheduleNext(missionId);
     }
   }
