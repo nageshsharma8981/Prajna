@@ -1,0 +1,99 @@
+// The exchange catalog: council models, skills, connectors, desks.
+// Static product data; connect flows are stubbed at launch (recorded in PRODUCT.md).
+
+export const MODELS = [
+  { id: 'opus', symbol: 'OPS', name: 'Claude Opus', house: 'Anthropic', role: 'Deep reasoning · long-horizon plans', tier: 'included', color: '#D97757' },
+  { id: 'sonnet', symbol: 'SNT', name: 'Claude Sonnet', house: 'Anthropic', role: 'Fast, balanced generalist', tier: 'included', color: '#D97757' },
+  { id: 'gpt', symbol: 'SOL', name: 'GPT-5.6', house: 'OpenAI', role: 'Broad knowledge · code', tier: 'included', color: '#6BA292' },
+  { id: 'gemini', symbol: 'GEM', name: 'Gemini 3.1 Pro', house: 'Google', role: 'Multimodal · retrieval', tier: 'included', color: '#5B8DEF' },
+  { id: 'deepseek', symbol: 'DSK', name: 'DeepSeek R2', house: 'DeepSeek', role: 'Contrarian verifier', tier: 'included', color: '#8B7FD4' },
+  { id: 'llama', symbol: 'LMA', name: 'Llama 4 405B', house: 'Meta', role: 'Open-weights baseline', tier: 'included', color: '#C9A227' },
+];
+
+export const DESKS = [
+  {
+    id: 'brief', code: 'RES', name: 'Research desk', deliverable: 'Decision brief',
+    tint: 'amber',
+    blurb: 'Evidence-graded research briefs with sources you can audit.',
+    placeholder: 'What decision do you need evidence for?',
+    samples: [
+      'Should we enter the EU home-battery market in 2027?',
+      'State of AI agent platforms — who wins the enterprise?',
+      'Is vertical farming finally unit-economic in India?',
+    ],
+  },
+  {
+    id: 'deck', code: 'DCK', name: 'Deck desk', deliverable: 'Slide deck',
+    tint: 'rose',
+    blurb: 'Narrative-first decks — argument before ornament.',
+    placeholder: 'What story must the room believe?',
+    samples: [
+      'Series A pitch for a carbon-accounting startup',
+      'Quarterly business review for a logistics platform',
+      'Executive briefing: agentic AI for pharma R&D',
+    ],
+  },
+  {
+    id: 'site', code: 'STE', name: 'Site desk', deliverable: 'Landing page',
+    tint: 'blue',
+    blurb: 'Shippable landing pages with the argument built in.',
+    placeholder: 'What are we launching, and to whom?',
+    samples: [
+      'Landing page for a specialty coffee subscription',
+      'Waitlist page for a developer-tools startup',
+      'Launch page for an executive AI masterclass',
+    ],
+  },
+  {
+    id: 'analysis', code: 'ANL', name: 'Analysis desk', deliverable: 'Metrics dashboard',
+    tint: 'green',
+    blurb: 'Numbers interrogated, not decorated — with the caveats attached.',
+    placeholder: 'What do the numbers need to answer?',
+    samples: [
+      'Cohort retention for our Q2 signups — where is the leak?',
+      'Marketing channel efficiency across the last 4 quarters',
+      'Pricing experiment readout: annual vs monthly plans',
+    ],
+  },
+];
+
+export const SKILLS = [
+  { id: 'cite-guard', symbol: 'CTG', name: 'Cite Guard', desk: 'Research', what: 'Grades every claim A–D by source strength; refuses to ship ungraded assertions.', install: 'installed' },
+  { id: 'steelman', symbol: 'STL', name: 'Steelman', desk: 'Research', what: 'Builds the strongest case against your own conclusion before the brief closes.', install: 'installed' },
+  { id: 'deck-doctor', symbol: 'DKD', name: 'Deck Doctor', desk: 'Deck', what: 'One idea per slide, evidence beneath assertion; kills bullet sprawl on sight.', install: 'installed' },
+  { id: 'chart-smith', symbol: 'CHS', name: 'Chart Smith', desk: 'Analysis', what: 'Picks the honest chart form for the data; bans dual axes and truncated bars.', install: 'installed' },
+  { id: 'copy-cutter', symbol: 'CPC', name: 'Copy Cutter', desk: 'Site', what: 'Cuts landing copy to one promise, one proof, one action.', install: 'installed' },
+  { id: 'tone-ledger', symbol: 'TNL', name: 'Tone Ledger', desk: 'All desks', what: 'Holds your house voice across every artifact — calm, precise, no hype.', install: 'available' },
+  { id: 'redline', symbol: 'RDL', name: 'Redline', desk: 'Research', what: 'Contract and policy diffing with negotiation-ready annotations.', install: 'available' },
+  { id: 'forecast', symbol: 'FCT', name: 'Forecast', desk: 'Analysis', what: 'Probabilistic projections with explicit confidence intervals, never point guesses.', install: 'available' },
+  { id: 'storyboard', symbol: 'SBD', name: 'Storyboard', desk: 'Deck', what: 'Sequences an argument as a narrative arc before a single slide is drawn.', install: 'available' },
+  { id: 'a11y-audit', symbol: 'ALY', name: 'Access Audit', desk: 'Site', what: 'WCAG AA pass on every shipped page — contrast, focus order, semantics.', install: 'available' },
+  { id: 'translate', symbol: 'TRN', name: 'Polyglot', desk: 'All desks', what: 'Ships any artifact in 12 languages with locale-aware numbers and dates.', install: 'available' },
+  { id: 'summarizer', symbol: 'SUM', name: 'Room Summary', desk: 'All desks', what: 'One-paragraph executive summary calibrated to a 30-second read.', install: 'available' },
+];
+
+export const CONNECTORS = [
+  { id: 'gmail', name: 'Gmail', kind: 'Mail', what: 'Read threads as evidence; draft replies as artifacts.' },
+  { id: 'outlook', name: 'Outlook', kind: 'Mail', what: 'Mail and calendar evidence for briefs and updates.' },
+  { id: 'gdrive', name: 'Google Drive', kind: 'Files', what: 'Pull documents into mission evidence; file artifacts back.' },
+  { id: 'notion', name: 'Notion', kind: 'Docs', what: 'Source pages as evidence; publish briefs to your wiki.' },
+  { id: 'slack', name: 'Slack', kind: 'Chat', what: 'Post mission fills to a channel; pull threads as context.' },
+  { id: 'github', name: 'GitHub', kind: 'Code', what: 'Repos, issues and PRs as evidence for engineering missions.' },
+  { id: 'linear', name: 'Linear', kind: 'Work', what: 'Cycle and project data for delivery analysis.' },
+  { id: 'jira', name: 'Jira', kind: 'Work', what: 'Board exports for flow metrics and delivery forecasts.' },
+  { id: 'gcal', name: 'Google Calendar', kind: 'Time', what: 'Schedule evidence; book time when a mission needs it.' },
+  { id: 'sheets', name: 'Google Sheets', kind: 'Data', what: 'Spreadsheets as analysis inputs; results written back.' },
+  { id: 'hubspot', name: 'HubSpot', kind: 'CRM', what: 'Pipeline and contact evidence for revenue missions.' },
+  { id: 'stripe', name: 'Stripe', kind: 'Revenue', what: 'Billing data for pricing and retention analysis.' },
+  { id: 'figma', name: 'Figma', kind: 'Design', what: 'Design files as evidence for product and site missions.' },
+  { id: 'youtube', name: 'YouTube', kind: 'Media', what: 'Transcripts as research evidence with timestamped citations.' },
+  { id: 'x', name: 'X / Twitter', kind: 'Social', what: 'Public sentiment sampling with explicit bias caveats.' },
+  { id: 'rss', name: 'RSS / Feeds', kind: 'News', what: 'Fresh sector news wired straight into research missions.' },
+];
+
+export function deskById(id) {
+  return DESKS.find((d) => d.id === id) || DESKS[0];
+}
+export function modelById(id) {
+  return MODELS.find((m) => m.id === id) || MODELS[0];
+}

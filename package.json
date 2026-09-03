@@ -1,0 +1,10 @@
+{
+  "name": "praxis",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "cd web && npm install --no-audit --no-fund && npx vite build",
+    "start": "node server/server.js"
+  }
+}
