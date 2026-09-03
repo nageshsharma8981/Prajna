@@ -24,7 +24,7 @@ Praxis is an agent workspace where every request becomes a **mission** with a vi
 
 ## Operating Context
 
-Desktop-first web app used in focused work sessions (research, deck building, site building, analysis). Dark and light themes both first-class. Keyboard-first: global command palette (⌘K). Will later be wired to a custom domain; local dev on port 3004 alongside sibling apps.
+Desktop-first web app used in focused work sessions (research, deck building, site building, analysis). Dark and light themes both first-class. Keyboard-first: global command palette (⌘K). Will later be wired to a custom domain; local dev on port 3005 alongside sibling apps.
 
 ## Capabilities and Constraints
 
