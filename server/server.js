@@ -1,5 +1,6 @@
 // Prajñā — zero-dependency Node server: API + SSE + static SPA.
 import http from 'node:http';
+import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,11 +83,27 @@ function pub(m) {
   const { runScript, deferredCost, ...rest } = m;
   return rest;
 }
+// Boards never need the event ledger — the run view streams it. Bootstrap
+// carries a count instead, which keeps the payload small as history grows.
+function lean(m) {
+  const { events, ...rest } = pub(m);
+  return { ...rest, eventCount: (events || []).length };
+}
 
+// Responses compress when the client accepts gzip (JSON payloads shrink ~8×).
+function sendCompressed(req, res, code, headers, data) {
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  const accepts = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  if (accepts && buf.length > 1024) {
+    res.writeHead(code, { ...headers, 'content-encoding': 'gzip', vary: 'accept-encoding' });
+    return res.end(zlib.gzipSync(buf, { level: 6 }));
+  }
+  res.writeHead(code, headers);
+  res.end(buf);
+}
 function json(res, code, body) {
   const data = JSON.stringify(body);
-  res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-  res.end(data);
+  sendCompressed(res.req, res, code, { 'content-type': 'application/json', 'cache-control': 'no-store' }, data);
 }
 // Bounded, object-only body parsing: a hostile or malformed body must never
 // crash the process or hang a handler.
@@ -162,7 +179,7 @@ async function handle(req, res) {
         return { ...c, provider: prov, supported: !!prov, appConfigured: !!(prov && store.oauthApp(prov)), connected: !!tok, account: tok ? tok.account : null };
       }),
       oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
-      missions: store.missions().map(pub),
+      missions: store.missions().map(lean),
       artifacts: store.artifacts(),
     });
   }
@@ -286,8 +303,7 @@ async function handle(req, res) {
       const name = (meta?.title || 'artifact').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 80) || 'artifact';
       headers['content-disposition'] = `attachment; filename="${meta?.serial || 'PJ'}-${name}.html"`;
     }
-    res.writeHead(200, headers);
-    return res.end(html);
+    return sendCompressed(req, res, 200, headers, html);
   }
 
   // ---- OAuth connectors (apps + tokens memory-only) ----
@@ -411,7 +427,11 @@ async function handle(req, res) {
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(DIST, 'index.html');
   try {
     const data = fs.readFileSync(file);
-    res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
+    const ext = path.extname(file);
+    const immutable = p.startsWith('/assets/') || p.startsWith('/fonts/');
+    const headers = { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache' };
+    if (['.js', '.css', '.html', '.svg', '.json'].includes(ext)) return sendCompressed(req, res, 200, headers, data);
+    res.writeHead(200, headers);
     res.end(data);
   } catch {
     res.writeHead(503, { 'content-type': 'text/plain' });

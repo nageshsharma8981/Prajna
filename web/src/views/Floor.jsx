@@ -38,6 +38,16 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
             </li>
           ))}
         </ol>
+        {mission.contract.assertions?.length > 0 && (
+          <div className="dod">
+            <span className="k">Definition of done — {mission.contract.assertions.length} testable promises, each owned by one step, proven by two independent validator lanes before the gate seals them</span>
+            <ul>
+              {mission.contract.assertions.map((a) => (
+                <li key={a.id}><code>{a.id}</code> {a.title} <span className="own">· owner {a.owner.replace('s', 'step ')}</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
         {mission.contract.access?.external > 0 && (
           <p className="ticket-note">{mission.contract.access.external} step{mission.contract.access.external > 1 ? 's' : ''} act outside the workspace — each one holds for your signed approval before it runs.</p>
         )}

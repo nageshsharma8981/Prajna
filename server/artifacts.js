@@ -43,6 +43,8 @@ function provenanceObject(mission) {
     },
     access: mission.contract.access || null,
     approvals: (mission.attention || []).filter((a) => a.kind === 'approval' && a.decision).map((a) => ({ stepId: a.stepId, decision: a.decision, justification: a.justification, decidedAt: a.decidedAt })),
+    assertions: (mission.contract.assertions || []).map((a) => ({ id: a.id, title: a.title, owner: a.owner, status: a.status })),
+    validation: { rounds: (mission.validations || []).length, lanes: ['scrutiny', 'surface'], sealed: mission.gateResult?.sealed || [], acceptedRisks: mission.acceptedRisks || [], patches: mission.patches || [] },
     settlement: mission.settlement || { reserved: mission.contract.ceiling, settled: mission.spent, released: null },
     gate: mission.gate || null,
     review: mission.review || null,
@@ -81,9 +83,11 @@ function provenance(mission) {
     <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
     <div class="prov-row"><span>Panel gate</span><strong>${gateLine}</strong></div>
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
+    <div class="prov-row"><span>Definition of done</span><strong>${prov.assertions.length ? `${prov.assertions.filter((a) => a.status === 'SEALED').length}/${prov.assertions.length} assertions sealed by two independent validator lanes${prov.validation.acceptedRisks.length ? ` · ${prov.validation.acceptedRisks.length} accepted risk` : ''}${prov.validation.patches.length ? ` · patched: ${prov.validation.patches.join(', ')}` : ''}` : 'no assertions recorded'}</strong></div>
     <div class="prov-row"><span>Plan vs actual</span><strong>${prov.planVsActual.planned} planned · ${prov.planVsActual.done} done${prov.planVsActual.skipped.length ? ` · ${prov.planVsActual.skipped.length} skipped on the record` : ''}${prov.planVsActual.notReached ? ` · ${prov.planVsActual.notReached} not reached` : ''}${prov.access ? ` · access: ${prov.access.read} read / ${prov.access.write} write / ${prov.access.external} external` : ''}</strong></div>
     ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version} — supersedes ${esc(prov.lineage.parentSerial)}</strong></div>` : ''}
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
+    <p><strong>Definition of done — assertion verdicts:</strong></p><ul>${prov.assertions.map((a) => `<li><strong>${esc(a.id)}</strong> ${esc(a.title)} — <em>${esc(a.status.toLowerCase())}</em> (owner ${esc(a.owner)})</li>`).join('') || '<li>none</li>'}</ul>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
     ${prov.planVsActual.skipped.length ? `<p><strong>Skipped by decision:</strong> ${prov.planVsActual.skipped.map(esc).join('; ')}</p>` : ''}
     <p class="note">${prov.mode === 'hybrid' ? 'Hybrid run: panel positions from seats marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
@@ -291,12 +295,12 @@ ${PROV_CSS}
     <p>One promise, kept: the thing this page announces, working, in your hands — without the noise the category insists on.</p>
     <div class="actions"><a class="btn" href="#join">Get early access</a><a class="ghost" href="#how">See how it works</a></div>
   </div>
-  <div class="vis"><span>Product still — replace with real capture</span></div>
+  <div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending — supplied by the owner' : 'Product still — replace with real capture'}</span></div>
 </header>
 <div class="strip">Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement</div>
 <section class="why" id="how">
   <div><h3><em>Why now</em> — the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
-  <div><h3><em>The proof</em> — one real case</h3><p>A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.</p></div>
+  <div><h3><em>The proof</em> — one real case</h3><p>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending — supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.'}</p></div>
   <div><h3><em>The practice</em> — opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>
 </section>
 <section class="final" id="join">

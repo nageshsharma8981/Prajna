@@ -993,6 +993,14 @@ h1.pg-title {
 .sflap.SKIPPED { color: #8d938a; text-decoration: line-through; }
 .lineage-tag { font-family: var(--mono); font-size: 0.68rem; color: var(--bone-dim); border: 1px dashed var(--line-strong); border-radius: 3px; padding: 0.25rem 0.55rem; }
 
+/* v0.7: definition of done on the ticket */
+.dod { margin-top: 0.9rem; padding-top: 0.7rem; border-top: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent); }
+.dod .k { display: block; font-size: 0.65rem; font-family: var(--mono); letter-spacing: 0.06em; color: var(--ink-dim); margin-bottom: 0.4rem; }
+.dod ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.dod li { font-size: 0.78rem; }
+.dod code { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-dim); }
+.dod .own { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-dim); }
+
 /* -------------------------------- utilities -------------------------------- */
 .fade-up { animation: fadeup 0.5s var(--ease) both; }
 @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

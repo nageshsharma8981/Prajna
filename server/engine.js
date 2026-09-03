@@ -14,6 +14,7 @@ import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
 import { evidenceFor } from './oauth.js';
+import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
 // BYOK: a seat is LIVE when the workspace holds a key for its provider.
 export function liveSeat(modelIdOrRef) {
@@ -128,6 +129,17 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     raw.push({ id: `s${raw.length + 1}`, ...spec, access: 'external', requiresConfirmation: true, connector: cid, dependsOn: [last.id] });
   }
 
+  // Definition of done: atomic, testable assertions about the deliverable.
+  // Each is owned by exactly one plan step (the step whose tool produces it);
+  // if that step's skill is off the desk, ownership falls to the compose/build step.
+  const catalog = ASSERTIONS[desk.id] || [];
+  const fallbackOwner = raw.find((p) => ['compose', 'build'].includes(p.tool)) || raw[raw.length - 1];
+  const assertions = catalog.map((a) => {
+    const owner = raw.find((p) => p.tool === a.owner) || fallbackOwner;
+    return { id: a.id, title: a.title, owner: owner.id, status: 'PENDING' };
+  });
+  raw = raw.map((p) => ({ ...p, targets: assertions.filter((a) => a.owner === p.id).map((a) => a.id) }));
+
   const plan = raw.map((p, i) => ({ status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), ...p }));
   const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
   const mission = {
@@ -145,11 +157,14 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     councilNames: seatsAll.map((m) => modelById(m).name),
     status: 'OPEN', // OPEN → LIVE → FILLED | KILLED | PAUSED_ATTENTION | PAUSED_CEILING
     contract: {
-      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id],
+      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id], assertions,
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
     lineage: lineage || null, // { parentId, parentSerial, version }
     connected: [...(queuedConnectors || [])],
+    patches: [],
+    acceptedRisks: [],
+    validations: [],
     spent: 0,
     eventSeq: 0,
     events: [],
@@ -264,8 +279,11 @@ const TOOL_LINES = {
 
 // The amnesiac terminal review: by construction sees only (goal, artifact).
 // Scripted: the site desk surfaces a real GAP and raises an attention item.
-function reviewFor(mission) {
-  if (mission.desk === 'site') {
+// The amnesiac terminal review: by construction sees only the goal and the
+// artifact itself — never mission state. It judges what shipped.
+function reviewFor({ desk, goal, html }) {
+  const h = html || '';
+  if (desk === 'site' && (/awaits your real case study/.test(h) || /replace with real capture/i.test(h))) {
     return {
       verdict: 'gaps',
       gaps: [{
@@ -273,6 +291,9 @@ function reviewFor(mission) {
         description: 'The page promises a proof section, but the case-study slot ships as a labeled placeholder. Either the label must be louder or the section cut until real proof exists.',
       }],
     };
+  }
+  if (desk === 'brief' && !/Recorded dissent/.test(h)) {
+    return { verdict: 'gaps', gaps: [{ id: 'GAP-002', severity: 'major', description: 'The brief carries no recorded dissent — the panel disagreement was erased from the deliverable.' }] };
   }
   return { verdict: 'pass', gaps: [] };
 }
@@ -335,6 +356,8 @@ function buildScript(mission) {
   script.push({ t, type: 'artifact.build' });
   t += 2400;
   script.push({ t, type: 'artifact.ready' });
+  t += 1100;
+  script.push({ t, type: 'validate.run' });
   t += 1400;
   script.push({ t, type: 'review.terminal' });
   t += 900;
@@ -479,9 +502,14 @@ async function applyEvent(m, ev, notify, runner) {
     Object.assign(record, a);
   }
 
+  if (ev.type === 'validate.run') {
+    const outcome = runValidation(m, notify, runner);
+    return outcome;
+  }
+
   if (ev.type === 'review.terminal') {
     // Amnesiac by construction: sees only the goal and the artifact.
-    const review = reviewFor({ desk: m.desk, goal: m.goal });
+    const review = reviewFor({ desk: m.desk, goal: m.goal, html: m.artifactId ? store.artifactHtml(m.artifactId) : '' });
     m.review = review;
     Object.assign(record, review);
     pushEvent(m, record, notify);
@@ -503,11 +531,47 @@ async function applyEvent(m, ev, notify, runner) {
     m.filledAt = Date.now();
     record.total = m.spent;
     record.elapsed = m.filledAt - m.launchedAt;
+    const as = m.contract.assertions || [];
+    record.closure = { sealed: as.filter((a) => a.status === 'SEALED').length, acceptedRisk: as.filter((a) => a.status === 'ACCEPTED-RISK').length, open: as.filter((a) => !['SEALED', 'ACCEPTED-RISK'].includes(a.status)).length, total: as.length };
   }
 
   pushEvent(m, record, notify);
   if (ev.type === 'run.done') settle(m, notify);
   return 'ok';
+}
+
+// Two independent validator lanes prove every assertion against the real
+// artifact; the gate seals only what both lanes pass. A failed gate raises a
+// decision: patch (fix the earliest wrong artifact, re-validate), accept the
+// risk on the record, or stop.
+function runValidation(m, notify, runner) {
+  const html = m.artifactId ? store.artifactHtml(m.artifactId) : '';
+  const ids = (m.contract.assertions || []).map((a) => a.id);
+  const rows = validateArtifact(m.desk, html || '', ids);
+  const round = (m.validations?.length || 0) + 1;
+  for (const lane of ['scrutiny', 'surface']) {
+    const laneRows = rows.filter((r) => r.lane === lane);
+    pushEvent(m, { type: 'validate.lane', lane, round, verdicts: laneRows.map((r) => ({ id: r.id, passed: r.passed, error: r.error })) , note: `${lane} lane: ${laneRows.filter((r) => r.passed).length}/${laneRows.length} assertions pass` }, notify);
+  }
+  const gate = evaluateGate(ids, rows);
+  m.validations = [...(m.validations || []), { round, rows, gate }];
+  for (const a of m.contract.assertions || []) {
+    a.status = gate.sealed.includes(a.id) ? 'SEALED' : gate.dissenting.includes(a.id) ? 'DISSENT' : gate.failed.includes(a.id) ? 'FAILED' : m.acceptedRisks?.includes(a.id) ? 'ACCEPTED-RISK' : 'OPEN';
+  }
+  const openAfterRisk = [...gate.failed, ...gate.dissenting, ...gate.missing].filter((id) => !(m.acceptedRisks || []).includes(id));
+  pushEvent(m, { type: 'gate', round, cleared: openAfterRisk.length === 0, sealed: gate.sealed, failed: gate.failed, dissenting: gate.dissenting, missing: gate.missing, acceptedRisks: m.acceptedRisks || [],
+    note: openAfterRisk.length === 0
+      ? `Gate cleared: ${gate.sealed.length}/${ids.length} assertions sealed by both lanes${(m.acceptedRisks || []).length ? ` · ${(m.acceptedRisks || []).length} carried as accepted risk` : ''}.`
+      : `Gate NOT cleared: ${openAfterRisk.join(', ')} — ${gate.failed.length} failed, ${gate.dissenting.length} dissenting, ${gate.missing.length} missing.` }, notify);
+  m.gateResult = gate;
+  if (openAfterRisk.length === 0) return 'pushed';
+  raiseAttention(m, notify, {
+    kind: 'gate', assertions: openAfterRisk,
+    prompt: `The gate did not clear: ${openAfterRisk.map((id) => `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}`).join('; ')}. Patch the artifact and re-validate, accept the risk on the record, or stop?`,
+    options: ['patch', 'accept-risk', 'stop-run'],
+  });
+  store.flushMissions();
+  return 'pause';
 }
 
 function scheduleNext(missionId) {
@@ -705,6 +769,28 @@ export async function decideAttention(missionId, requestId, decision, justificat
       }
       pushEvent(m, { type: 'step.skipped', stepId: req.stepId, note: `Skipped: “${step?.title}” — declined on the record. Nothing acted externally; nothing was spent on it.` }, notify);
       scheduleNext(missionId);
+    }
+  } else if (req.kind === 'gate') {
+    if (decision === 'patch') {
+      // Patch the earliest wrong artifact: the deliverable is regenerated with
+      // the patch applied, then both lanes run again.
+      m.patches = [...new Set([...(m.patches || []), ...req.assertions])];
+      m.status = 'LIVE';
+      pushEvent(m, { type: 'artifact.patched', assertions: req.assertions, note: `Patch applied for ${req.assertions.join(', ')} — artifact regenerated, re-validating.` }, notify);
+      if (m.artifactId) {
+        const { html } = GENERATORS[m.desk](m);
+        store.refreshArtifact(m.artifactId, { version: store.artifact(m.artifactId)?.version || 1 }, html);
+      }
+      const outcome = runValidation(m, notify, runner);
+      if (outcome !== 'pause') scheduleNext(missionId);
+    } else if (decision === 'accept-risk') {
+      m.acceptedRisks = [...new Set([...(m.acceptedRisks || []), ...req.assertions])];
+      for (const a of m.contract.assertions || []) if (req.assertions.includes(a.id)) a.status = 'ACCEPTED-RISK';
+      m.status = 'LIVE';
+      pushEvent(m, { type: 'risk.accepted', assertions: req.assertions, note: `Accepted risk on the record: ${req.assertions.join(', ')} ship unproven, by your decision.` }, notify);
+      scheduleNext(missionId);
+    } else {
+      killMission(missionId, notify);
     }
   } else if (req.kind === 'review-gap') {
     if (decision === 'accept-gap') {

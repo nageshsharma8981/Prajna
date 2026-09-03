@@ -51,6 +51,9 @@ function AttentionCard({ missionId, ev, decided }) {
     'void-artifact': 'Void the artifact',
     'approve-step': 'Approve — let it act',
     'skip-step': 'Skip this step',
+    'patch': 'Patch & re-validate',
+    'accept-risk': 'Accept the risk on the record',
+    'stop-run': 'Stop the run',
   };
 
   return (
@@ -69,7 +72,7 @@ function AttentionCard({ missionId, ev, decided }) {
       />
       <div className="attn-actions">
         {ev.options.map((o) => (
-          <button key={o} className={o.startsWith('raise') || o.startsWith('accept') || o.startsWith('approve') ? 'btn-stamp attn-btn' : 'btn-quiet'} disabled={sending} onClick={() => decide(o)}>
+          <button key={o} className={o.startsWith('raise') || o.startsWith('accept') || o.startsWith('approve') || o === 'patch' ? 'btn-stamp attn-btn' : 'btn-quiet'} disabled={sending} onClick={() => decide(o)}>
             {LABELS[o] || o}
           </button>
         ))}
@@ -399,6 +402,41 @@ export default function Run({ id }) {
                 );
               }
               if (ev.type === 'council.gate') return <GateGrid key={i} ev={ev} />;
+              if (ev.type === 'validate.lane') {
+                return (
+                  <div key={i} className="tape-line">
+                    <span className="ts">{ts(ev.at)}</span>
+                    <span className="op">{ev.lane}</span>
+                    <span className="detail">round {ev.round} · {ev.verdicts.map((v) => `${v.id.replace('VAL-', '')} ${v.passed ? '✓' : '✗'}`).join(' · ')}</span>
+                  </div>
+                );
+              }
+              if (ev.type === 'gate') {
+                const ids = [...ev.sealed, ...ev.failed, ...ev.dissenting, ...ev.missing];
+                const state = (id) => (ev.sealed.includes(id) ? 'sealed' : ev.acceptedRisks?.includes(id) ? 'accepted risk' : ev.failed.includes(id) ? 'failed' : ev.dissenting.includes(id) ? 'dissent' : 'missing');
+                return (
+                  <div key={i} className={`gate ${ev.cleared ? 'cleared' : 'blocked'}`}>
+                    <div className="gate-head">Validation gate · round {ev.round} — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
+                    <table className="gate-table">
+                      <caption className="sr-only">Assertion verdicts from two independent validator lanes.</caption>
+                      <thead><tr><th scope="col">Assertion</th><th scope="col">Promise</th><th scope="col">Verdict</th></tr></thead>
+                      <tbody>
+                        {ids.map((id) => (
+                          <tr key={id}>
+                            <th scope="row"><code>{id}</code></th>
+                            <td style={{ textAlign: 'left' }}>{mission.contract.assertions?.find((a) => a.id === id)?.title}</td>
+                            <td><span className={`gv ${state(id) === 'sealed' || state(id) === 'accepted risk' ? 'pass' : 'fail'}`}>{state(id).toUpperCase()}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="gate-note">{ev.note}</p>
+                  </div>
+                );
+              }
+              if (ev.type === 'artifact.patched' || ev.type === 'risk.accepted') {
+                return <div key={i} className="tape-step"><span style={{ color: ev.type === 'artifact.patched' ? 'var(--led)' : 'var(--rose)' }}>{ev.note}</span><span className="rule" /></div>;
+              }
               if (ev.type === 'council.patch') {
                 return (
                   <div key={i} className="quote verdict">
@@ -474,7 +512,11 @@ export default function Run({ id }) {
               if (ev.type === 'run.done') {
                 return (
                   <div key={i} className="tape-step">
-                    <span style={{ color: 'var(--green)' }}>{mission.voided ? 'Mission closed · artifact voided on review' : 'Mission done'} · {ev.total?.toFixed(1)}cr of {mission.contract.ceiling}cr ceiling · {fmtElapsed(ev.elapsed || 0)}</span>
+                    <span style={{ color: ev.closure && ev.closure.open > 0 ? 'var(--rose)' : 'var(--green)' }}>
+                      {mission.voided ? 'Mission closed · artifact voided on review' : ev.closure && ev.closure.open > 0 ? `Mission closed with ${ev.closure.open} open promise(s) — reported as incomplete, not relabeled done` : 'Mission done'}
+                      {' · '}{ev.total?.toFixed(1)}cr of {mission.contract.ceiling}cr ceiling · {fmtElapsed(ev.elapsed || 0)}
+                      {ev.closure ? ` · ${ev.closure.sealed}/${ev.closure.total} promises sealed${ev.closure.acceptedRisk ? `, ${ev.closure.acceptedRisk} accepted risk` : ''}` : ''}
+                    </span>
                     <span className="rule" />
                   </div>
                 );

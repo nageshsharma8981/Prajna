@@ -117,6 +117,29 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 - Sources without a wired provider (Outlook, Linear, Jira, HubSpot, Stripe, Figma,
   X, RSS) say so honestly instead of pretending.
 
+## v0.7 — stopping discipline from Zenith (independent implementation)
+
+Studied the Zenith harness (Apache-2.0; report CC BY) and adopted its control
+mechanisms without copying code:
+
+- **Definition of done as atomic assertions.** Every ticket carries testable
+  promises about the deliverable (`VAL-…`), each owned by exactly one plan step
+  — Zenith's two-layer shape: many assertions → fewer work steps.
+- **Two independent validator lanes, real checks.** After the artifact exists, a
+  *scrutiny* lane and a *surface* lane each prove every assertion against the
+  actual HTML (structure, behavior, parseable provenance, cited-only refs, nine
+  slides, responsive rules…). No scripted votes.
+- **A gate that seals or refuses.** An assertion seals only when both lanes
+  pass; lanes disagreeing is *dissent*, no lane covering is *missing* — both
+  block. A refused gate raises a decision: **patch & re-validate** (the
+  earliest wrong artifact is regenerated and both lanes run again), **accept
+  the risk on the record**, or **stop**.
+- **Never relabel unfinished scope.** Closure reports sealed / accepted-risk /
+  open counts; a mission with open promises closes as *incomplete*, and the
+  artifact's provenance carries every verdict.
+- **Performance:** gzip on every text response, immutable caching for hashed
+  assets, and a lean bootstrap that no longer ships event ledgers to the boards.
+
 ## The world
 
 Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,
