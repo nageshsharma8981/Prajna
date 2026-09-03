@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-09-03T00:00:00Z",
-  "title": "Design System: Praxis",
+  "title": "Design System: Prajñā",
   "extensions": {
     "colorMeta": {
       "led": {
@@ -196,7 +196,7 @@
   ],
   "narrative": {
     "northStar": "The Outcome Exchange",
-    "overview": "Praxis renders agentic work as a mid-century exchange floor after dark: a hall of near-black greens where Solari split-flap boards spell the signage in bone lettering, amber LED dot-matrix panels carry every live number, and the only bright objects in the room are paper — color-banded order tickets that a user stamps before a single credit is spent. The interface is built from three materials with strict jobs: the board (dark tiles, expanded uppercase Archivo) does signage, the LED (Doto glowing amber out of recessed black wells) does live telemetry, and the ticket (warm paper, mono serials, perforated edge, rubber stamp) does contracts. Nothing decorates; every surface is an instrument of the floor.\n\nThe world deliberately refuses the category default — chat window, spinner, cream-paper concierge calm. Trust is staged physically instead: contracts on paper before the run, machine numbers glowing during it, a versioned artifact in the ledger after. Two themes exist and both are first-class — the night hall (default) and the day desk, which relights the room in ticket-paper tones while the boards and LED wells stay dark, exactly as a real departure board would at noon.",
+    "overview": "Prajñā renders agentic work as a mid-century exchange floor after dark: a hall of near-black greens where Solari split-flap boards spell the signage in bone lettering, amber LED dot-matrix panels carry every live number, and the only bright objects in the room are paper — color-banded order tickets that a user stamps before a single credit is spent. The interface is built from three materials with strict jobs: the board (dark tiles, expanded uppercase Archivo) does signage, the LED (Doto glowing amber out of recessed black wells) does live telemetry, and the ticket (warm paper, mono serials, perforated edge, rubber stamp) does contracts. Nothing decorates; every surface is an instrument of the floor.\n\nThe world deliberately refuses the category default — chat window, spinner, cream-paper concierge calm. Trust is staged physically instead: contracts on paper before the run, machine numbers glowing during it, a versioned artifact in the ledger after. Two themes exist and both are first-class — the night hall (default) and the day desk, which relights the room in ticket-paper tones while the boards and LED wells stay dark, exactly as a real departure board would at noon.",
     "keyCharacteristics": [
       "Three-material grammar: dark board tiles, glowing amber LED, warm light paper — never blended.",
       "Hierarchy carried by Archivo's variable width axis and letterspacing, not by big size jumps.",
