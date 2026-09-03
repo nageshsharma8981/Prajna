@@ -28,7 +28,7 @@ export default function ArtifactView({ id }) {
           <b>{artifact ? artifact.title : missing ? 'Artifact not found' : 'Artifact'}</b>
           <span>
             {artifact
-              ? `${artifact.serial} · v${artifact.version}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · council: ${artifact.council.join(' · ')}`
+              ? `${artifact.serial} · v${artifact.version}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · panel: ${artifact.council.join(' · ')}`
               : missing ? 'no artifact with this id has been delivered — the link may be stale' : 'loading provenance…'}
           </span>
         </div>

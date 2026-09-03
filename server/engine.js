@@ -30,20 +30,20 @@ const PLANS = {
     { title: `Frame the decision behind “${s}”`, tool: 'scope', cost: 6 },
     { title: 'Sweep sources — filings, sector analyses, press', tool: 'search', cost: 14 },
     { title: 'Grade every claim A–D by source strength', tool: 'cite-guard', cost: 10 },
-    { title: 'Council deliberation — positions, challenges, verdict', tool: 'council', cost: 18 },
+    { title: 'Panel deliberation — positions, challenges, verdict', tool: 'panel', cost: 18 },
     { title: 'Steelman the opposite conclusion', tool: 'steelman', cost: 8 },
     { title: 'Compose the decision brief', tool: 'compose', cost: 12 },
   ],
   deck: (s) => [
     { title: `Extract the argument in “${s}”`, tool: 'scope', cost: 6 },
     { title: 'Storyboard the narrative arc — nine beats', tool: 'storyboard', cost: 10 },
-    { title: 'Council deliberation on the through-line', tool: 'council', cost: 16 },
+    { title: 'Panel deliberation on the through-line', tool: 'panel', cost: 16 },
     { title: 'Draft slides — one idea per slide', tool: 'compose', cost: 14 },
     { title: 'Deck Doctor pass — kill bullet sprawl', tool: 'deck-doctor', cost: 8 },
   ],
   site: (s) => [
     { title: `Position the offer — “${s}”`, tool: 'scope', cost: 6 },
-    { title: 'Council deliberation on promise & proof', tool: 'council', cost: 14 },
+    { title: 'Panel deliberation on promise & proof', tool: 'panel', cost: 14 },
     { title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8 },
     { title: 'Build the page — semantic, responsive', tool: 'build', cost: 16 },
     { title: 'Access audit — contrast, focus order', tool: 'a11y-audit', cost: 6 },
@@ -52,13 +52,13 @@ const PLANS = {
     { title: `Define the question — “${s}”`, tool: 'scope', cost: 6 },
     { title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8 },
     { title: 'Interrogate — segments, mix shift, outliers', tool: 'analyze', cost: 14 },
-    { title: 'Council deliberation on the read', tool: 'council', cost: 14 },
+    { title: 'Panel deliberation on the read', tool: 'panel', cost: 14 },
     { title: 'Chart Smith — honest forms only', tool: 'chart-smith', cost: 8 },
     { title: 'Compose dashboard with caveats attached', tool: 'compose', cost: 10 },
   ],
 };
 
-// Acceptance dimensions per desk — the council gate votes on these.
+// Acceptance dimensions per desk — the panel gate votes on these.
 export const DIMENSIONS = {
   brief: ['Attribution', 'Completeness', 'Freshness'],
   deck: ['One idea per slide', 'Evidence under assertion', 'Narrative arc'],
@@ -237,7 +237,7 @@ function buildScript(mission) {
   for (const step of mission.contract.plan) {
     t += 700;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'LIVE' });
-    if (step.tool === 'council') {
+    if (step.tool === 'panel') {
       const c = councilScript(mission, step.id, t);
       script.push(...c.events);
       t = c.end;

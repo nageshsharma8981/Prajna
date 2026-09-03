@@ -77,7 +77,7 @@ function AttentionCard({ missionId, ev, decided }) {
   );
 }
 
-// Council gate: a real table; each vote is a button that reveals its rationale.
+// Panel gate: a real table; each vote is a button that reveals its rationale.
 function GateGrid({ ev }) {
   const [picked, setPicked] = useState(null);
   const dims = [...new Set(ev.rows.map((r) => r.dimension))];
@@ -86,9 +86,9 @@ function GateGrid({ ev }) {
   const label = (v) => (v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : 'UNVER');
   return (
     <div className={`gate ${ev.cleared ? 'cleared' : 'blocked'}`}>
-      <div className="gate-head">Council gate — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
+      <div className="gate-head">Panel gate — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
       <table className="gate-table">
-        <caption className="sr-only">Council votes per acceptance dimension. Select a vote to read its rationale.</caption>
+        <caption className="sr-only">Panel votes per acceptance dimension. Select a vote to read its rationale.</caption>
         <thead>
           <tr><th scope="col"><span className="sr-only">Member</span></th>{dims.map((d) => <th key={d} scope="col">{d}</th>)}</tr>
         </thead>
@@ -319,7 +319,7 @@ export default function Run({ id }) {
           {killed && mission.voidedBeforeRun && <div className="stamp in" aria-hidden="true">Void</div>}
           <div className="ticket-inner">
             <p className="ticket-goal">{mission.goal}</p>
-            <p className="ticket-deliv">council: {mission.councilNames.join(', ')}</p>
+            <p className="ticket-deliv">panel: {mission.councilNames.join(', ')}</p>
             <ol className="ticket-plan">
               {mission.contract.plan.map((p, i) => (
                 <li key={p.id}>

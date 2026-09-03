@@ -12,7 +12,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 1. **Contract before action.** The house writes an order ticket — full plan, credit
    estimate, hard ceiling — and nothing runs until you stamp it.
 2. **Work in the open.** The run deck streams the tape live: tool calls, the model
-   council's positions, challenges, verdict — and recorded dissent, never erased.
+   panel's positions, challenges, verdict — and recorded dissent, never erased.
 3. **Artifacts, not answers.** Every mission ends in a versioned artifact in the
    Artifacts list (decision brief, deck, landing page, analysis) with provenance and cost
    stamped on it. A mission that ends in prose has failed.
@@ -28,7 +28,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 - **Always an artifact.** Kill a live position or hit the ceiling — the run
   pauses or closes with a *partial artifact*, stamped as such. No terminal state
   ends in nothing.
-- **Council gate.** The council votes pass / fail / unverifiable per acceptance
+- **Panel gate.** The panel votes pass / fail / unverifiable per acceptance
   dimension; *unverifiable counts as fail*, and the patch + re-vote that clears
   the gate is on the record.
 - **Terminal review.** A reviewer that sees only the goal and the artifact —
@@ -46,7 +46,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 
 - **Vocabulary rule: world-nouns stay, workflow-verbs go plain.** Open a
   *mission*, *stamp & run*, *stop run*, DONE / STOPPED / HOLDING, *Connectors*
-  (not "instruments"), *Missions* (not "the floor"), *Artifacts* (not "ledger"). Tickets, tape, council, desks, credits are
+  (not "instruments"), *Missions* (not "the floor"), *Artifacts* (not "ledger"). Tickets, tape, panel, desks, credits are
   unchanged — they explain themselves and carry the world.
 - **Real reservations.** Stamping a ticket reserves its ceiling from house
   credits; each cost settles from the reservation; closing releases the rest.
@@ -62,7 +62,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   live polling keeps every surface current during a run, a two-step stop,
   honest copy on connectors (queued intent, OAuth on the roadmap).
 - **Accessibility**: a real radio group for desks, explicit Lead buttons on
-  council chips (no double-click-only path), a modal palette with focus trap
+  panel chips (no double-click-only path), a modal palette with focus trap
   and announced selection, drawer focus management and `inert`, focus + title
   + scroll reset on route change, a quiet live region instead of a chatty one,
   gate votes as a real table with readable rationale, a pausable ticker.

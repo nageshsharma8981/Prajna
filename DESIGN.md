@@ -170,7 +170,7 @@ The four desk tints, applied only through the `--tint` custom property (see Comp
 - **Body** (weight 400–500, 15px base, line-height 1.55): sentence-case prose; ledes cap at 62ch in Bone Dim (0.95rem).
 - **LED Value** (Doto 700 — 1.65rem telemetry, ~1.05rem clock, 0.92–0.95rem ticker/counts): live numbers only, always amber (or green when a run completes).
 - **Mono Detail** (Spline Sans Mono, 0.6–0.86rem): serials, costs, timestamps, tape lines, kbd hints, desk codes.
-- **Micro Label** (0.56–0.62rem, letterspacing 0.2–0.3em, uppercase, weight 600–700): whisper-small captions above values — tally keys, telemetry keys, council labels, the hall line.
+- **Micro Label** (0.56–0.62rem, letterspacing 0.2–0.3em, uppercase, weight 600–700): whisper-small captions above values — tally keys, telemetry keys, panel labels, the hall line.
 
 ### Named Rules
 **The Width Axis Rule.** Hierarchy is carried by Archivo's width axis (108% → 125%), weight, and tracking — not by large size jumps. Board lettering is always uppercase and widened; body prose is always sentence case at normal width.
@@ -181,7 +181,7 @@ The four desk tints, applied only through the `--tint` custom property (see Comp
 
 A fixed 232px left rail (hall-toned, hairline right border) beside a fluid main column: masthead (split-flap wordmark + hall line, palette hint, LED clock) over a 34px LED ticker strip, over a scrolling page. Page content centers at max-width 76rem with 1.5rem top / 2.4rem side / 5rem bottom padding. Cards use a consistent interior rhythm: 0.85rem × 1.4rem heads and feet, 1.15rem × 1.4rem bodies, 0.7rem grid gaps, 1.5rem between sections (`.section-gap`), 1.6rem between deck columns.
 
-The run deck is a two-column grid — the paper ticket pinned at `minmax(19rem, 24rem)` on the left, the live tape filling the rest — with a four-cell LED telemetry panel full-width above. The order pad stacks input → sample chips → four-across desk stubs → council chips. Boards are single-column row lists on a 5.2rem / 1fr / auto / auto grid.
+The run deck is a two-column grid — the paper ticket pinned at `minmax(19rem, 24rem)` on the left, the live tape filling the rest — with a four-cell LED telemetry panel full-width above. The order pad stacks input → sample chips → four-across desk stubs → panel chips. Boards are single-column row lists on a 5.2rem / 1fr / auto / auto grid.
 
 Responsive: at 1080px the deck stacks and desk stubs go two-across; at 900px the rail becomes a slide-in drawer behind a veil, telemetry goes two-by-two, and board rows drop their numeric column; at 620px desks stack single-file, board rows loosen to wrap, and the clock hides. Density never changes — small screens get fewer columns, not smaller type.
 
@@ -236,13 +236,13 @@ Machined, near-square geometry: radii run 3px (tiles, symbol chips, kbd hints, s
 Ticker, telemetry, clock, credit meter, and board counts share one anatomy: Doto numerals in Signal Amber with glow, set in a black LED well (`led-bg`) behind a strong border, inset-shadowed, with micro labels in dim amber (#cfae62) and unit suffixes in #b18a3d. The ticker scrolls its duplicated strip 38s linear, endlessly; telemetry's Steps cell turns green when the run fills.
 
 ### The Tape (signature)
-The live run log prints like a machine: mono 0.8rem lines (dim timestamp · amber op label · dim detail) each rising in over 0.35s; uppercase step-divider rules; council quotes as hall-filled cards with flap symbol blocks — challenge quotes border rose, verdict quotes border-and-wash amber, recorded dissent appended behind a dashed rule in rose; artifact cards border-and-wash green.
+The live run log prints like a machine: mono 0.8rem lines (dim timestamp · amber op label · dim detail) each rising in over 0.35s; uppercase step-divider rules; panel quotes as hall-filled cards with flap symbol blocks — challenge quotes border rose, verdict quotes border-and-wash amber, recorded dissent appended behind a dashed rule in rose; artifact cards border-and-wash green.
 
 ### Motion grammar
 One easing token (`--ease: cubic-bezier(0.16, 1, 0.3, 1)`) drives everything. Durations are mechanical: 0.09s flap flicker (brightness strobe while spinning), 0.12s button press, 0.15s hovers, 0.16–0.2s palette entrance, 0.32s status flip, 0.35s tape print, 0.38s stamp thunk, 0.5s page fade-up, 38s ticker loop. The SplitFlap component staggers cells left-to-right through a limited charset before settling. `prefers-reduced-motion` is honored everywhere: a global animation/transition clamp, ticker parked, flap spin stopped, and the SplitFlap settles instantly via a matchMedia check.
 
 ### The Second World (artifact documents)
-Generated artifacts (decision brief, deck, landing page, analysis) are standalone HTML documents with their **own** editorial designs — Georgia serif on warm paper with graded-evidence chips for briefs; big-type Helvetica slides for decks; a green-accented product page for sites; paneled chart sheets for analyses. They deliberately do not use Prajñā tokens, faces, or chrome; the hall shows them inside a white full-bleed frame under a provenance bar. Their one shared element is the provenance footer (serial, desk, council, cost, plan).
+Generated artifacts (decision brief, deck, landing page, analysis) are standalone HTML documents with their **own** editorial designs — Georgia serif on warm paper with graded-evidence chips for briefs; big-type Helvetica slides for decks; a green-accented product page for sites; paneled chart sheets for analyses. They deliberately do not use Prajñā tokens, faces, or chrome; the hall shows them inside a white full-bleed frame under a provenance bar. Their one shared element is the provenance footer (serial, desk, panel, cost, plan).
 
 ## Do's and Don'ts
 

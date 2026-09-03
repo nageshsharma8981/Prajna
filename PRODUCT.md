@@ -20,7 +20,7 @@ Prajñā is an agent workspace where every request becomes a **mission** with a 
 
 ## Positioning
 
-"Glass-box agency." Competitors (Zenith et al.) hide the work behind a spinner and surface only the answer. Prajñā's uncopyable claim is the **Mission Contract → Live Flight Deck → Artifact** loop: (1) an upfront contract (deliverable, plan, cost ceiling) the user approves, (2) a live flight deck showing plan progress, tool calls, model-council deliberation and running cost in real time, (3) an artifact ledger where every deliverable is a first-class, versioned object — not a chat message. The council is a real debate with visible dissent, not a dropdown of logos.
+"Glass-box agency." Competitors (Zenith et al.) hide the work behind a spinner and surface only the answer. Prajñā's uncopyable claim is the **Mission Contract → Live Flight Deck → Artifact** loop: (1) an upfront contract (deliverable, plan, cost ceiling) the user approves, (2) a live flight deck showing plan progress, tool calls, model-panel deliberation and running cost in real time, (3) an artifact ledger where every deliverable is a first-class, versioned object — not a chat message. The panel is a real debate with visible dissent, not a dropdown of logos.
 
 ## Operating Context
 
@@ -30,7 +30,7 @@ Desktop-first web app used in focused work sessions (research, deck building, si
 
 - Missions: research brief, slide deck, website build, data analysis (launch set).
 - Live run engine streams over SSE; runs in **demo mode** by default with a high-fidelity scripted engine producing real artifacts; if `ANTHROPIC_API_KEY` is present the engine can call real models (provider layer exists, demo is default). All demo output is labeled synthetic in code, not in the UI copy (the UI presents the product as it will behave in production).
-- Model Council: user picks a lead model + advisers; deliberation (positions, challenges, synthesis) is rendered live.
+- Model Panel: user picks a lead model + advisers; deliberation (positions, challenges, synthesis) is rendered live.
 - Artifact ledger: every mission ends in an artifact (HTML brief, deck, site preview, analysis dashboard) with versions and provenance (which steps/sources produced it).
 - Skills library and Connectors gallery (static catalog at launch; connect flows stubbed).
 - Credits meter with per-run cost accounting.
@@ -43,14 +43,14 @@ Name: **Prajñā** (from the Greek — theory put into action). Voice: calm, pre
 
 ## Evidence on Hand
 
-Eight screenshots of the incumbent (Zenith / agent.ii.inc) provided by the user as competitive evidence — cream-paper aesthetic, serif display, chat-first layout, connector/tool/skill galleries, model-council modal, template picker. These are anti-reference for the visual world and feature-reference for scope. No other assets; all demo content must be authored at production fidelity.
+Eight screenshots of the incumbent (Zenith / agent.ii.inc) provided by the user as competitive evidence — cream-paper aesthetic, serif display, chat-first layout, connector/tool/skill galleries, model-panel modal, template picker. These are anti-reference for the visual world and feature-reference for scope. No other assets; all demo content must be authored at production fidelity.
 
 ## Product Principles
 
 1. **Contract before action.** The agent commits to a deliverable, plan, and cost before it spends anything.
 2. **Work in the open.** Every step, tool call, and deliberation is visible live; trust is earned by transparency, not claimed.
 3. **Artifacts, not answers.** A mission that ends in prose has failed; it ends in a versioned, exportable object.
-4. **Dissent is a feature.** The council shows disagreement and how it was resolved, never a fake consensus.
+4. **Dissent is a feature.** The panel shows disagreement and how it was resolved, never a fake consensus.
 5. **Keyboard-first calm.** Fast, quiet, precise; the interface recedes while the work performs.
 
 ## Accessibility & Inclusion

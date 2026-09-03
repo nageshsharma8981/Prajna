@@ -66,9 +66,9 @@ function provenance(mission) {
   <footer class="prov">
     <div class="prov-row"><span>Produced by</span><strong>PRAJÑĀ · ${esc(mission.serial)} · ${prov.mode} run${prov.partial ? ' · PARTIAL' : ''}</strong></div>
     <div class="prov-row"><span>Desk</span><strong>${esc(mission.deskName)}</strong></div>
-    <div class="prov-row"><span>Council</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
+    <div class="prov-row"><span>Panel</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
     <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
-    <div class="prov-row"><span>Council gate</span><strong>${gateLine}</strong></div>
+    <div class="prov-row"><span>Panel gate</span><strong>${gateLine}</strong></div>
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
@@ -103,7 +103,7 @@ export function briefArtifact(mission) {
   const CLAIMS = [
     { text: 'The demand signal is real but younger than the headlines imply.', grade: 'A', ref: 'src-1', snippet: 'primary indicators point the same direction across independent sources; the disagreement is about slope, not sign', detail: 'Primary indicators point the same direction across independent sources; the disagreement is about slope, not sign.' },
     { text: 'The economics clear the bar only in the focused segment.', grade: 'B', ref: 'src-2', snippet: 'unit economics in the broad market remain marginal; the narrow segment clears the threshold', detail: 'Unit economics in the broad market remain marginal; in the narrow segment identified in §3 they clear the threshold with room to spare.' },
-    { text: 'Incumbents are structurally slow here.', grade: 'B', ref: 'src-3', snippet: 'the capability is organizationally expensive for incumbents to build', detail: 'The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite — the council’s median estimate is 18–30 months.' },
+    { text: 'Incumbents are structurally slow here.', grade: 'B', ref: 'src-3', snippet: 'the capability is organizationally expensive for incumbents to build', detail: 'The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite — the panel’s median estimate is 18–30 months.' },
   ];
   for (const c of CLAIMS) {
     if (!c.ref || !SOURCES[c.ref]) throw new Error(`Artifact build refused: claim "${c.text.slice(0, 40)}…" has no registered source ref.`);
@@ -145,7 +145,7 @@ ${PROV_CSS}
 <p class="stand">A graded-evidence brief: every claim carries its source strength, and the strongest case against the recommendation is included, not buried.</p>
 
 <div class="verdict"><b>The verdict</b>
-The council recommends a <strong>staged commitment</strong>: enter with a narrow, reversible first move within two quarters, gated on the two signals in §4. A full commitment now outruns the evidence; standing still concedes the window.</div>
+The panel recommends a <strong>staged commitment</strong>: enter with a narrow, reversible first move within two quarters, gated on the two signals in §4. A full commitment now outruns the evidence; standing still concedes the window.</div>
 
 <h2>1 · What the evidence supports</h2>
 <p>Three findings survived cross-examination by the full council. Every claim carries its source ref — a claim without one cannot ship:</p>
@@ -165,7 +165,7 @@ ${claimsHtml}
 <p>Commit further only when <strong>both</strong> hold: (1) pilot conversion sustains above the threshold for two consecutive months; (2) the cost curve continues its current decline through the next cycle. If either fails, exit the pilot with learning banked — the position was sized to make that cheap.</p>
 
 <div class="dissent"><b>Recorded dissent — DeepSeek R2</b><br>
-One council member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The council holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months.</div>
+One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months.</div>
 
 <h2>5 · References — cited sources only</h2>
 <p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. All entries are illustrative samples in this demonstration run.</p>
