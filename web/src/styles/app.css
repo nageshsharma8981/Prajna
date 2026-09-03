@@ -982,6 +982,17 @@ h1.pg-title {
 .sflap.QUEUED { color: #8d938a; }
 @media (max-width: 900px) { .key-add { grid-template-columns: 1fr; } }
 
+/* v0.5: plan graph detail, per-seat pricing, approvals, lineage */
+.ticket-plan .t .meta { display: block; font-family: var(--mono); font-size: 0.66rem; color: var(--ink-dim); margin-top: 0.1rem; }
+.ticket-plan .t .seats { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+.ticket-plan .seat { font-family: var(--mono); font-size: 0.64rem; color: var(--ink-dim); border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); border-radius: 3px; padding: 0.1rem 0.4rem; }
+.ticket-plan .seat.live { color: var(--green-deep); border-color: color-mix(in srgb, var(--green-deep) 55%, transparent); }
+.ticket-plan li.ext .t { color: var(--rose-deep); }
+.ticket-note { margin: 0.7rem 0 0; font-size: 0.76rem; color: var(--ink-dim); font-family: var(--mono); }
+.tape-line .stepno { flex: none; font-size: 0.6rem; font-weight: 700; color: var(--bone-faint); border: 1px solid var(--line); border-radius: 3px; padding: 0 0.32rem; line-height: 1.4; }
+.sflap.SKIPPED { color: #8d938a; text-decoration: line-through; }
+.lineage-tag { font-family: var(--mono); font-size: 0.68rem; color: var(--bone-dim); border: 1px dashed var(--line-strong); border-radius: 3px; padding: 0.25rem 0.55rem; }
+
 /* -------------------------------- utilities -------------------------------- */
 .fade-up { animation: fadeup 0.5s var(--ease) both; }
 @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

@@ -37,37 +37,50 @@ const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0,
 
 /* ------------------------------- CONTRACTS -------------------------------- */
 
+// Plans are milestone graphs (ii-agent's PlanSchema idea, independently
+// implemented): each step names what it depends on, and its access class —
+// read (observes), write (produces local artifacts), external (acts on the
+// world; always an approval checkpoint). Steps with no dependency between
+// them run in parallel on the tape.
 const PLANS = {
   brief: (s) => [
-    { title: `Frame the decision behind “${s}”`, tool: 'scope', cost: 6 },
-    { title: 'Sweep sources — filings, sector analyses, press', tool: 'search', cost: 14 },
-    { title: 'Grade every claim A–D by source strength', tool: 'cite-guard', cost: 10 },
-    { title: 'Panel deliberation — positions, challenges, verdict', tool: 'panel', cost: 18 },
-    { title: 'Steelman the opposite conclusion', tool: 'steelman', cost: 8 },
-    { title: 'Compose the decision brief', tool: 'compose', cost: 12 },
+    { id: 's1', title: `Frame the decision behind “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's2', title: 'Sweep sources — filings, sector analyses, press', tool: 'search', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Grade every claim A–D by source strength', tool: 'cite-guard', cost: 10, access: 'read', dependsOn: ['s2'] },
+    { id: 's4', title: 'Panel deliberation — positions, challenges, verdict', tool: 'council', cost: 18, access: 'read', dependsOn: ['s2'] },
+    { id: 's5', title: 'Steelman the opposite conclusion', tool: 'steelman', cost: 8, access: 'read', dependsOn: ['s4'] },
+    { id: 's6', title: 'Compose the decision brief', tool: 'compose', cost: 12, access: 'write', dependsOn: ['s3', 's5'] },
   ],
   deck: (s) => [
-    { title: `Extract the argument in “${s}”`, tool: 'scope', cost: 6 },
-    { title: 'Storyboard the narrative arc — nine beats', tool: 'storyboard', cost: 10 },
-    { title: 'Panel deliberation on the through-line', tool: 'panel', cost: 16 },
-    { title: 'Draft slides — one idea per slide', tool: 'compose', cost: 14 },
-    { title: 'Deck Doctor pass — kill bullet sprawl', tool: 'deck-doctor', cost: 8 },
+    { id: 's1', title: `Extract the argument in “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's2', title: 'Storyboard the narrative arc — nine beats', tool: 'storyboard', cost: 10, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Panel deliberation on the through-line', tool: 'council', cost: 16, access: 'read', dependsOn: ['s1'] },
+    { id: 's4', title: 'Draft slides — one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Deck Doctor pass — kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
   ],
   site: (s) => [
-    { title: `Position the offer — “${s}”`, tool: 'scope', cost: 6 },
-    { title: 'Panel deliberation on promise & proof', tool: 'panel', cost: 14 },
-    { title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8 },
-    { title: 'Build the page — semantic, responsive', tool: 'build', cost: 16 },
-    { title: 'Access audit — contrast, focus order', tool: 'a11y-audit', cost: 6 },
+    { id: 's1', title: `Position the offer — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's2', title: 'Panel deliberation on promise & proof', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8, access: 'write', dependsOn: ['s1'] },
+    { id: 's4', title: 'Build the page — semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Access audit — contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
   ],
   analysis: (s) => [
-    { title: `Define the question — “${s}”`, tool: 'scope', cost: 6 },
-    { title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8 },
-    { title: 'Interrogate — segments, mix shift, outliers', tool: 'analyze', cost: 14 },
-    { title: 'Panel deliberation on the read', tool: 'panel', cost: 14 },
-    { title: 'Chart Smith — honest forms only', tool: 'chart-smith', cost: 8 },
-    { title: 'Compose dashboard with caveats attached', tool: 'compose', cost: 10 },
+    { id: 's1', title: `Define the question — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's2', title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Interrogate — segments, mix shift, outliers', tool: 'analyze', cost: 14, access: 'read', dependsOn: ['s2'] },
+    { id: 's4', title: 'Panel deliberation on the read', tool: 'council', cost: 14, access: 'read', dependsOn: ['s2'] },
+    { id: 's5', title: 'Chart Smith — honest forms only', tool: 'chart-smith', cost: 8, access: 'write', dependsOn: ['s3'] },
+    { id: 's6', title: 'Compose dashboard with caveats attached', tool: 'compose', cost: 10, access: 'write', dependsOn: ['s4', 's5'] },
   ],
+};
+
+// Queued connectors add an EXTERNAL delivery step — the only step class that
+// always holds for approval before it runs.
+const CONNECTOR_STEPS = {
+  slack: { title: 'Post the delivery to Slack (queued connector)', tool: 'connector-post', cost: 2 },
+  notion: { title: 'Publish the artifact to Notion (queued connector)', tool: 'connector-post', cost: 2 },
+  gmail: { title: 'Draft a delivery email in Gmail (queued connector)', tool: 'connector-post', cost: 2 },
 };
 
 // Acceptance dimensions per desk — the panel gate votes on these.
@@ -83,15 +96,39 @@ export const DIMENSIONS = {
 // installing a skill genuinely changes every future ticket.
 const SKILL_TOOLS = new Set(SKILLS.map((s) => s.id));
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
-  const plan = PLANS[desk.id](subject.length > 52 ? subject.slice(0, 49) + '…' : subject)
-    .filter((p) => !installed || !SKILL_TOOLS.has(p.tool) || installed.has(p.tool))
-    .map((p, i) => ({ id: `s${i + 1}`, status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), ...p }));
-  const estimate = plan.reduce((a, p) => a + p.cost, 0);
-  const councilIds = [lead, ...advisers.filter((a) => a !== lead)];
+  const seatsAll = [lead, ...advisers.filter((a) => a !== lead)];
+
+  let raw = PLANS[desk.id](subject.length > 52 ? subject.slice(0, 49) + '…' : subject);
+  // Skill steps only exist when the skill is on the desk; dependents re-point
+  // to the removed step's own dependencies so the graph stays connected.
+  const removed = new Set(raw.filter((p) => installed && SKILL_TOOLS.has(p.tool) && !installed.has(p.tool)).map((p) => p.id));
+  const byId = Object.fromEntries(raw.map((p) => [p.id, p]));
+  const resolveDeps = (ids) => ids.flatMap((d) => (removed.has(d) ? resolveDeps(byId[d].dependsOn) : [d]));
+  raw = raw.filter((p) => !removed.has(p.id)).map((p) => ({ ...p, dependsOn: [...new Set(resolveDeps(p.dependsOn))] }));
+
+  // Per-seat pricing on the panel step: house seats share the cost; a BYOK
+  // seat bills your own key, so it costs the house nothing.
+  raw = raw.map((p) => {
+    if (p.tool !== 'council') return p;
+    const per = Math.round((p.cost / seatsAll.length) * 10) / 10;
+    const seats = seatsAll.map((id) => ({ id, name: modelById(id).name, live: !!liveSeat(id), cost: liveSeat(id) ? 0 : per }));
+    return { ...p, seats, cost: Math.round(seats.reduce((a, x) => a + x.cost, 0) * 10) / 10 };
+  });
+
+  // Queued connectors append an external delivery step after the last step.
+  const last = raw[raw.length - 1];
+  for (const cid of queuedConnectors || []) {
+    const spec = CONNECTOR_STEPS[cid];
+    if (!spec) continue;
+    raw.push({ id: `s${raw.length + 1}`, ...spec, access: 'external', requiresConfirmation: true, connector: cid, dependsOn: [last.id] });
+  }
+
+  const plan = raw.map((p, i) => ({ status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), ...p }));
+  const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
   const mission = {
     id: id(),
     serial: nextSerial(),
@@ -104,9 +141,13 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills })
     deliverable: desk.deliverable,
     lead,
     advisers: advisers.filter((a) => a !== lead),
-    councilNames: councilIds.map((m) => modelById(m).name),
+    councilNames: seatsAll.map((m) => modelById(m).name),
     status: 'OPEN', // OPEN → LIVE → FILLED | KILLED | PAUSED_ATTENTION | PAUSED_CEILING
-    contract: { plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id] },
+    contract: {
+      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id],
+      access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
+    },
+    lineage: lineage || null, // { parentId, parentSerial, version }
     spent: 0,
     eventSeq: 0,
     events: [],
@@ -216,6 +257,7 @@ const TOOL_LINES = {
   ingest: [['load', '12 periods × 8 segments loaded (sample set)'], ['profile', 'no gaps · 2 outliers flagged for inspection']],
   analyze: [['decompose', 'topline split by segment and cohort'], ['test', 'mix-shift hypothesis vs performance: mix shift wins'], ['residual', 'one segment moves opposite — isolated']],
   'chart-smith': [['form', 'line + segment bars chosen · dual axis refused'], ['annotate', 'the finding is drawn on the chart, not beside it']],
+  'connector-post': [['compose', 'delivery summary drafted with artifact link'], ['post', 'simulated post — connector is queued intent, live OAuth wiring pending']],
 };
 
 // The amnesiac terminal review: by construction sees only (goal, artifact).
@@ -235,21 +277,25 @@ function reviewFor(mission) {
 
 function buildScript(mission) {
   const script = [];
-  let t = 400;
-  script.push({ t, type: 'run.launched', serial: mission.serial });
+  script.push({ t: 400, type: 'run.launched', serial: mission.serial });
 
   // Roughly one mission in three hits a genuine overrun: one late step burns
   // retries and crosses the hard ceiling, exercising the PAUSED_CEILING →
   // raise/abort flow for real. Deterministic per serial.
   const serialSum = [...mission.serial].reduce((a, c) => a + c.charCodeAt(0), 0);
   const overrun = serialSum % 3 === 0;
-  const overrunStep = mission.contract.plan[mission.contract.plan.length - 2].id;
+  const plan = mission.contract.plan;
+  const overrunStep = plan[Math.max(0, plan.length - 2)].id;
   let projected = 0;
 
-  for (const step of mission.contract.plan) {
-    t += 700;
-    script.push({ t, type: 'step.status', stepId: step.id, status: 'LIVE' });
-    if (step.tool === 'panel') {
+  // Each step starts 700ms after the LAST of its dependencies ends; steps
+  // whose dependencies are satisfied at the same moment run side by side.
+  const endAt = { __start: 400 };
+  for (const step of plan) {
+    const deps = step.dependsOn?.length ? step.dependsOn : ['__start'];
+    let t = Math.max(...deps.map((d) => endAt[d] ?? 400)) + 700;
+    script.push({ t, type: 'step.status', stepId: step.id, status: 'LIVE', access: step.access, requiresConfirmation: !!step.requiresConfirmation });
+    if (step.tool === 'council') {
       const c = councilScript(mission, step.id, t);
       script.push(...c.events);
       t = c.end;
@@ -264,24 +310,20 @@ function buildScript(mission) {
     let jitter = Math.round(step.cost * (0.82 + Math.random() * 0.3) * 10) / 10;
     let byokSeats = 0;
     if (step.tool === 'council') {
-      const seats = [mission.lead, ...mission.advisers];
-      byokSeats = seats.filter((id) => liveSeat(id)).length;
-      if (byokSeats) {
-        jitter = Math.round(jitter * ((seats.length - byokSeats) / seats.length) * 10) / 10;
-        script.push({ t: t - 300, type: 'log', stepId: step.id, label: 'byok', detail: `${byokSeats} live seat(s) billed to your own keys — house credits for this step reduced accordingly` });
-      }
+      byokSeats = (step.seats || []).filter((x) => x.live).length;
+      if (byokSeats) script.push({ t: t - 300, type: 'log', stepId: step.id, label: 'byok', detail: `${byokSeats} live seat(s) billed to your own keys — priced at 0 house credits on the ticket` });
     }
     if (overrun && step.id === overrunStep) {
-      // Push cumulative spend ~8% past the ceiling at this step.
-      jitter = Math.round((mission.contract.ceiling * 1.08 - projected) * 10) / 10;
+      jitter = Math.max(jitter, Math.round((mission.contract.ceiling * 1.08 - projected) * 10) / 10);
       script.push({ t: t - 400, type: 'log', stepId: step.id, label: 'retry', detail: 'two model retries burned on a malformed draft — cost running hot' });
     }
     projected += jitter;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'FILLED' });
     script.push({ t: t + 60, type: 'cost', stepId: step.id, delta: jitter, byokSeats });
+    endAt[step.id] = t + 60;
   }
 
-  t += 1000;
+  let t = Math.max(...Object.values(endAt)) + 1000;
   script.push({ t, type: 'artifact.build' });
   t += 2400;
   script.push({ t, type: 'artifact.ready' });
@@ -289,7 +331,8 @@ function buildScript(mission) {
   script.push({ t, type: 'review.terminal' });
   t += 900;
   script.push({ t, type: 'run.done' });
-  return script;
+  // Parallel branches interleave: the tape is strictly time-ordered.
+  return script.map((e, i) => ({ ...e, _i: i })).sort((a, b) => a.t - b.t || a._i - b._i).map(({ _i, ...e }) => e);
 }
 
 /* ---------------------------- CURSOR SCHEDULER ---------------------------- */
@@ -316,7 +359,7 @@ function makeArtifact(m, notify) {
   const artifactId = id();
   store.addArtifact({
     id: artifactId, title: m.partial ? `${title} (partial)` : title, kind, missionId: m.id, serial: m.serial,
-    desk: m.deskName, tint: m.tint, createdAt: Date.now(), version: 1,
+    desk: m.deskName, tint: m.tint, createdAt: Date.now(), version: (m.lineage && m.lineage.version) || 1, supersedes: m.lineage ? m.lineage.parentArtifactId : null,
     cost: m.spent, council: m.councilNames, partial: m.partial,
   }, html);
   m.artifactId = artifactId;
@@ -350,6 +393,22 @@ function raiseAttention(m, notify, item) {
 async function applyEvent(m, ev, notify, runner) {
   const record = { ...ev };
   delete record.t;
+
+  // Approval checkpoint: an external step never starts without a signed
+  // decision. The run holds; approve continues, skip drops the step.
+  if (ev.type === 'step.status' && ev.status === 'LIVE' && ev.requiresConfirmation) {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && !step.approved) {
+      runner.pendingStep = ev;
+      raiseAttention(m, notify, {
+        kind: 'approval', stepId: step.id,
+        prompt: `Step “${step.title}” acts outside the workspace (${step.access}). Approve it, or skip it and close the mission without it?`,
+        options: ['approve-step', 'skip-step'],
+      });
+      store.flushMissions();
+      return 'pause';
+    }
+  }
 
   if (ev.type === 'council.position' && ev.seat) {
     const live = liveSeat(ev.seat);
@@ -479,7 +538,7 @@ export function launchMission(missionId, notify) {
   mission.runCursor = 0;
   store.flushMissions();
 
-  runners.set(missionId, { script, cursor: 0, timer: null, notify, deferredCost: null });
+  runners.set(missionId, { script, cursor: 0, timer: null, notify, deferredCost: null, pendingStep: null });
   scheduleNext(missionId);
   return mission;
 }
@@ -498,7 +557,7 @@ export function rehydrate(notify) {
       killMission(m.id, notify);
       continue;
     }
-    runners.set(m.id, { script: m.runScript, cursor: m.runCursor, timer: null, notify, deferredCost: m.deferredCost || null });
+    runners.set(m.id, { script: m.runScript, cursor: m.runCursor, timer: null, notify, deferredCost: m.deferredCost || null, pendingStep: m.runScript[m.runCursor - 1]?.requiresConfirmation ? m.runScript[m.runCursor - 1] : null });
     if (m.status === 'LIVE') scheduleNext(m.id);
     resumed++;
   }
@@ -551,6 +610,19 @@ export function voidTicket(missionId, notify) {
   return m;
 }
 
+// Fork: amend & re-run. A new OPEN ticket on the same desk with the same
+// panel, carrying lineage so the next artifact is v(n+1) and supersedes.
+export function forkMission(missionId, { goal, installedSkills, queuedConnectors }) {
+  const parent = store.mission(missionId);
+  if (!parent) return null;
+  const version = ((parent.lineage && parent.lineage.version) || 1) + 1;
+  return writeContract({
+    goal: goal || parent.goal, deskId: parent.desk, lead: parent.lead, advisers: parent.advisers,
+    installedSkills, queuedConnectors,
+    lineage: { parentId: parent.id, parentSerial: parent.serial, parentArtifactId: parent.artifactId || null, version },
+  });
+}
+
 export async function decideAttention(missionId, requestId, decision, justification, notify) {
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
@@ -592,6 +664,28 @@ export async function decideAttention(missionId, requestId, decision, justificat
       scheduleNext(missionId);
     } else {
       killMission(missionId, notify);
+    }
+  } else if (req.kind === 'approval') {
+    const step = m.contract.plan.find((p) => p.id === req.stepId);
+    if (decision === 'approve-step') {
+      if (step) step.approved = true;
+      m.status = 'LIVE';
+      pushEvent(m, { type: 'step.approved', stepId: req.stepId, note: `Approved: “${step?.title}” may act externally. Signed with the justification above.` }, notify);
+      const pending = runner?.pendingStep;
+      if (runner) runner.pendingStep = null;
+      if (pending) await applyEvent(m, pending, notify, runner);
+      scheduleNext(missionId);
+    } else {
+      if (step) step.status = 'SKIPPED';
+      m.status = 'LIVE';
+      if (runner) {
+        runner.pendingStep = null;
+        // Drop every remaining event of the skipped step from the timeline.
+        runner.script = runner.script.filter((e, i) => i < runner.cursor || e.stepId !== req.stepId);
+        m.runScript = runner.script;
+      }
+      pushEvent(m, { type: 'step.skipped', stepId: req.stepId, note: `Skipped: “${step?.title}” — declined on the record. Nothing acted externally; nothing was spent on it.` }, notify);
+      scheduleNext(missionId);
     }
   } else if (req.kind === 'review-gap') {
     if (decision === 'accept-gap') {

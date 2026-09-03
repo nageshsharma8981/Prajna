@@ -49,6 +49,8 @@ function AttentionCard({ missionId, ev, decided }) {
     'abort-with-partial': 'Stop — take partial artifact',
     'accept-gap': 'Accept gap on the record',
     'void-artifact': 'Void the artifact',
+    'approve-step': 'Approve — let it act',
+    'skip-step': 'Skip this step',
   };
 
   return (
@@ -67,7 +69,7 @@ function AttentionCard({ missionId, ev, decided }) {
       />
       <div className="attn-actions">
         {ev.options.map((o) => (
-          <button key={o} className={o.startsWith('raise') || o.startsWith('accept') ? 'btn-stamp attn-btn' : 'btn-quiet'} disabled={sending} onClick={() => decide(o)}>
+          <button key={o} className={o.startsWith('raise') || o.startsWith('accept') || o.startsWith('approve') ? 'btn-stamp attn-btn' : 'btn-quiet'} disabled={sending} onClick={() => decide(o)}>
             {LABELS[o] || o}
           </button>
         ))}
@@ -175,6 +177,7 @@ export default function Run({ id }) {
         }
         if (ev.type === 'artifact.ready') { setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m)); setAnnounce('Artifact delivered.'); }
         if (ev.type === 'attention.raised') { setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m)); setAnnounce('Decision required — the run is holding.'); }
+        if (ev.type === 'step.skipped') setMission((m) => (m ? { ...m, contract: { ...m.contract, plan: m.contract.plan.map((p) => (p.id === ev.stepId ? { ...p, status: 'SKIPPED' } : p)) } } : m));
         if (ev.type === 'attention.resolved') setMission((m) => (m ? { ...m, status: 'LIVE' } : m));
         if (ev.type === 'ceiling.raised') setMission((m) => (m ? { ...m, contract: { ...m.contract, ceiling: ev.ceiling } } : m));
         if (ev.type === 'ticket.voided') { setMission((m) => (m ? { ...m, status: 'KILLED', voidedBeforeRun: true } : m)); store.refresh(); }
@@ -220,6 +223,17 @@ export default function Run({ id }) {
     mission?.contract.plan.forEach((p, i) => (map[p.id] = `${i + 1} · ${p.title}`));
     return map;
   }, [mission]);
+  const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
+  const amend = async () => {
+    setBusy(true); setActionError(null);
+    try {
+      const r = await fetch(`/api/missions/${mission.id}/fork`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Fork refused.');
+      await store.refresh();
+      navigate(`/?ticket=${j.id}`);
+    } catch (e) { setActionError(e.message); setBusy(false); }
+  };
 
   if (notFound) {
     return (
@@ -276,6 +290,10 @@ export default function Run({ id }) {
         {(live || paused) && !confirmStop && (
           <button className="btn-quiet kill-btn" onClick={() => setConfirmStop(true)}>Stop run</button>
         )}
+        {(filled || killed) && !mission.voidedBeforeRun && (
+          <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
+        )}
+        {mission.lineage && <span className="lineage-tag">v{mission.lineage.version} · amends {mission.lineage.parentSerial}</span>}
         {(live || paused) && confirmStop && (
           <span className="stop-confirm" role="group" aria-label="Confirm stop">
             <span>Stop now? Completed steps are kept and ship as a partial artifact; {mission.spent.toFixed(1)}cr already settled stays settled; the rest of the reservation returns.</span>
@@ -347,12 +365,16 @@ export default function Run({ id }) {
                 return <div key={i} className="tape-step"><span>Ticket stamped — run opened</span><span className="rule" /></div>;
               }
               if (ev.type === 'step.status' && ev.status === 'LIVE') {
-                return <div key={i} className="tape-step"><span>{stepTitle[ev.stepId]}</span><span className="rule" /></div>;
+                return <div key={i} className="tape-step"><span>{stepTitle[ev.stepId]}{ev.access === 'external' ? ' · external' : ''}</span><span className="rule" /></div>;
+              }
+              if (ev.type === 'step.approved' || ev.type === 'step.skipped') {
+                return <div key={i} className="tape-step"><span style={{ color: ev.type === 'step.approved' ? 'var(--green)' : 'var(--rose)' }}>{ev.note}</span><span className="rule" /></div>;
               }
               if (ev.type === 'log') {
                 return (
                   <div key={i} className="tape-line">
                     <span className="ts">{ts(ev.at)}</span>
+                    <span className="stepno" title={stepTitle[ev.stepId]}>{stepNo(ev.stepId)}</span>
                     <span className="op">{ev.label}</span>
                     <span className="detail">{ev.detail}</span>
                   </div>

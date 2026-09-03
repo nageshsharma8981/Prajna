@@ -7,6 +7,7 @@ const LABELS = {
   KILLED: 'STOPPED',
   PAUSED_ATTENTION: 'ATTN',
   PAUSED_CEILING: 'CEILING',
+  SKIPPED: 'SKIPPED',
 };
 
 export default function StatusFlap({ status }) {

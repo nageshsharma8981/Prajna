@@ -31,7 +31,7 @@ export default function Ledger() {
               <span className={`sym tint-${a.tint}`}>{a.serial}</span>
               <span className="what">
                 <b>{a.title.replace(/^VOID · /, '')}</b>
-                <span>{KIND_LABEL[a.kind]}{a.partial ? ' · partial' : ''} · panel: {a.council.join(' · ')}</span>
+                <span>{KIND_LABEL[a.kind]} · v{a.version}{a.supersedes ? ' (amended)' : ''}{a.partial ? ' · partial' : ''} · panel: {a.council.join(' · ')}</span>
               </span>
               <span className="num">{a.cost.toFixed(1)} cr</span>
               <span className="num">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>

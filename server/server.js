@@ -9,7 +9,7 @@ import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat } from './engine.js';
 
 bindCustomModels(() => store.customModels());
-import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, DIMENSIONS } from './engine.js';
+import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, forkMission, DIMENSIONS } from './engine.js';
 import { GENERATORS } from './artifacts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -169,8 +169,18 @@ async function handle(req, res) {
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills });
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectorState().connected });
     return json(res, 200, pub(mission));
+  }
+
+  const forkMatch = p.match(/^\/api\/missions\/([\w]+)\/fork$/);
+  if (forkMatch && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
+    const m = forkMission(forkMatch[1], { goal, installedSkills: connectorState().skills, queuedConnectors: connectorState().connected });
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    return json(res, 200, pub(m));
   }
 
   const launchMatch = p.match(/^\/api\/missions\/([\w]+)\/launch$/);

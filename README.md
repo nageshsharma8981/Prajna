@@ -84,6 +84,23 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   per-seat live flags. Tools and artifacts remain scripted until live execution
   ships.
 
+## v0.5 — mechanisms adopted from ii-agent (independent implementations, no code copied)
+
+- **Plans are milestone graphs.** Every step declares what it depends on and its
+  access class (read / write / external). Independent steps run side by side on
+  the tape; the ticket shows "after 2 & 3"; the artifact carries a plan-vs-actual
+  diff (planned / done / skipped / not reached).
+- **Approval checkpoints.** External steps (a queued connector's "post the
+  delivery to Slack") always hold for a signed approval before they run; skip
+  drops the step on the record. The contract states up front how many steps
+  act outside the workspace.
+- **Per-seat panel pricing.** The panel step is priced per seat on the ticket;
+  a BYOK seat is priced at 0 house credits ("your key").
+- **Amend & re-run.** Fork any finished mission into a new ticket on the same
+  desk and panel; its delivery becomes v2 and its provenance names what it
+  supersedes.
+- `AGENTS.md` records the mandatory rules for changing the engine.
+
 ## The world
 
 Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,

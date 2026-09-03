@@ -1,7 +1,7 @@
 // Full-bleed artifact viewer with provenance in the top bar.
 import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
-import { Link } from '../lib/router.jsx';
+import { Link, navigate } from '../lib/router.jsx';
 import { BackIcon, OpenIcon, DownloadIcon } from '../components/icons.jsx';
 
 export default function ArtifactView({ id }) {
@@ -28,12 +28,17 @@ export default function ArtifactView({ id }) {
           <b>{artifact ? artifact.title : missing ? 'Artifact not found' : 'Artifact'}</b>
           <span>
             {artifact
-              ? `${artifact.serial} · v${artifact.version}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · panel: ${artifact.council.join(' · ')}`
+              ? `${artifact.serial} · v${artifact.version}${artifact.supersedes ? ' (supersedes an earlier version)' : ''}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · panel: ${artifact.council.join(' · ')}`
               : missing ? 'no artifact with this id has been delivered — the link may be stale' : 'loading provenance…'}
           </span>
         </div>
         {artifact && (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.6rem' }}>
+            <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title="New ticket on the same desk and panel — its delivery becomes the next version" onClick={async () => {
+              const r = await fetch(`/api/missions/${artifact.missionId}/fork`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+              const j = await r.json().catch(() => ({}));
+              if (r.ok) { await s.refresh(); navigate(`/?ticket=${j.id}`); }
+            }}>Amend & re-run</button>
             <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/html?download=1`}>
               <DownloadIcon /> Download
             </a>

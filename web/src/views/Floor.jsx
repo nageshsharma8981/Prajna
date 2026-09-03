@@ -20,13 +20,28 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
         <p className="ticket-deliv">deliverable: {mission.deliverable.toLowerCase()} · panel of {mission.councilNames.length}: {mission.councilNames.join(', ')}</p>
         <ol className="ticket-plan">
           {mission.contract.plan.map((p, i) => (
-            <li key={p.id}>
+            <li key={p.id} className={p.access === 'external' ? 'ext' : ''}>
               <span className="n">{i + 1}</span>
-              <span className="t">{p.title}</span>
+              <span className="t">
+                {p.title}
+                <span className="meta">
+                  {p.dependsOn?.length ? `after ${p.dependsOn.map((d) => d.replace('s', '')).join(' & ')}` : 'starts first'}
+                  {' · '}{p.access}{p.requiresConfirmation ? ' · holds for your approval' : ''}
+                </span>
+                {p.seats && (
+                  <span className="seats">
+                    {p.seats.map((x) => <span key={x.id} className={x.live ? 'seat live' : 'seat'}>{x.name} {x.live ? '· your key' : `· ${x.cost}cr`}</span>)}
+                  </span>
+                )}
+              </span>
               <span className="c">~{p.cost}cr</span>
             </li>
           ))}
         </ol>
+        {mission.contract.access?.external > 0 && (
+          <p className="ticket-note">{mission.contract.access.external} step{mission.contract.access.external > 1 ? 's' : ''} act outside the workspace — each one holds for your signed approval before it runs.</p>
+        )}
+        {mission.lineage && <p className="ticket-note">Amends {mission.lineage.parentSerial} → this delivery becomes v{mission.lineage.version}.</p>}
         <div className="ticket-tally">
           <div className="cell"><span className="k">Estimate</span><span className="v">{mission.contract.estimate} cr</span></div>
           <div className="cell"><span className="k">Hard ceiling</span><span className="v">{mission.contract.ceiling} cr</span></div>
@@ -62,16 +77,24 @@ export default function Floor() {
   const deskRefs = useRef([]);
 
   // Desk handoff from the palette rides the URL (?desk=…): honor it, focus
-  // the goal, then strip it so a reload does not re-apply it.
+  // the goal, then strip it so a reload does not re-apply it. A forked
+  // ticket arrives the same way (?ticket=id) and opens ready to stamp.
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    if (q.get('desk')) {
-      inputRef.current?.focus();
+    if (q.get('desk')) inputRef.current?.focus();
+    if (q.get('desk') || q.get('ticket')) {
       const url = new URL(location.href);
       url.searchParams.delete('desk');
+      url.searchParams.delete('ticket');
       history.replaceState(null, '', url.pathname + url.search);
     }
   }, []);
+  const pendingTicketId = useMemo(() => new URLSearchParams(location.search).get('ticket'), []);
+  useEffect(() => {
+    if (!pendingTicketId || !s.ready || ticket) return;
+    const m = s.missions.find((x) => x.id === pendingTicketId && x.status === 'OPEN');
+    if (m) setTicket(m);
+  }, [pendingTicketId, s.ready, s.missions, ticket]);
 
   const desk = useMemo(() => (s.desks || []).find((d) => d.id === deskId) || (s.desks || [])[0], [s.desks, deskId]);
 

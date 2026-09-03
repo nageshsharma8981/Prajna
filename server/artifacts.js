@@ -33,6 +33,16 @@ function provenanceObject(mission) {
       ceiling: mission.contract.ceiling,
       dimensions: mission.contract.dimensions || [],
     },
+    lineage: mission.lineage || null,
+    planVsActual: {
+      planned: mission.contract.plan.length,
+      done: mission.contract.plan.filter((p) => p.status === 'FILLED').length,
+      skipped: mission.contract.plan.filter((p) => p.status === 'SKIPPED').map((p) => p.title),
+      notReached: mission.contract.plan.filter((p) => p.status === 'QUEUED' || p.status === 'LIVE' || p.status === 'KILLED').length,
+      parallelBranches: mission.contract.plan.filter((p) => (p.dependsOn || []).length > 1 || mission.contract.plan.some((q) => q !== p && JSON.stringify(q.dependsOn) === JSON.stringify(p.dependsOn) && (p.dependsOn || []).length)).length,
+    },
+    access: mission.contract.access || null,
+    approvals: (mission.attention || []).filter((a) => a.kind === 'approval' && a.decision).map((a) => ({ stepId: a.stepId, decision: a.decision, justification: a.justification, decidedAt: a.decidedAt })),
     settlement: mission.settlement || { reserved: mission.contract.ceiling, settled: mission.spent, released: null },
     gate: mission.gate || null,
     review: mission.review || null,
@@ -71,8 +81,11 @@ function provenance(mission) {
     <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
     <div class="prov-row"><span>Panel gate</span><strong>${gateLine}</strong></div>
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
+    <div class="prov-row"><span>Plan vs actual</span><strong>${prov.planVsActual.planned} planned · ${prov.planVsActual.done} done${prov.planVsActual.skipped.length ? ` · ${prov.planVsActual.skipped.length} skipped on the record` : ''}${prov.planVsActual.notReached ? ` · ${prov.planVsActual.notReached} not reached` : ''}${prov.access ? ` · access: ${prov.access.read} read / ${prov.access.write} write / ${prov.access.external} external` : ''}</strong></div>
+    ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version} — supersedes ${esc(prov.lineage.parentSerial)}</strong></div>` : ''}
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
+    ${prov.planVsActual.skipped.length ? `<p><strong>Skipped by decision:</strong> ${prov.planVsActual.skipped.map(esc).join('; ')}</p>` : ''}
     <p class="note">${prov.mode === 'hybrid' ? 'Hybrid run: panel positions from seats marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
   </footer>
   <script type="application/json" id="prajna-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
