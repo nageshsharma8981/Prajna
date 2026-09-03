@@ -13,7 +13,12 @@ import { store } from './store.js';
 import { deskById, modelById } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 
-let counter = 4100 + Math.floor(Math.random() * 400);
+// Serial counter continues from the persisted ledger so restarts never mint
+// duplicate PX serials.
+let counter = Math.max(
+  4100 + Math.floor(Math.random() * 400),
+  ...store.missions().map((m) => Number((m.serial || '').replace('PX-', '')) + 1 || 0)
+);
 const nextSerial = () => `PX-${counter++}`;
 const id = () => Math.random().toString(36).slice(2, 10);
 const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
@@ -120,7 +125,7 @@ const CHALLENGES = [
 // lead patches, the member re-votes. Dissent has consequences you can watch.
 function gateScript(mission, stepId, baseT) {
   const members = [mission.lead, ...mission.advisers];
-  const dims = mission.contract.dimensions;
+  const dims = mission.contract.dimensions || DIMENSIONS[mission.desk] || DIMENSIONS.brief;
   const skeptic = members.includes('deepseek') && mission.lead !== 'deepseek' ? 'deepseek' : members[members.length - 1];
   const failDim = dims[dims.length - 1];
   const rows = [];
@@ -214,6 +219,14 @@ function buildScript(mission) {
   let t = 400;
   script.push({ t, type: 'run.launched', serial: mission.serial });
 
+  // Roughly one mission in three hits a genuine overrun: one late step burns
+  // retries and crosses the hard ceiling, exercising the PAUSED_CEILING →
+  // raise/abort flow for real. Deterministic per serial.
+  const serialSum = [...mission.serial].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const overrun = serialSum % 3 === 0;
+  const overrunStep = mission.contract.plan[mission.contract.plan.length - 2].id;
+  let projected = 0;
+
   for (const step of mission.contract.plan) {
     t += 700;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'LIVE' });
@@ -229,7 +242,13 @@ function buildScript(mission) {
       }
     }
     t += 900;
-    const jitter = Math.round(step.cost * (0.82 + Math.random() * 0.3) * 10) / 10;
+    let jitter = Math.round(step.cost * (0.82 + Math.random() * 0.3) * 10) / 10;
+    if (overrun && step.id === overrunStep) {
+      // Push cumulative spend ~8% past the ceiling at this step.
+      jitter = Math.round((mission.contract.ceiling * 1.08 - projected) * 10) / 10;
+      script.push({ t: t - 400, type: 'log', stepId: step.id, label: 'retry', detail: 'two model retries burned on a malformed draft — cost running hot' });
+    }
+    projected += jitter;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'FILLED' });
     script.push({ t: t + 60, type: 'cost', stepId: step.id, delta: jitter });
   }
@@ -295,7 +314,7 @@ function raiseAttention(m, notify, item) {
   const req = { id: id(), raisedAt: Date.now(), decision: null, justification: null, decidedAt: null, ...item };
   m.attention.push(req);
   m.status = 'PAUSED_ATTENTION';
-  pushEvent(m, { type: 'attention.raised', requestId: req.id, kind: req.kind, prompt: req.prompt, options: req.options }, notify);
+  pushEvent(m, { type: 'attention.raised', requestId: req.id, kind: req.kind, prompt: req.prompt, options: req.options, gaps: req.gaps || null }, notify);
   return req;
 }
 
@@ -374,8 +393,8 @@ function scheduleNext(missionId) {
   const runner = runners.get(missionId);
   if (!runner) return;
   const m = store.mission(missionId);
-  if (!m || m.status === 'KILLED' || m.status === 'FILLED') return;
-  if (runner.cursor >= runner.script.length) return;
+  if (!m || m.status === 'KILLED' || m.status === 'FILLED') { runners.delete(missionId); return; }
+  if (runner.cursor >= runner.script.length) { runners.delete(missionId); return; }
 
   const ev = runner.script[runner.cursor];
   const prevT = runner.cursor === 0 ? 0 : runner.script[runner.cursor - 1].t;
@@ -385,8 +404,14 @@ function scheduleNext(missionId) {
     const mission = store.mission(missionId);
     if (!mission || mission.status === 'KILLED') return;
     runner.cursor++;
+    mission.runCursor = runner.cursor;
     const outcome = applyEvent(mission, ev, runner.notify, runner);
-    if (outcome === 'pause') return; // resumed via attention decision
+    if (mission.status === 'FILLED' || mission.status === 'KILLED') { runners.delete(missionId); return; }
+    if (outcome === 'pause') {
+      mission.deferredCost = runner.deferredCost || null;
+      store.flushMissions();
+      return; // resumed via attention decision
+    }
     scheduleNext(missionId);
   }, delay);
 }
@@ -398,11 +423,39 @@ export function launchMission(missionId, notify) {
   mission.launchedAt = Date.now();
   if (mission.eventSeq === undefined) mission.eventSeq = 0;
   if (!mission.attention) mission.attention = [];
+  if (!mission.contract.dimensions) mission.contract.dimensions = DIMENSIONS[mission.desk] || DIMENSIONS.brief;
+
+  // The script is persisted with the mission so a server restart can
+  // rehydrate the runner and continue exactly where the run left off.
+  const script = buildScript(mission);
+  mission.runScript = script;
+  mission.runCursor = 0;
   store.flushMissions();
 
-  runners.set(missionId, { script: buildScript(mission), cursor: 0, timer: null, notify, deferredCost: null });
+  runners.set(missionId, { script, cursor: 0, timer: null, notify, deferredCost: null });
   scheduleNext(missionId);
   return mission;
+}
+
+// Called once at server boot: rebuild runners for missions that were LIVE or
+// PAUSED when the previous process ended. LIVE runs continue from their
+// cursor; PAUSED runs wait for their attention decision as before.
+export function rehydrate(notify) {
+  let resumed = 0;
+  for (const m of store.missions()) {
+    if (!['LIVE', 'PAUSED_ATTENTION', 'PAUSED_CEILING'].includes(m.status)) continue;
+    if (!Array.isArray(m.runScript) || typeof m.runCursor !== 'number') {
+      // Pre-persistence mission: nothing to resume from — close it honestly.
+      m.status = 'LIVE';
+      runners.set(m.id, { script: [], cursor: 0, timer: null, notify, deferredCost: null });
+      killMission(m.id, notify);
+      continue;
+    }
+    runners.set(m.id, { script: m.runScript, cursor: m.runCursor, timer: null, notify, deferredCost: m.deferredCost || null });
+    if (m.status === 'LIVE') scheduleNext(m.id);
+    resumed++;
+  }
+  if (resumed) console.log(`praxis: rehydrated ${resumed} in-flight mission(s)`);
 }
 
 /* --------------------------------- CONTROLS ------------------------------- */
@@ -414,11 +467,22 @@ export function killMission(missionId, notify) {
   if (runner?.timer) clearTimeout(runner.timer);
   runners.delete(missionId);
 
+  // Any undecided attention item dies with the run — recorded as voided, so
+  // the open question stays on the record instead of vanishing.
+  for (const req of (m.attention || []).filter((r) => !r.decision)) {
+    req.decision = 'voided-by-kill';
+    req.justification = 'Run killed before a decision was made.';
+    req.decidedAt = Date.now();
+  }
+
   const filled = m.contract.plan.filter((p) => p.status === 'FILLED').length;
-  m.partial = filled < m.contract.plan.length;
+  m.partial = m.partial || filled < m.contract.plan.length;
   m.status = 'KILLED';
   m.contract.plan.forEach((p) => { if (p.status === 'LIVE') p.status = 'KILLED'; });
-  pushEvent(m, { type: 'run.killed', note: `Position killed at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. Completed work is kept — a partial artifact follows. Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
+  const artifactNote = m.artifactId
+    ? 'The artifact already produced is retained.'
+    : 'Completed work is kept — a partial artifact follows.';
+  pushEvent(m, { type: 'run.killed', note: `Position killed at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. ${artifactNote} Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
   if (!m.artifactId) {
     const a = makeArtifact(m, notify);
     pushEvent(m, { type: 'artifact.ready', ...a, partial: true }, notify);
@@ -431,6 +495,9 @@ export function killMission(missionId, notify) {
 export function decideAttention(missionId, requestId, decision, justification, notify) {
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
+  if (m.status === 'KILLED' || m.status === 'FILLED') {
+    return { error: `This position is already ${m.status.toLowerCase()} — the run ended before the decision landed.` };
+  }
   const req = (m.attention || []).find((r) => r.id === requestId);
   if (!req) return { error: 'Attention item not found.' };
   if (req.decision) return { error: 'Already decided — decisions are first-write-wins.' };
@@ -450,11 +517,10 @@ export function decideAttention(missionId, requestId, decision, justification, n
       m.partial = false;
       m.status = 'LIVE';
       pushEvent(m, { type: 'ceiling.raised', ceiling: m.contract.ceiling }, notify);
-      if (runner?.deferredCost) {
-        const ev = runner.deferredCost;
-        runner.deferredCost = null;
-        applyEvent(m, ev, notify, runner);
-      }
+      const deferred = runner?.deferredCost || m.deferredCost;
+      if (runner) runner.deferredCost = null;
+      m.deferredCost = null;
+      if (deferred) applyEvent(m, deferred, notify, runner || { deferredCost: null });
       scheduleNext(missionId);
     } else {
       killMission(missionId, notify);
@@ -465,9 +531,15 @@ export function decideAttention(missionId, requestId, decision, justification, n
       pushEvent(m, { type: 'review.accepted', note: 'Gap accepted and recorded in provenance — the artifact ships with the gap named, not hidden.' }, notify);
       scheduleNext(missionId);
     } else {
-      m.partial = true;
+      // Really void it: the ledger entry is stamped VOID, the artifact of
+      // record is regenerated carrying the void, and the run closes on it.
+      m.voided = true;
       m.status = 'LIVE';
-      pushEvent(m, { type: 'artifact.voided', note: 'Artifact voided on review. The run closes with the void on the record.' }, notify);
+      if (m.artifactId) {
+        const a = store.artifact(m.artifactId);
+        store.refreshArtifact(m.artifactId, { voided: true, title: a && !a.title.startsWith('VOID') ? `VOID · ${a.title}` : a?.title }, GENERATORS[m.desk](m).html);
+      }
+      pushEvent(m, { type: 'artifact.voided', note: 'Artifact VOIDED on terminal review — retained in the ledger for audit, stamped void. The run closes with the void on the record.' }, notify);
       scheduleNext(missionId);
     }
   }

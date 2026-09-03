@@ -29,7 +29,7 @@ export default function ArtifactView({ id }) {
           <OpenIcon /> Open full tab
         </a>
       </div>
-      <iframe className="artifact-frame" src={`/api/artifacts/${id}/html`} title={artifact?.title || 'Artifact'} />
+      <iframe className="artifact-frame" sandbox="allow-scripts" src={`/api/artifacts/${id}/html`} title={artifact?.title || 'Artifact'} />
     </div>
   );
 }

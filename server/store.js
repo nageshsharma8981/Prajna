@@ -10,14 +10,25 @@ const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 
 function readJson(file, fallback) {
+  const full = path.join(DATA_DIR, file);
   try {
-    return JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
-  } catch {
+    return JSON.parse(fs.readFileSync(full, 'utf8'));
+  } catch (e) {
+    // A corrupt ledger must never be silently reseeded over — keep the
+    // evidence aside and start from the fallback.
+    if (fs.existsSync(full)) {
+      try { fs.copyFileSync(full, `${full}.corrupt-${Date.now()}`); } catch {}
+      console.error(`praxis: ${file} unreadable (${e.message}); backed up and reset`);
+    }
     return fallback;
   }
 }
 function writeJson(file, value) {
-  fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify(value, null, 2));
+  // Atomic write: a crash mid-flush must not truncate the ledger.
+  const full = path.join(DATA_DIR, file);
+  const tmp = `${full}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+  fs.renameSync(tmp, full);
 }
 
 export const store = {

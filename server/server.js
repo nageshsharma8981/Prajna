@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById } from './catalog.js';
-import { writeContract, launchMission, killMission, decideAttention } from './engine.js';
+import { writeContract, launchMission, killMission, decideAttention, rehydrate, DIMENSIONS } from './engine.js';
 import { GENERATORS } from './artifacts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +30,19 @@ function seed() {
     m.launchedAt = m.createdAt + 60000;
     m.filledAt = m.launchedAt + 47000;
     m.contract.plan.forEach((p) => (p.status = 'FILLED'));
+    // Seeds are honest fills: their provenance carries settlement, a cleared
+    // gate, and a passed terminal review, like any real completed run.
+    m.settlement = {
+      reserved: m.contract.ceiling,
+      settled: s.spent,
+      released: Math.round((m.contract.ceiling - s.spent) * 10) / 10,
+    };
+    const dims = m.contract.dimensions || DIMENSIONS[m.desk];
+    m.gate = {
+      cleared: true,
+      rows: m.councilNames.flatMap((name) => dims.map((d) => ({ member: name, dimension: d, verdict: 'pass', rationale: 'Checked against the draft; holds.' }))),
+    };
+    m.review = { verdict: 'pass', gaps: [] };
     const { title, kind, html } = GENERATORS[m.desk](m);
     const artifactId = Math.random().toString(36).slice(2, 10);
     store.addArtifact({
@@ -54,6 +67,14 @@ function notify(missionId, event) {
 }
 
 /* --------------------------------- helpers -------------------------------- */
+
+// Strip the persisted run script from API payloads — it's runner state, not
+// client data.
+function pub(m) {
+  if (!m || typeof m !== 'object') return m;
+  const { runScript, deferredCost, ...rest } = m;
+  return rest;
+}
 
 function json(res, code, body) {
   const data = JSON.stringify(body);
@@ -98,7 +119,7 @@ const server = http.createServer(async (req, res) => {
       models: MODELS,
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTORS.map((c) => ({ ...c, connected: cs.connected.includes(c.id) })),
-      missions: store.missions(),
+      missions: store.missions().map(pub),
       artifacts: store.artifacts(),
     });
   }
@@ -166,14 +187,18 @@ const server = http.createServer(async (req, res) => {
         res.write(`id: ${e.seq}\ndata: ${JSON.stringify(e)}\n\n`);
       }
     } else {
-      res.write(`data: ${JSON.stringify({ type: 'snapshot', mission: m })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'snapshot', mission: pub(m) })}\n\n`);
     }
     if (!subscribers.has(m.id)) subscribers.set(m.id, new Set());
     subscribers.get(m.id).add(res);
     const ping = setInterval(() => res.write(': ping\n\n'), 25000);
     req.on('close', () => {
       clearInterval(ping);
-      subscribers.get(m.id)?.delete(res);
+      const subs = subscribers.get(m.id);
+      if (subs) {
+        subs.delete(res);
+        if (subs.size === 0) subscribers.delete(m.id);
+      }
     });
     return;
   }
@@ -181,7 +206,7 @@ const server = http.createServer(async (req, res) => {
   const missionMatch = p.match(/^\/api\/missions\/([\w]+)$/);
   if (missionMatch) {
     const m = store.mission(missionMatch[1]);
-    return m ? json(res, 200, m) : json(res, 404, { error: 'Mission not found.' });
+    return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
   }
 
   const artifactHtml = p.match(/^\/api\/artifacts\/([\w]+)\/html$/);
@@ -226,4 +251,5 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+rehydrate(notify);
 server.listen(PORT, () => console.log(`Praxis listening on http://localhost:${PORT}`));

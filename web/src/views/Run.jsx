@@ -27,13 +27,18 @@ function AttentionCard({ missionId, ev, decided }) {
     }
     setSending(true);
     setError(null);
-    const r = await fetch(`/api/missions/${missionId}/attention/${ev.requestId}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ decision, justification }),
-    });
-    if (!r.ok) {
-      setError((await r.json()).error || 'The decision was refused.');
+    try {
+      const r = await fetch(`/api/missions/${missionId}/attention/${ev.requestId}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ decision, justification }),
+      });
+      if (!r.ok) {
+        setError((await r.json()).error || 'The decision was refused.');
+        setSending(false);
+      }
+    } catch (e) {
+      setError(`The decision did not reach the house (${e.message}) — nothing was recorded. Try again.`);
       setSending(false);
     }
   };
@@ -108,6 +113,7 @@ export default function Run({ id }) {
   useEffect(() => {
     setMission(null);
     setEvents([]);
+    setBurn(null);
     const es = new EventSource(`/api/missions/${id}/stream`);
     esRef.current = es;
     es.onmessage = (e) => {
@@ -115,8 +121,8 @@ export default function Run({ id }) {
       if (ev.type === 'snapshot') {
         setMission(ev.mission);
         setEvents(ev.mission.events || []);
-        const lastCost = [...(ev.mission.events || [])].reverse().find((e) => e.type === 'cost');
-        if (lastCost) setBurn({ total: lastCost.total, estimateSoFar: lastCost.estimateSoFar, variance: lastCost.variance });
+        const lastCost = [...(ev.mission.events || [])].reverse().find((e) => e.type === 'cost' && e.estimateSoFar != null);
+        if (lastCost) setBurn({ total: lastCost.total, estimateSoFar: lastCost.estimateSoFar, variance: lastCost.variance ?? 0 });
       } else {
         setEvents((prev) => [...prev, ev]);
         if (ev.type === 'run.launched') {
@@ -131,14 +137,18 @@ export default function Run({ id }) {
         }
         if (ev.type === 'cost') {
           setMission((m) => (m ? { ...m, spent: ev.total } : m));
-          setBurn({ total: ev.total, estimateSoFar: ev.estimateSoFar, variance: ev.variance });
+          if (ev.estimateSoFar != null) setBurn({ total: ev.total, estimateSoFar: ev.estimateSoFar, variance: ev.variance ?? 0 });
         }
         if (ev.type === 'artifact.ready') setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m));
         if (ev.type === 'attention.raised') setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m));
         if (ev.type === 'attention.resolved') setMission((m) => (m ? { ...m, status: 'LIVE' } : m));
         if (ev.type === 'ceiling.raised') setMission((m) => (m ? { ...m, contract: { ...m.contract, ceiling: ev.ceiling } } : m));
         if (ev.type === 'run.killed') {
-          setMission((m) => (m ? { ...m, status: 'KILLED' } : m));
+          setMission((m) => {
+            if (!m) return m;
+            const plan = m.contract.plan.map((p) => (p.status === 'LIVE' ? { ...p, status: 'KILLED' } : p));
+            return { ...m, status: 'KILLED', filledAt: ev.at, contract: { ...m.contract, plan } };
+          });
           store.refresh();
         }
         if (ev.type === 'run.done') {
@@ -177,7 +187,7 @@ export default function Run({ id }) {
   const kill = async () => {
     await fetch(`/api/missions/${mission.id}/kill`, { method: 'POST' });
   };
-  const elapsed = mission.launchedAt ? (filled && mission.filledAt ? mission.filledAt - mission.launchedAt : now - mission.launchedAt) : 0;
+  const elapsed = mission.launchedAt ? ((filled || killed) && mission.filledAt ? mission.filledAt - mission.launchedAt : now - mission.launchedAt) : 0;
   const stepsFilled = mission.contract.plan.filter((p) => p.status === 'FILLED').length;
   const artifact = filled || mission.artifactId ? (store.artifacts || []).find((a) => a.id === mission.artifactId) : null;
 
@@ -201,15 +211,17 @@ export default function Run({ id }) {
         <div className="cell"><span className="k">Steps</span><span className={`v${filled ? ' ok' : ''}`}>{stepsFilled}<small> / {mission.contract.plan.length}</small></span></div>
         <div className="burnrow" aria-label={`Burn-down: ${mission.spent.toFixed(1)} of ${mission.contract.ceiling} credits reserved`}>
           <div className="burnbar">
-            <div className="burn-fill" style={{ width: `${Math.min(100, (mission.spent / mission.contract.ceiling) * 100)}%` }} />
+            <div className="burn-fill" style={{ transform: `scaleX(${Math.min(1, mission.spent / mission.contract.ceiling)})` }} />
             <div className="burn-est" style={{ left: `${Math.min(100, (mission.contract.estimate / mission.contract.ceiling) * 100)}%` }} title={`Estimate: ${mission.contract.estimate}cr`} />
           </div>
           <span className="burn-read">
-            {burn
-              ? <>settled {burn.total.toFixed(1)} vs est {burn.estimateSoFar} · variance <b className={burn.variance > 0 ? 'over' : 'under'}>{burn.variance > 0 ? '+' : ''}{burn.variance.toFixed(1)}cr</b></>
-              : mission.settlement
-                ? <>reserved {mission.settlement.reserved} · settled {mission.settlement.settled.toFixed(1)} · released {mission.settlement.released.toFixed(1)}cr</>
-                : 'reservation held — nothing settled yet'}
+            {mission.settlement
+              ? <>reserved {mission.settlement.reserved} · settled {Number(mission.settlement.settled).toFixed(1)} · released {Number(mission.settlement.released).toFixed(1)}cr</>
+              : burn
+                ? <>settled {burn.total.toFixed(1)} vs est {burn.estimateSoFar} · variance <b className={burn.variance > 0 ? 'over' : 'under'}>{burn.variance > 0 ? '+' : ''}{burn.variance.toFixed(1)}cr</b></>
+                : mission.spent > 0
+                  ? <>{mission.spent.toFixed(1)}cr settled of {mission.contract.ceiling}cr reserved</>
+                  : 'reservation held — nothing settled yet'}
           </span>
         </div>
       </div>
@@ -388,7 +400,7 @@ export default function Run({ id }) {
                 </span>
               </div>
             )}
-            {mission.status === 'KILLED' && (
+            {mission.status === 'KILLED' && events.filter((e) => e.type !== 'snapshot').length === 0 && (
               <div className="board-empty">Ticket voided before any spend. The serial is retired.</div>
             )}
             {live && events.length < 2 && <div className="board-empty">Waiting for the first print…</div>}

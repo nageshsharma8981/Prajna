@@ -25,6 +25,7 @@ function provenanceObject(mission) {
     desk: mission.deskName,
     council: mission.councilNames,
     partial: !!mission.partial,
+    voided: !!mission.voided,
     contract: {
       plan: mission.contract.plan.map((p) => ({ id: p.id, title: p.title, tool: p.tool, cost: p.cost, status: p.status, contextHash: p.contextHash || null })),
       estimate: mission.contract.estimate,
@@ -40,6 +41,9 @@ function provenanceObject(mission) {
 }
 
 export function partialBanner(mission) {
+  if (mission.voided) {
+    return `<div class="partial-banner">ARTIFACT VOIDED on terminal review — retained for audit only. The gap that voided it is recorded in the provenance block below.</div>`;
+  }
   if (!mission.partial) return '';
   const filled = mission.contract.plan.filter((p) => p.status === 'FILLED').length;
   return `<div class="partial-banner">PARTIAL ARTIFACT — the run ended at step ${Math.min(filled + 1, mission.contract.plan.length)} of ${mission.contract.plan.length}. Completed work only; the contract's "always an artifact" clause applied.</div>`;
@@ -215,16 +219,19 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .pg{position:absolute;bottom:2.2vh;right:3vw;font-size:.75rem;letter-spacing:.1em;color:#98948a;margin:0}
 .hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
 ${PROV_CSS}
-.prov{display:none}
+.prov{position:fixed;inset:auto 0 0 0;transform:translateY(100%);background:var(--paper);padding:1rem 3vw;margin:0;transition:transform .25s ease;z-index:3}
+.prov:focus-within,.prov:hover{transform:none}
+.prov-tab{position:fixed;bottom:0;right:3vw;z-index:4;background:var(--ink);color:var(--paper);border:none;font:700 .68rem/1 'Helvetica Neue',sans-serif;letter-spacing:.14em;text-transform:uppercase;padding:.45rem .9rem;cursor:pointer;border-radius:4px 4px 0 0}
 </style></head><body>${partialBanner(mission)}
 <div class="deck" id="deck">${slideHtml}</div>
+<button class="prov-tab" onclick="document.querySelector('.prov').style.transform=document.querySelector('.prov').style.transform?'':'none';event.stopPropagation()">Provenance</button>
 <p class="hint">← → arrow keys · click to advance</p>
 <script>
 const deck=document.getElementById('deck');let i=0;const n=${slides.length};
 function go(d){i=Math.max(0,Math.min(n-1,i+d));deck.scrollTo({left:i*deck.clientWidth,behavior:'smooth'})}
 addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});
 deck.addEventListener('click',()=>go(1));
-</script></body></html>`;
+</script>${provenance(mission)}</body></html>`;
   return { title: `${subject} — Deck`, kind: 'deck', html };
 }
 
