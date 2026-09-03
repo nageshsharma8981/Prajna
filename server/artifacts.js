@@ -46,8 +46,8 @@ export function briefArtifact(mission) {
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);
 font:16px/1.65 Georgia,'Times New Roman',serif}
 .wrap{max-width:46rem;margin:0 auto;padding:4rem 1.5rem 6rem}
-.kick{font:700 .78rem/1 Verdana,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
-h1{font-size:2.4rem;line-height:1.15;margin:.6rem 0 .4rem;letter-spacing:-.01em}
+h1{font-size:2.4rem;line-height:1.15;margin:0 0 .4rem;letter-spacing:-.01em}
+.docline{font:600 .74rem/1 Verdana,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:.2rem 0 1rem;padding-bottom:.8rem;border-bottom:2px solid var(--ink)}
 .stand{font-size:1.15rem;color:#4c4a44;font-style:italic;margin:0 0 2.2rem}
 h2{font:700 1.05rem/1.3 Verdana,sans-serif;letter-spacing:.02em;margin:2.6rem 0 .8rem;padding-top:1.4rem;border-top:1px solid var(--rule)}
 .verdict{background:#f2ede2;border:1px solid var(--rule);padding:1.2rem 1.4rem;margin:1.4rem 0}
@@ -57,12 +57,12 @@ h2{font:700 1.05rem/1.3 Verdana,sans-serif;letter-spacing:.02em;margin:2.6rem 0 
 table{width:100%;border-collapse:collapse;font-size:.9rem;margin:1rem 0}
 th{font:700 .72rem/1.3 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:#777;border-bottom:2px solid var(--ink);padding:.5rem .6rem .4rem 0}
 td{border-bottom:1px solid var(--rule);padding:.55rem .6rem .55rem 0;vertical-align:top}
-.dissent{border-left:3px solid var(--accent);padding:.2rem 0 .2rem 1.1rem;margin:1.2rem 0;color:#4c4a44}
-.dissent b{font-family:Verdana,sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase}
+.dissent{border:1px solid var(--rule);background:#f6efe3;padding:.9rem 1.2rem;margin:1.2rem 0;color:#4c4a44}
+.dissent b{font-family:Verdana,sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 ${PROV_CSS}
 </style></head><body><div class="wrap">
-<p class="kick">Praxis decision brief · ${esc(mission.serial)}</p>
 <h1>${t}</h1>
+<p class="docline">Praxis decision brief · ${esc(mission.serial)}</p>
 <p class="stand">A graded-evidence brief: every claim carries its source strength, and the strongest case against the recommendation is included, not buried.</p>
 
 <div class="verdict"><b>The verdict</b>
@@ -118,10 +118,10 @@ export function deckArtifact(mission) {
     { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.' },
   ];
   const slideHtml = slides.map((sl, i) => {
-    if (sl.k === 'title') return `<section class="slide title"><div><p class="deckkick">Praxis deck · ${esc(mission.serial)}</p><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="pg">1 / ${slides.length}</p></section>`;
+    if (sl.k === 'title') return `<section class="slide title"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Praxis deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p></section>`;
     if (sl.k === 'big') return `<section class="slide big"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
     if (sl.k === 'end') return `<section class="slide end"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
-    return `<section class="slide"><div><p class="n">${sl.n}</p><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
+    return `<section class="slide"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p></section>`;
   }).join('\n');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -134,14 +134,14 @@ body{background:var(--ink);font:16px/1.5 'Helvetica Neue',Helvetica,Arial,sans-s
 .deck{height:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth}
 .slide{min-width:100%;height:100%;scroll-snap-align:start;background:var(--paper);color:var(--ink);
 display:flex;flex-direction:column;justify-content:center;padding:6vh 8vw;position:relative;border-right:2px solid var(--ink)}
-.deckkick,.n{font-size:.8rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);margin:0 0 1.2rem}
+.run{position:absolute;bottom:2.2vh;left:3vw;font-size:.75rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin:0}
 h1{font-size:clamp(2.2rem,6vw,4.5rem);line-height:1.04;margin:0 0 1.2rem;letter-spacing:-.02em;max-width:18ch}
 h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;letter-spacing:-.02em;max-width:22ch}
 .sub{font-size:clamp(1rem,1.6vw,1.25rem);color:#54524a;max-width:52ch;margin:0}
 .big{background:var(--acc)}.big h2,.big .sub{color:#f8ede8}.big .sub{color:#eed3c9}
 .end{background:var(--ink)}.end h2{color:var(--paper)}.end .sub{color:#a5a294}
 .pg{position:absolute;bottom:2.2vh;right:3vw;font-size:.75rem;letter-spacing:.1em;color:#98948a;margin:0}
-.hint{position:fixed;bottom:2.2vh;left:3vw;font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
+.hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
 ${PROV_CSS}
 .prov{display:none}
 </style></head><body>
@@ -183,8 +183,8 @@ repeating-linear-gradient(-35deg,transparent 0 26px,rgba(255,255,255,.09) 26px 2
 .vis span{position:absolute;bottom:1.4rem;left:1.4rem;color:#dbe8d2;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase}
 .strip{background:var(--ink);color:#c8d4c9;padding:1rem 5vw;text-align:center;font-size:.9rem;letter-spacing:.06em}
 .why{max-width:72rem;margin:0 auto;padding:6vh 5vw;display:grid;grid-template-columns:repeat(3,1fr);gap:3rem}
-.why h3{font-size:1.15rem;margin:.8rem 0 .5rem}.why p{color:#3d4a41;font-size:.95rem;margin:0}
-.why .no{font-weight:800;color:var(--acc);font-size:.85rem;letter-spacing:.12em}
+.why h3{font-size:1.15rem;margin:0 0 .5rem}.why h3 em{font-style:normal;color:var(--acc)}
+.why p{color:#3d4a41;font-size:.95rem;margin:0}
 .final{background:var(--acc2);margin-top:4vh;padding:9vh 5vw;text-align:center}
 .final h2{font-size:clamp(1.8rem,3.6vw,2.8rem);letter-spacing:-.02em;margin:0 0 1.6rem}
 footer{padding:2rem 5vw;font-size:.85rem;color:#6c7a70;max-width:72rem;margin:0 auto}
@@ -202,9 +202,9 @@ ${PROV_CSS}
 </header>
 <div class="strip">Built by Praxis · copy structured as promise → proof → action · placeholder claims marked for replacement</div>
 <section class="why" id="how">
-  <div><p class="no">WHY NOW</p><h3>The moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
-  <div><p class="no">THE PROOF</p><h3>Show one real case</h3><p>A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.</p></div>
-  <div><p class="no">THE PRACTICE</p><h3>Opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>
+  <div><h3><em>Why now</em> — the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
+  <div><h3><em>The proof</em> — one real case</h3><p>A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.</p></div>
+  <div><h3><em>The practice</em> — opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>
 </section>
 <section class="final" id="join">
   <h2>Be first through the door.</h2>
@@ -241,8 +241,8 @@ export function analysisArtifact(mission) {
 :root{--ink:#182420;--paper:#f7f6f1;--acc:#b0472f;--good:#28463a;--rule:#ddd8cc}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 'Helvetica Neue',Arial,sans-serif}
 .wrap{max-width:60rem;margin:0 auto;padding:3.5rem 1.5rem 5rem}
-.kick{font-size:.75rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--acc)}
-h1{font-size:2rem;letter-spacing:-.015em;margin:.5rem 0 .3rem}
+.docline{font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);margin:.3rem 0 1.2rem;padding-bottom:.7rem;border-bottom:2px solid var(--ink)}
+h1{font-size:2rem;letter-spacing:-.015em;margin:0 0 .3rem}
 .read{font-size:1.05rem;color:#4d564f;max-width:60ch;margin:0 0 2.5rem}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
 .panel{border:1px solid var(--rule);background:#fff;padding:1.3rem 1.5rem}
@@ -255,8 +255,8 @@ svg{width:100%;height:auto;display:block}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 ${PROV_CSS}
 </style></head><body><div class="wrap">
-<p class="kick">Praxis analysis · ${esc(mission.serial)} · sample data, marked</p>
 <h1>${t}</h1>
+<p class="docline">Praxis analysis · ${esc(mission.serial)} · sample data, marked</p>
 <p class="read">The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong — the driver is mix shift, not performance. Everything below defends that paragraph.</p>
 <div class="grid">
   <div class="panel"><h2>The trend · 12 periods (sample)</h2>

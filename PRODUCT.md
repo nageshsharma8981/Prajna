@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-delegated: Vite + React 19 SPA with hand-written CSS design tokens (no UI framework), served by a zero-dependency Node HTTP backend with Server-Sent Events for live agent runs, JSON-file persistence. Chosen for full visual control, offline-friendly local dev (user's machine has local Node only, no Docker), and easy later deploy to Railway behind a custom domain. Port 3004 (3001–3003 taken by sibling apps).
+delegated: Vite + React 19 SPA with hand-written CSS design tokens (no UI framework), served by a zero-dependency Node HTTP backend with Server-Sent Events for live agent runs, JSON-file persistence. Chosen for full visual control, offline-friendly local dev (user's machine has local Node only, no Docker), and easy later deploy to Railway behind a custom domain. Port 3005 (3001–3004 taken by sibling apps and launch configs).
 
 ## Users
 

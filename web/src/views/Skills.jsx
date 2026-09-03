@@ -32,11 +32,11 @@ export default function Skills() {
         Skills are standing rules the desks run by — graded citations, honest charts, one idea
         per slide. Install one and every future ticket's plan is written under it.
       </p>
-      <section className="board section-gap fade-up">
+      <section className="board section-gap">
         <div className="board-title"><span className="brd-sm">On the desks</span><span className="count">{installed.length}</span></div>
         <div className="board-rows">{installed.map((sk) => <Row key={sk.id} sk={sk} />)}</div>
       </section>
-      <section className="board section-gap fade-up">
+      <section className="board section-gap">
         <div className="board-title"><span className="brd-sm">In the drawer</span><span className="count">{available.length}</span></div>
         <div className="board-rows">{available.map((sk) => <Row key={sk.id} sk={sk} />)}</div>
       </section>

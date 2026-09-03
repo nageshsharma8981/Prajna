@@ -96,8 +96,14 @@ export default function Floor() {
 
   const fill = async () => {
     setFilling(true);
-    await s.launch(ticket.id);
-    navigate(`/run/${ticket.id}`);
+    setError(null);
+    try {
+      await s.launch(ticket.id);
+      navigate(`/run/${ticket.id}`);
+    } catch (e) {
+      setError(`The order could not be filled: ${e.message}. Nothing was spent — try again.`);
+      setFilling(false);
+    }
   };
 
   const open = s.missions.filter((m) => m.status === 'LIVE' || m.status === 'OPEN');
@@ -162,7 +168,16 @@ export default function Floor() {
                       className={`model-chip${isLead ? ' lead' : isAdv ? ' adv' : ''}`}
                       onClick={() => toggleAdviser(m.id)}
                       onDoubleClick={() => makeLead(m.id)}
-                      title={m.role}
+                      onKeyDown={(e) => {
+                        if (e.key.toLowerCase() === 'l') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          makeLead(m.id);
+                        }
+                      }}
+                      aria-pressed={isLead || isAdv}
+                      aria-label={`${m.name} — ${isLead ? 'lead' : isAdv ? 'adviser' : 'not seated'}. Enter toggles adviser, L makes lead.`}
+                      title={`${m.role} · click to advise, double-click or press L to lead`}
                     >
                       <span className="sym">{m.symbol}</span>
                       <span className="nm">{m.name}</span>
@@ -173,6 +188,7 @@ export default function Floor() {
               </div>
               <span className="council-note">
                 {(1 + advisers.length)} seats · lead synthesizes, advisers challenge, dissent is recorded — never erased.
+                Keyboard: Enter seats an adviser, L makes it lead.
               </span>
             </div>
           </div>
@@ -189,8 +205,11 @@ export default function Floor() {
       )}
 
       {ticket && <Ticket mission={ticket} onFill={fill} onVoid={() => setTicket(null)} filling={filling} />}
+      {ticket && error && (
+        <p role="alert" style={{ color: 'var(--rose)', fontSize: '0.85rem', margin: '0.8rem 0 0' }}>{error}</p>
+      )}
 
-      <section className="board section-gap fade-up" aria-label="Positions board">
+      <section className="board section-gap" aria-label="Positions board">
         <div className="board-title">
           <span className="brd-sm">Positions board</span>
           <span className="count">{open.length}</span>
@@ -213,7 +232,7 @@ export default function Floor() {
         </div>
       </section>
 
-      <section className="board section-gap fade-up" aria-label="Recent fills">
+      <section className="board section-gap" aria-label="Recent fills">
         <div className="board-title">
           <span className="brd-sm">Recent fills</span>
           <span className="count">{fills.length}</span>

@@ -16,7 +16,7 @@ export default function Ticker() {
     `LEDGER ${s.artifacts.length} ARTIFACTS`,
     'CONTRACT BEFORE ACTION · WORK IN THE OPEN · ARTIFACTS NOT ANSWERS',
   ];
-  const strip = items.join('      •      ');
+  const strip = items.join('      •      ') + '      •      ';
 
   return (
     <div className="ticker" aria-hidden="true">

@@ -34,14 +34,14 @@ export default function Instruments() {
         A mission is only as good as its evidence. Seat a connector and its data becomes
         tradable — cited in briefs, charted in analyses, always with provenance attached.
       </p>
-      <section className="board section-gap fade-up">
+      <section className="board section-gap">
         <div className="board-title"><span className="brd-sm">Seated</span><span className="count">{seated.length}</span></div>
         <div className="board-rows">
           {seated.length === 0 && <div className="board-empty">No instruments seated yet.</div>}
           {seated.map((c) => <Row key={c.id} c={c} />)}
         </div>
       </section>
-      <section className="board section-gap fade-up">
+      <section className="board section-gap">
         <div className="board-title"><span className="brd-sm">Seats open</span><span className="count">{open.length}</span></div>
         <div className="board-rows">{open.map((c) => <Row key={c.id} c={c} />)}</div>
       </section>

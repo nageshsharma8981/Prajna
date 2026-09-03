@@ -124,10 +124,20 @@ function Shell() {
   }, [theme]);
 
   useEffect(() => {
+    const NAV_KEYS = { f: '/', l: '/ledger', s: '/skills', i: '/instruments' };
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPalette((v) => !v);
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+      const to = NAV_KEYS[e.key.toLowerCase()];
+      if (to) {
+        e.preventDefault();
+        navigate(to);
       }
     };
     addEventListener('keydown', onKey);

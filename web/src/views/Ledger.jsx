@@ -15,7 +15,7 @@ export default function Ledger() {
         Every mission ends here or it didn't happen. Artifacts are first-class objects —
         versioned, exportable, and stamped with exactly how they were made and what they cost.
       </p>
-      <section className="board section-gap fade-up" aria-label="Artifacts">
+      <section className="board section-gap" aria-label="Artifacts">
         <div className="board-title">
           <span className="brd-sm">Filled artifacts</span>
           <span className="count">{s.artifacts.length}</span>
