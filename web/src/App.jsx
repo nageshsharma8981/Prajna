@@ -39,7 +39,7 @@ function Rail({ open, onClose, theme, setTheme }) {
       {open && <div className="rail-veil" onClick={onClose} />}
       <nav className={`rail${open ? ' open' : ''}`} aria-label="Primary">
         <div className="rail-logo">
-          <span className="mark">PRAXIS</span>
+          <span className="mark">PRAJÑĀ</span>
           <span className="sub">Outcome Exchange</span>
         </div>
         <div className="rail-nav">
@@ -82,7 +82,7 @@ function Masthead({ onMenu, onPalette }) {
           <MenuIcon />
         </button>
         <div className="title">
-          <SplitFlap text="PRAXIS" size="1.05rem" />
+          <SplitFlap text="PRAJÑĀ" size="1.05rem" />
           <span className="hall-line">The outcome exchange · every run in the open</span>
         </div>
         <div className="mast-right">
@@ -110,7 +110,7 @@ function Router() {
 function Shell() {
   const [theme, setTheme] = useState(() => {
     const q = new URLSearchParams(location.search).get('theme');
-    return q || localStorage.getItem('praxis-theme') || 'night';
+    return q || localStorage.getItem('prajna-theme') || 'night';
   });
   const [railOpen, setRailOpen] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -120,7 +120,7 @@ function Shell() {
     document.documentElement.dataset.theme = theme === 'day' ? 'day' : '';
     if (theme === 'day') document.documentElement.setAttribute('data-theme', 'day');
     else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('praxis-theme', theme);
+    localStorage.setItem('prajna-theme', theme);
   }, [theme]);
 
   useEffect(() => {

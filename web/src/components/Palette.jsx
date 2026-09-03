@@ -38,7 +38,7 @@ export default function Palette({ onClose }) {
     navigate(item.to.split('?')[0] === '/' && item.to.includes('desk=') ? '/' : item.to);
     if (item.to.includes('desk=')) {
       const desk = item.to.split('desk=')[1];
-      dispatchEvent(new CustomEvent('praxis:desk', { detail: desk }));
+      dispatchEvent(new CustomEvent('prajna:desk', { detail: desk }));
     }
   };
 

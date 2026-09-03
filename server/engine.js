@@ -17,9 +17,9 @@ import { GENERATORS, subjectOf } from './artifacts.js';
 // duplicate PX serials.
 let counter = Math.max(
   4100 + Math.floor(Math.random() * 400),
-  ...store.missions().map((m) => Number((m.serial || '').replace('PX-', '')) + 1 || 0)
+  ...store.missions().map((m) => Number((m.serial || '').replace('PJ-', '')) + 1 || 0)
 );
-const nextSerial = () => `PX-${counter++}`;
+const nextSerial = () => `PJ-${counter++}`;
 const id = () => Math.random().toString(36).slice(2, 10);
 const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 16);
 
@@ -274,7 +274,7 @@ function estimateSoFar(m) {
 
 function pushEvent(m, record, notify) {
   record.seq = ++m.eventSeq;
-  record.schema = 'praxis.event.v1';
+  record.schema = 'prajna.event.v1';
   record.at = Date.now();
   m.events.push(record);
   store.flushMissions();
@@ -455,7 +455,7 @@ export function rehydrate(notify) {
     if (m.status === 'LIVE') scheduleNext(m.id);
     resumed++;
   }
-  if (resumed) console.log(`praxis: rehydrated ${resumed} in-flight mission(s)`);
+  if (resumed) console.log(`prajna: rehydrated ${resumed} in-flight mission(s)`);
 }
 
 /* --------------------------------- CONTROLS ------------------------------- */

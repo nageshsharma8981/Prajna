@@ -18,7 +18,7 @@ export function subjectOf(goal) {
 // Honest by construction — mode says "scripted" until real model calls land.
 function provenanceObject(mission) {
   return {
-    schema: 'praxis.provenance.v1',
+    schema: 'prajna.provenance.v1',
     mode: 'scripted',
     serial: mission.serial,
     goal: mission.goal,
@@ -64,7 +64,7 @@ function provenance(mission) {
     : '<li>none required</li>';
   return `
   <footer class="prov">
-    <div class="prov-row"><span>Produced by</span><strong>PRAXIS · ${esc(mission.serial)} · ${prov.mode} run${prov.partial ? ' · PARTIAL' : ''}</strong></div>
+    <div class="prov-row"><span>Produced by</span><strong>PRAJÑĀ · ${esc(mission.serial)} · ${prov.mode} run${prov.partial ? ' · PARTIAL' : ''}</strong></div>
     <div class="prov-row"><span>Desk</span><strong>${esc(mission.deskName)}</strong></div>
     <div class="prov-row"><span>Council</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
     <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
@@ -74,7 +74,7 @@ function provenance(mission) {
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
     <p class="note">Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout. The machine-readable record below is the audit object.</p></details>
   </footer>
-  <script type="application/json" id="praxis-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
+  <script type="application/json" id="prajna-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
 }
 
 const PROV_CSS = `
@@ -141,7 +141,7 @@ td{border-bottom:1px solid var(--rule);padding:.55rem .6rem .55rem 0;vertical-al
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
-<p class="docline">Praxis decision brief · ${esc(mission.serial)}</p>
+<p class="docline">Prajñā decision brief · ${esc(mission.serial)}</p>
 <p class="stand">A graded-evidence brief: every claim carries its source strength, and the strongest case against the recommendation is included, not buried.</p>
 
 <div class="verdict"><b>The verdict</b>
@@ -194,7 +194,7 @@ export function deckArtifact(mission) {
     { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.' },
   ];
   const slideHtml = slides.map((sl, i) => {
-    if (sl.k === 'title') return `<section class="slide title"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Praxis deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p></section>`;
+    if (sl.k === 'title') return `<section class="slide title"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p></section>`;
     if (sl.k === 'big') return `<section class="slide big"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
     if (sl.k === 'end') return `<section class="slide end"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
     return `<section class="slide"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p></section>`;
@@ -279,7 +279,7 @@ ${PROV_CSS}
   </div>
   <div class="vis"><span>Product still — replace with real capture</span></div>
 </header>
-<div class="strip">Built by Praxis · copy structured as promise → proof → action · placeholder claims marked for replacement</div>
+<div class="strip">Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement</div>
 <section class="why" id="how">
   <div><h3><em>Why now</em> — the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
   <div><h3><em>The proof</em> — one real case</h3><p>A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.</p></div>
@@ -335,7 +335,7 @@ svg{width:100%;height:auto;display:block}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
-<p class="docline">Praxis analysis · ${esc(mission.serial)} · sample data, marked</p>
+<p class="docline">Prajñā analysis · ${esc(mission.serial)} · sample data, marked</p>
 <p class="read">The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong — the driver is mix shift, not performance. Everything below defends that paragraph.</p>
 <div class="grid">
   <div class="panel"><h2>The trend · 12 periods (sample)</h2>

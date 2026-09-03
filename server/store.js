@@ -1,10 +1,10 @@
-// JSON-file persistence for the Praxis workspace. Single-process, write-through.
+// JSON-file persistence for the Prajñā workspace. Single-process, write-through.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = process.env.PRAXIS_DATA_DIR || path.join(__dirname, '..', 'data');
+export const DATA_DIR = process.env.PRAJNA_DATA_DIR || path.join(__dirname, '..', 'data');
 const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
 
 fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
@@ -18,7 +18,7 @@ function readJson(file, fallback) {
     // evidence aside and start from the fallback.
     if (fs.existsSync(full)) {
       try { fs.copyFileSync(full, `${full}.corrupt-${Date.now()}`); } catch {}
-      console.error(`praxis: ${file} unreadable (${e.message}); backed up and reset`);
+      console.error(`prajna: ${file} unreadable (${e.message}); backed up and reset`);
     }
     return fallback;
   }

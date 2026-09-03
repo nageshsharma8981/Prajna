@@ -16,11 +16,11 @@ delegated: Vite + React 19 SPA with hand-written CSS design tokens (no UI framew
 
 ## Product Purpose
 
-Praxis is an agent workspace where every request becomes a **mission** with a visible contract: the agent states the deliverable, the plan, and the estimated cost *before* running, then executes in the open — every step, tool call, and model deliberation streamed live — and ends with a tangible, versioned artifact. Success: a user watches a run once and never wants to go back to a black-box agent.
+Prajñā is an agent workspace where every request becomes a **mission** with a visible contract: the agent states the deliverable, the plan, and the estimated cost *before* running, then executes in the open — every step, tool call, and model deliberation streamed live — and ends with a tangible, versioned artifact. Success: a user watches a run once and never wants to go back to a black-box agent.
 
 ## Positioning
 
-"Glass-box agency." Competitors (Zenith et al.) hide the work behind a spinner and surface only the answer. Praxis's uncopyable claim is the **Mission Contract → Live Flight Deck → Artifact** loop: (1) an upfront contract (deliverable, plan, cost ceiling) the user approves, (2) a live flight deck showing plan progress, tool calls, model-council deliberation and running cost in real time, (3) an artifact ledger where every deliverable is a first-class, versioned object — not a chat message. The council is a real debate with visible dissent, not a dropdown of logos.
+"Glass-box agency." Competitors (Zenith et al.) hide the work behind a spinner and surface only the answer. Prajñā's uncopyable claim is the **Mission Contract → Live Flight Deck → Artifact** loop: (1) an upfront contract (deliverable, plan, cost ceiling) the user approves, (2) a live flight deck showing plan progress, tool calls, model-council deliberation and running cost in real time, (3) an artifact ledger where every deliverable is a first-class, versioned object — not a chat message. The council is a real debate with visible dissent, not a dropdown of logos.
 
 ## Operating Context
 
@@ -39,7 +39,7 @@ Desktop-first web app used in focused work sessions (research, deck building, si
 
 ## Brand Commitments
 
-Name: **Praxis** (from the Greek — theory put into action). Voice: calm, precise, a little audacious; never hype. The brief binds: "best in class UI and UX", "create distinction and UVP" — a distinctive committed visual world, not a beige clone of the incumbent.
+Name: **Prajñā** (from the Greek — theory put into action). Voice: calm, precise, a little audacious; never hype. The brief binds: "best in class UI and UX", "create distinction and UVP" — a distinctive committed visual world, not a beige clone of the incumbent.
 
 ## Evidence on Hand
 

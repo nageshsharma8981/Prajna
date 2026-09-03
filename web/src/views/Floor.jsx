@@ -58,8 +58,8 @@ export default function Floor() {
       setDeskId(e.detail);
       inputRef.current?.focus();
     };
-    addEventListener('praxis:desk', onDesk);
-    return () => removeEventListener('praxis:desk', onDesk);
+    addEventListener('prajna:desk', onDesk);
+    return () => removeEventListener('prajna:desk', onDesk);
   }, []);
 
   const desk = useMemo(() => (s.desks || []).find((d) => d.id === deskId), [s.desks, deskId]);

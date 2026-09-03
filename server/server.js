@@ -1,4 +1,4 @@
-// Praxis — zero-dependency Node server: API + SSE + static SPA.
+// Prajñā — zero-dependency Node server: API + SSE + static SPA.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -247,9 +247,9 @@ const server = http.createServer(async (req, res) => {
     res.end(data);
   } catch {
     res.writeHead(503, { 'content-type': 'text/plain' });
-    res.end('Praxis web bundle not built yet. Run: cd web && npx vite build');
+    res.end('Prajñā web bundle not built yet. Run: cd web && npx vite build');
   }
 });
 
 rehydrate(notify);
-server.listen(PORT, () => console.log(`Praxis listening on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

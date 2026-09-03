@@ -1,4 +1,4 @@
-# Praxis — The Outcome Exchange
+# Prajñā — The Outcome Exchange
 
 An agent workspace where every request becomes a **mission with a visible contract**:
 the agent states the deliverable, the plan, and the price *before* running, executes
@@ -19,7 +19,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 
 ## v0.2 — the contract made mechanical
 
-- **Event ledger.** Every run event carries a monotonic `seq` (`praxis.event.v1`);
+- **Event ledger.** Every run event carries a monotonic `seq` (`prajna.event.v1`);
   SSE honors `Last-Event-ID`, and `GET /api/missions/:id/events?after=N` replays
   the ledger. Live view, reconnect, and history are one code path.
 - **Settlement.** The ceiling is a reservation: every run ends with
@@ -39,7 +39,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 - **Citation integrity.** Brief references render *only* from sources actually
   cited; an unreferenced claim fails the artifact build.
 - **Machine-readable provenance.** Every artifact embeds
-  `praxis.provenance.v1` — contract, settlement, gate table, review, decisions,
+  `prajna.provenance.v1` — contract, settlement, gate table, review, decisions,
   honest `mode: "scripted"` label — refreshed at settlement.
 
 ## The world
@@ -78,7 +78,7 @@ git reset --hard v0.1.0      # roll main back to it (then: git push --force-with
 Or run the old version side-by-side without touching main:
 
 ```bash
-git worktree add ../praxis-v0.1 v0.1.0
+git worktree add ../prajna-v0.1 v0.1.0
 ```
 
 Data note: `data/` is gitignored runtime state; deleting it reseeds the demo workspace.
@@ -87,4 +87,4 @@ Data note: `data/` is gitignored runtime state; deleting it reseeds the demo wor
 
 Single process, port from `PORT` (default 3005), no external services. Point any
 Node host (Railway etc.) at `node server/server.js` after building `web/dist`.
-Set `PRAXIS_DATA_DIR` for persistent storage.
+Set `PRAJNA_DATA_DIR` for persistent storage.

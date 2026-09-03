@@ -21,7 +21,7 @@ OFL permits commercial use and web embedding; fonts are not sold standalone.
 
 ## Intelligent-Internet code
 
-**None.** Praxis is a clean-room build: it contains no code from any
+**None.** Prajñā is a clean-room build: it contains no code from any
 Intelligent-Internet repository (see PROVENANCE.md). If code is ever copied
 from their Apache-2.0/MIT repos, add an entry here with: upstream repo, commit
 hash, files taken, date, and the full upstream license text; never strip

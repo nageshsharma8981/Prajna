@@ -1,5 +1,5 @@
 ---
-name: Praxis
+name: Prajñā
 description: The outcome exchange — agentic work rendered as a trading floor of split-flap boards, LED telemetry, and paper order tickets.
 colors:
   ground: "#0c0f0e"
@@ -108,13 +108,13 @@ components:
     padding: "0.6rem 0.8rem 0.7rem"
 ---
 
-# Design System: Praxis
+# Design System: Prajñā
 
 ## Overview
 
 **Creative North Star: "The Outcome Exchange"**
 
-Praxis renders agentic work as a mid-century exchange floor after dark: a hall of near-black greens where Solari split-flap boards spell the signage in bone lettering, amber LED dot-matrix panels carry every live number, and the only bright objects in the room are paper — color-banded order tickets that a user stamps before a single credit is spent. The interface is built from three materials with strict jobs: **the board** (dark tiles, expanded uppercase Archivo) does signage, **the LED** (Doto glowing amber out of recessed black wells) does live telemetry, and **the ticket** (warm paper, mono serials, perforated edge, rubber stamp) does contracts. Nothing decorates; every surface is an instrument of the floor.
+Prajñā renders agentic work as a mid-century exchange floor after dark: a hall of near-black greens where Solari split-flap boards spell the signage in bone lettering, amber LED dot-matrix panels carry every live number, and the only bright objects in the room are paper — color-banded order tickets that a user stamps before a single credit is spent. The interface is built from three materials with strict jobs: **the board** (dark tiles, expanded uppercase Archivo) does signage, **the LED** (Doto glowing amber out of recessed black wells) does live telemetry, and **the ticket** (warm paper, mono serials, perforated edge, rubber stamp) does contracts. Nothing decorates; every surface is an instrument of the floor.
 
 The world deliberately refuses the category default — chat window, spinner, cream-paper concierge calm. Trust is staged physically instead: contracts on paper before the run, machine numbers glowing during it, a versioned artifact in the ledger after. Two themes exist and both are first-class — the night hall (default) and the day desk, which relights the room in ticket-paper tones while the boards and LED wells stay dark, exactly as a real departure board would at noon.
 
@@ -242,7 +242,7 @@ The live run log prints like a machine: mono 0.8rem lines (dim timestamp · ambe
 One easing token (`--ease: cubic-bezier(0.16, 1, 0.3, 1)`) drives everything. Durations are mechanical: 0.09s flap flicker (brightness strobe while spinning), 0.12s button press, 0.15s hovers, 0.16–0.2s palette entrance, 0.32s status flip, 0.35s tape print, 0.38s stamp thunk, 0.5s page fade-up, 38s ticker loop. The SplitFlap component staggers cells left-to-right through a limited charset before settling. `prefers-reduced-motion` is honored everywhere: a global animation/transition clamp, ticker parked, flap spin stopped, and the SplitFlap settles instantly via a matchMedia check.
 
 ### The Second World (artifact documents)
-Generated artifacts (decision brief, deck, landing page, analysis) are standalone HTML documents with their **own** editorial designs — Georgia serif on warm paper with graded-evidence chips for briefs; big-type Helvetica slides for decks; a green-accented product page for sites; paneled chart sheets for analyses. They deliberately do not use Praxis tokens, faces, or chrome; the hall shows them inside a white full-bleed frame under a provenance bar. Their one shared element is the provenance footer (serial, desk, council, cost, plan).
+Generated artifacts (decision brief, deck, landing page, analysis) are standalone HTML documents with their **own** editorial designs — Georgia serif on warm paper with graded-evidence chips for briefs; big-type Helvetica slides for decks; a green-accented product page for sites; paneled chart sheets for analyses. They deliberately do not use Prajñā tokens, faces, or chrome; the hall shows them inside a white full-bleed frame under a provenance bar. Their one shared element is the provenance footer (serial, desk, council, cost, plan).
 
 ## Do's and Don'ts
 
