@@ -127,7 +127,7 @@ Data note: `data/` is gitignored runtime state; deleting it reseeds the demo wor
 
 ## Deploy (Railway)
 
-Live at https://prajna-production.up.railway.app — Railway project **Prajna**,
+Live at **https://www.prajñā.com** (punycode `www.xn--praj-jqa0h.com`; the ASCII prajna.com is not ours) and https://prajna-production.up.railway.app — Railway project **Prajna**,
 service `prajna`, a persistent volume mounted at `/data` (`PRAJNA_DATA_DIR=/data`),
 Nixpacks build via `railway.json` (`npm run build` → `npm start`, health check on
 `/api/bootstrap`). Deploys are CLI-driven from this directory:
