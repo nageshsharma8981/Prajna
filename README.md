@@ -718,3 +718,11 @@ directive, or a plain-language request without a key); off: it only talks
 and says why. Media Generation off: the media studio refuses to generate and
 says so. Browser: no headless browser exists inside the house; the switch
 records intent and the card says so.
+
+## v0.56: The deck carries the dissent (2026-09-04)
+
+When the panel records a dissent, the closing slide carries it, named and
+quoted, and a new deck assertion (VAL-DISSENT-CARRIED) fails the gate if a
+recorded dissent is missing from the deliverable. The dissent is on the
+mission record and in provenance, so the brief and the deck can no longer
+quietly drop what an adviser refused to accept.

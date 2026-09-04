@@ -729,6 +729,7 @@ async function applyEvent(m, ev, notify, runner) {
   }
 
   if (ev.type === 'council.gate') m.gate = { rows: ev.rows, cleared: ev.cleared };
+  if (ev.dissent && ev.dissent.model) m.dissent = { model: ev.dissent.model, text: ev.dissent.text };
 
   if (ev.type === 'artifact.ready') {
     // Live advisers read the lead's draft before it becomes the artifact of

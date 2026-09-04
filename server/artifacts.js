@@ -27,6 +27,7 @@ function provenanceObject(mission) {
     data: mission.data ? { name: mission.data.name, rows: mission.data.rows, columns: mission.data.columns, series: mission.data.series?.column || null, segments: mission.data.segments?.column || null } : null,
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
     deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, error: d.error || null })),
+    dissent: mission.dissent || null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,
     seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),
@@ -251,7 +252,7 @@ export function deckArtifact(mission) {
   const slideHtml = slides.map((sl, i) => {
     if (sl.k === 'title') return `<section class="slide title"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p></section>`;
     if (sl.k === 'big') return `<section class="slide big"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
-    if (sl.k === 'end') return `<section class="slide end"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
+    if (sl.k === 'end') return `<section class="slide end"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
     return `<section class="slide"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p></section>`;
   }).join('\n');
 
@@ -271,6 +272,7 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .sub{font-size:clamp(1rem,1.6vw,1.25rem);color:#54524a;max-width:52ch;margin:0}
 .big{background:var(--acc)}.big h2,.big .sub{color:#f8ede8}.big .sub{color:#eed3c9}
 .end{background:var(--ink)}.end h2{color:var(--paper)}.end .sub{color:#a5a294}
+.deck-dissent{margin:2rem 0 0;max-width:60ch;font-size:.9rem;color:#d7c9a5;border-left:3px solid var(--acc);padding-left:.9rem}.deck-dissent b{color:var(--paper)}
 .pg{position:absolute;bottom:2.2vh;right:3vw;font-size:.75rem;letter-spacing:.1em;color:#98948a;margin:0}
 .hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
 ${PROV_CSS}
