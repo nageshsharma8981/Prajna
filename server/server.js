@@ -60,13 +60,44 @@ async function houseCheck() {
   add('consent', !!c && c.version === LEGAL.version, c ? `house rules ${c.version} accepted ${new Date(c.acceptedAt).toISOString().slice(0, 16)} UTC` : 'house rules not yet accepted');
   for (const [prov, tok] of Object.entries(store.state.tokens)) {
     try { const who = await OAUTH_PROVIDERS[prov].identity(tok.token); add(`token-${prov}`, true, `${prov}: token answers as ${who}`); }
-    catch (e) { add(`token-${prov}`, false, `${prov}: token refused (${String(e.message || e).slice(0, 80)}), reconnect on the Connectors page`); }
+    catch (e) { add(`token-${prov}`, false, `${prov}: token refused (${String(e.message || e).slice(0, 80)}); only a person can reconnect it, on the Connectors page`); }
   }
   const last = ms.flatMap((m) => (m.deliveries || []).filter((d) => d.ok && d.link && !d.linkRevokedAt)).sort((a, b) => b.at - a.at)[0];
   if (last) { try { const r = await fetch(last.link); add('last-delivery-link', r.ok, `${last.link} → ${r.status}`); } catch (e) { add('last-delivery-link', false, `${last.link} unreachable (${e.message})`); } }
   const result = { at: Date.now(), version: VERSION, ok: rows.filter((r) => r.ok).length, total: rows.length, rows };
   ws().lastHouseCheck = { at: result.at, ok: result.ok, total: result.total, failed: rows.filter((r) => !r.ok).map((r) => ({ id: r.id, detail: r.detail })) }; flushWs();
   return result;
+}
+// The repair: what the house can put right by itself. Each action is
+// named in the result and the check runs again afterwards so the owner
+// sees the house as it now stands, not as it was.
+async function houseRepair() {
+  const actions = [];
+  const ms = store.missions();
+  for (const m of ms.filter((x) => x.eventsArchived && !store.tape(x.id))) {
+    if ((m.events || []).length) { m.eventsArchived = false; store.archiveMission(m); actions.push({ id: 'tapes', ok: true, detail: `${m.serial}: tape re-archived from ${m.events.length} event(s) still in the ledger` }); }
+    else actions.push({ id: 'tapes', ok: false, detail: `${m.serial}: tape lost and no events remain to rebuild it; the record stays, the play-by-play is gone` });
+  }
+  for (const a of store.artifacts().filter((x) => !store.artifactHtml(x.id))) {
+    const m = store.mission(a.missionId);
+    try {
+      if (!m || !GENERATORS[m.desk]) throw new Error('mission or desk generator missing');
+      store.refreshArtifact(a.id, {}, GENERATORS[m.desk](store.missionFull(m.id)).html);
+      actions.push({ id: 'artifacts', ok: true, detail: `${a.serial}: file regenerated from the mission record` });
+    } catch (e) { actions.push({ id: 'artifacts', ok: false, detail: `${a.serial}: could not regenerate (${e.message})` }); }
+  }
+  const inflight = ms.filter((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
+  const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
+  const w = store.workspace();
+  const drift = Math.round(((w.reserved || 0) - expected) * 10) / 10;
+  if (Math.abs(drift) >= 0.2) {
+    w.reserved = expected; w.credits = Math.round((w.credits + drift) * 10) / 10; store.flushWorkspace();
+    ledger('reconcile', drift, `Reserve reconciled to the in-flight tickets: ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr moved back into reserve`}`);
+    actions.push({ id: 'reserve', ok: true, detail: `reserve set to ${expected} cr, ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr taken from balance`}, ledger line written` });
+  }
+  const c = ws().consent;
+  if (!c || c.version !== LEGAL.version) actions.push({ id: 'consent', ok: false, detail: 'only a person can accept the house rules; the acceptance screen opens on the next load' });
+  return { actions, check: await houseCheck() };
 }
 // The house checks itself a minute after boot and once a day after that;
 // failures go to the log, the digest and the Home page.
@@ -305,6 +336,7 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseRepair()); }
   if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });

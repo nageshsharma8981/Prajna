@@ -823,3 +823,13 @@ The house check now runs a minute after boot and once a day after that,
 without anyone pressing Run. A failing row is logged, named in the daily
 digest email, and shown as a notice at the top of Home with a link to the
 detail under Settings. The bootstrap payload carries the last result.
+
+## v0.68: The house repairs what it can (2026-09-04)
+
+Settings → House check → Repair. A missing artifact file is regenerated
+from the mission record, a lost tape is re-archived when its events are
+still in the ledger, and a drifted reserve is reconciled to the in-flight
+tickets with a ledger line saying what moved. What only a person can fix,
+the house rules or a refused token, is named with where to do it. The
+check runs again afterwards so the result shows the house as it now
+stands. `POST /api/housecheck/repair`.
