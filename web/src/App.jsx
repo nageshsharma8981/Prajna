@@ -16,10 +16,11 @@ import Floor from './views/Floor.jsx';
 import Run from './views/Run.jsx';
 import Ledger from './views/Ledger.jsx';
 import ArtifactView from './views/ArtifactView.jsx';
+import Compare from './views/Compare.jsx';
 import Skills from './views/Skills.jsx';
 import Keys from './views/Keys.jsx';
 
-const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact']];
+const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions']];
 
 function Sidebar({ open, onClose, menuRef }) {
   const s = useStore();
@@ -114,6 +115,7 @@ function Router() {
   if (path.startsWith('/missions')) return <Floor />;
   if (path.startsWith('/run/')) return <Run id={path.split('/')[2]} />;
   if (path.startsWith('/artifact/')) return <ArtifactView id={path.split('/')[2]} />;
+  if (path.startsWith('/compare/')) return <Compare leftId={path.split('/')[2]} rightId={path.split('/')[3]} />;
   if (path.startsWith('/artifacts') || path.startsWith('/ledger')) return <Ledger />;
   return <Home />;
 }
@@ -173,7 +175,7 @@ function Shell() {
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, []);
-  const full = path.startsWith('/artifact/');
+  const full = path.startsWith('/artifact/') || path.startsWith('/compare/');
   if (s.locked) return <Gate />;
   return (
     <div className="shell">

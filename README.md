@@ -434,3 +434,11 @@ Promo cards stack below 700px, the greeting, chat thread, run card and plan
 editor tighten for small screens, and no page scrolls sideways on a phone.
 `/` focuses the composer from anywhere on a page that has one; `⌘K` still
 opens the jump palette and `Esc` closes overlays.
+
+## v0.25 — Compare versions (2026-09-04)
+
+`/compare/<older>/<newer>` puts two versions of a delivery side by side with
+the owner notes that drove the newer one and a ledger comparison — mode,
+assertions sealed, validation rounds, patches, accepted risks, sources,
+settled cost, delivery time — with differences highlighted. Every superseding
+artifact has a "Compare with v(n-1)" button in its bar.

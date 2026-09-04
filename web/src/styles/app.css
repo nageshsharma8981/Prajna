@@ -1368,3 +1368,17 @@ abbr.cite { cursor: help; }
   .run-card-foot { flex-direction: column; align-items: stretch; }
   .pe-row { grid-template-columns: 1.2rem 1fr; } .pe-row select, .pe-row .pe-btns { grid-column: 2; }
 }
+
+.compare-strip { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem; padding: 0.8rem 1.2rem; background: var(--hall); border-bottom: 1px solid var(--line); }
+.compare-notes .k, .compare-table th { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
+.compare-notes ul { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.86rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.compare-notes p { margin: 0.4rem 0 0; font-size: 0.84rem; color: var(--bone-dim); }
+.compare-table { border-collapse: collapse; font-size: 0.8rem; width: 100%; }
+.compare-table th, .compare-table td { text-align: left; padding: 0.25rem 0.6rem 0.25rem 0; border-bottom: 1px solid var(--line); }
+.compare-table td:first-child { color: var(--bone-dim); }
+.compare-table tr.diff td:not(:first-child) { color: var(--led); font-weight: 700; }
+.compare-frames { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; padding: 0.6rem; flex: 1; min-height: 0; }
+.compare-frames figure { margin: 0; display: flex; flex-direction: column; min-height: 0; }
+.compare-frames figcaption { font-family: var(--mono); font-size: 0.68rem; color: var(--bone-faint); padding: 0.2rem 0.4rem; }
+.compare-frames .artifact-frame { flex: 1; min-height: 60vh; }
+@media (max-width: 900px) { .compare-strip, .compare-frames { grid-template-columns: 1fr; } }
