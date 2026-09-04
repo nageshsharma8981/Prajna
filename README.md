@@ -1125,3 +1125,14 @@ speaks before any source speaks twice, and if fewer than three real
 sentences can be quoted the house declines and falls back to the
 labelled sample. The artifact's provenance says "composed run" and the
 gate is cleared honestly, not waived.
+
+## v0.94: The analysis counts your rows (2026-09-04)
+
+The same honesty at the analysis desk. Attach a file and run without a
+key, and the read is now arithmetic over your rows rather than sample
+prose: how many rows and columns, what the series runs from and to and
+by what percentage, the highest and lowest points with their labels, the
+mean and the sum, and the largest and smallest segment with its share.
+The last line says plainly that no model weighed any of it. The tape and
+the provenance name what the house actually did, counting rows here and
+quoting sources on a brief.

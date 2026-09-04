@@ -725,8 +725,8 @@ async function applyEvent(m, ev, notify, runner) {
       // and the absence of judgement stated in the lede.
       const composed = composeFor(m);
       if (composed) {
-        m.authored = { live: false, composed: true, model: 'the house, quoting the sources', chars: JSON.stringify(composed).length, at: Date.now(), content: composed };
-        pushEvent(m, { type: 'log', stepId: step.id, label: 'compose', live: false, detail: `No model is loaded, so the house composed the brief from the ${composed.composedFrom} real source(s) on the table: every claim is a quotation with its address, nothing invented, nothing graded.` }, notify);
+        m.authored = { live: false, composed: true, model: composed.via, chars: JSON.stringify(composed.content).length, at: Date.now(), content: composed.content };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'compose', live: false, detail: composed.log }, notify);
         return 'ok';
       }
     }

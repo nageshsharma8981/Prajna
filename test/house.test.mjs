@@ -417,3 +417,31 @@ test('without a model, a brief is composed from the real sources, quoted and cit
   }
   assert.match(m.authored.content.stand, /forms no judgement/);
 });
+
+test('without a model, an analysis reads the numbers you attached, not a sample series', async () => {
+  const csv = 'quarter,subscribers,city\nQ1,410,Mysore\nQ2,455,Mysore\nQ3,520,Bengaluru\nQ4,610,Bengaluru\nQ5,640,Mysore\nQ6,700,Bengaluru';
+  const c = await post('/api/chats', { title: 'Analysis test' });
+  const r = await post(`/api/chats/${c.j.id}/messages`, { text: 'How are subscribers trending across the quarters?', mode: 'analysis', attachments: [{ name: 'subs.csv', text: csv }] });
+  assert.equal(r.status, 200, JSON.stringify(r.j).slice(0, 200));
+  const id = r.j.mission.id;
+  const started = Date.now(); let m;
+  while (Date.now() - started < 120000) {
+    m = (await api(`/api/missions/${id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+    await new Promise((x) => setTimeout(x, 400));
+  }
+  assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+  assert.equal(m.authored?.composed, true, JSON.stringify(m.authored));
+  const read = m.authored.content.read;
+  // Every figure must be arithmetic over the attached rows, not invented.
+  assert.match(read, /subs\.csv holds 6 rows across 3 columns/);
+  assert.match(read, /runs from 410 at Q1 to 700 at Q6, a change of \+70\.7%/);
+  assert.match(read, /highest point is 700 at Q6 and the lowest 410 at Q1/);
+  assert.match(read, /mean across 6 points is 555\.83 and they sum to 3,335/);
+  assert.match(m.authored.content.segment, /Bengaluru is largest at 1,830, 54\.9%/);
+  const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
+  assert.match(html, /Composed run: no model was loaded/);
+  assert.ok(html.includes('subs.csv'), 'the artifact names the file it read');
+  assert.ok(!/the trend is real, it is concentrated in a single segment/.test(html), 'no scripted sample read');
+});
