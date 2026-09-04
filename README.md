@@ -1454,3 +1454,15 @@ the desk as a whole rather than treating three runs as proof, and where
 there is no evidence at all the table stands. The ticket says which it
 used and why, and a wider ceiling costs nothing, because what a run does
 not use is released.
+
+## v1.19: The part that acts outside the house is watched too (2026-09-05)
+
+Delivering to a connected app is the only thing the house does that
+leaves it, and it was the last subsystem with no test. Now a run
+delivers to a Slack of the test's own and the whole path is checked:
+the plan carries a delivery step, nothing leaves without an approval on
+the record, the message really arrives in the chosen channel, it carries
+a public link, the house verifies that link before calling the delivery
+made, the delivery is written on the record with where it went, and
+revoking the link kills it. It passed first time, which is the outcome
+worth having and not one worth assuming.

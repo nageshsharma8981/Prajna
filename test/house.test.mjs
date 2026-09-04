@@ -1226,3 +1226,69 @@ test('the ceiling is set by what this work has really cost, not by the table alo
   const filled = (await api('/api/bootstrap')).j.missions.find((m) => m.status === 'FILLED' && m.settlement);
   if (filled) assert.equal(Math.round((filled.settlement.settled + filled.settlement.released) * 10) / 10, Math.round(filled.settlement.reserved * 10) / 10);
 });
+
+test('a delivery reaches a connected app, behind approval, with a link the house checks', async () => {
+  // A Slack of our own: it lists a channel, accepts a post, and remembers it.
+  const posted = [];
+  const slack = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.url.startsWith('/api/conversations.list')) return res.end(JSON.stringify({ ok: true, channels: [{ id: 'C-HOUSE', name: 'deliveries', is_member: true }] }));
+      if (req.url.startsWith('/api/chat.postMessage')) { const j = JSON.parse(body || '{}'); posted.push(j); return res.end(JSON.stringify({ ok: true, ts: `ts-${posted.length}`, permalink: `https://slack.example/${posted.length}` })); }
+      res.end(JSON.stringify({ ok: true }));
+    });
+  });
+  await new Promise((r) => slack.listen(0, '127.0.0.1', r));
+  const DIR7 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-deliver-'));
+  const P7 = PORT + 6;
+  const B7 = `http://localhost:${P7}`;
+  const child7 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P7), PRAJNA_DATA_DIR: DIR7, PRAJNA_PUBLIC_URL: B7,
+    PRAJNA_API_BASE_SLACK: `http://127.0.0.1:${slack.address().port}`,
+    PRAJNA_TEST_TOKENS: JSON.stringify({ slack: { token: 'xoxb-test', account: 'the test workspace' } }) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B7 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B7}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Delivery Test' });
+    const boot = (await call('/api/bootstrap', null, 'GET')).j;
+    assert.ok(boot.connectors.find((c) => c.id === 'slack')?.connected, 'the house holds a live Slack token');
+    const w = await call('/api/missions', { goal: 'Delivery test: a brief for a Kochi ferry startup', deskId: 'brief', depth: 'fast' });
+    assert.ok(w.j.contract.plan.some((p) => p.tool === 'connector-post'), 'the plan carries a delivery step');
+    assert.equal((await call(`/api/missions/${w.j.id}/launch`)).status, 200);
+    let m, approvals = 0; const started = Date.now();
+    while (Date.now() - started < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) {
+        const a = (m.attention || []).find((x) => !x.decision);
+        if (a) {
+          if (a.kind === 'approval') { approvals += 1; assert.match(a.prompt, /Slack|deliver|public link/i); }
+          const pick = ['approve-step', 'approve', 'patch', 'raise-ceiling', 'accept-risk', 'continue'].find((o) => a.options.includes(o)) || a.options[0];
+          await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `delivery test, ${pick}` });
+        }
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+    assert.ok(approvals >= 1, 'nothing left the house without an approval');
+    // It really posted, and what it posted carries a public link that works.
+    assert.equal(posted.length, 1, `one post: ${JSON.stringify(posted)}`);
+    assert.equal(posted[0].channel, 'C-HOUSE');
+    const link = (posted[0].text.match(/https?:\/\/\S+\/s\/[a-f0-9]{32}/) || [])[0];
+    assert.ok(link, `the post carries the public link: ${posted[0].text.slice(0, 200)}`);
+    assert.equal((await fetch(link)).status, 200, 'and the link opens');
+    const d = (m.deliveries || [])[0];
+    assert.ok(d && d.ok, `the delivery is on the record: ${JSON.stringify(m.deliveries)}`);
+    assert.equal(d.connector, 'slack');
+    assert.equal(d.linkOk, true, 'the house checked its own link before calling it delivered');
+    assert.match(d.where, /Slack C-HOUSE/);
+    // Revoking the link is on the record too, and the link stops working.
+    const token = link.split('/s/')[1];
+    const art = (await call('/api/bootstrap', null, 'GET')).j.artifacts.find((a) => a.shareToken === token);
+    assert.ok(art, 'the shared artifact is findable by its token');
+    assert.equal((await call(`/api/artifacts/${art.id}/share`, null, 'DELETE')).status, 200);
+    assert.equal((await fetch(link)).status, 404, 'a revoked link is gone');
+  } finally { child7.kill(); slack.close(); fs.rmSync(DIR7, { recursive: true, force: true }); }
+});
