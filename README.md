@@ -733,3 +733,10 @@ The landing page (above the closing call to action) and the mobile prototype
 (beneath the phone) now carry a recorded dissent, named and quoted, and the
 same assertion that guards the deck guards them: a recorded dissent that is
 missing from the deliverable fails the gate.
+
+## v0.58: Handover (2026-09-04)
+
+A finished run shows a handover block at the end of its tape: the artifact
+and its public link if shared, the audit bundle and the public record link
+if shared, and every connector delivery with where it went, its id and a
+link, or the recorded failure. Everything that left the house, in one place.

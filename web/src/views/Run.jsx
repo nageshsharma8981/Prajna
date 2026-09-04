@@ -629,6 +629,17 @@ export default function Run({ id }) {
               }
               return null;
             })}
+            {(filled || killed) && !mission.voidedBeforeRun && (
+              <div className="handover" role="group" aria-label="Handover">
+                <span className="k">Handover, everything that left the house</span>
+                <ul>
+                  {mission.artifactId && <li><b>Delivery</b> <Link to={`/artifact/${mission.artifactId}`}>open the artifact</Link>{(store.artifacts || []).find((a) => a.id === mission.artifactId)?.shareToken ? <> · <a href={`/s/${(store.artifacts || []).find((a) => a.id === mission.artifactId).shareToken}`} target="_blank" rel="noreferrer">public link</a></> : <> · no public link yet (share from the artifact bar)</>}</li>}
+                  <li><b>Record</b> <a href={`/api/missions/${mission.id}/bundle?download=1`}>audit bundle</a>{mission.shareToken ? <> · <a href={`/r/${mission.shareToken}`} target="_blank" rel="noreferrer">public record link</a></> : <> · not shared</>}</li>
+                  {(mission.deliveries || []).map((d) => <li key={d.stepId}><b>{d.connector}</b> {d.ok ? <>{d.where}{d.id ? ` (${d.id})` : ''}{d.url ? <> · <a href={d.url} target="_blank" rel="noreferrer">open</a></> : null}</> : <span className="live-error">failed: {d.error}</span>}</li>)}
+                  {(mission.deliveries || []).length === 0 && <li className="quiet">No connected app delivered this run. Connect one under Connectors and its delivery step appears on the next ticket.</li>}
+                </ul>
+              </div>
+            )}
             {mission.narrative && (
               <div className="narrative"><span className="k">In plain words, written by the house from the tape</span><p>{mission.narrative}</p></div>
             )}
