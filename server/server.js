@@ -21,6 +21,21 @@ const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
 let VERSION = '0.0.0';
 try { VERSION = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version || VERSION; } catch { /* keep default */ }
+// Release notes: the README's version sections, parsed once per request so
+// an edit shows without a restart. Newest first.
+function releases() {
+  let md = '';
+  try { md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8'); } catch { return []; }
+  const out = [];
+  const re = /^## (v\d+\.\d+(?:\.\d+)?) — ([^\n(]+?)\s*(?:\((\d{4}-\d{2}-\d{2})\))?\s*$/gm;
+  let m; const marks = [];
+  while ((m = re.exec(md))) marks.push({ index: m.index, end: m.index + m[0].length, version: m[1], title: m[2].trim(), date: m[3] || null });
+  for (let i = 0; i < marks.length; i++) {
+    const body = md.slice(marks[i].end, i + 1 < marks.length ? marks[i + 1].index : undefined).trim();
+    out.push({ version: marks[i].version, title: marks[i].title, date: marks[i].date, body });
+  }
+  return out.reverse();
+}
 function health() {
   const ms = store.missions();
   const last = ms.filter((m) => m.status === 'FILLED').sort((a, b) => (b.filledAt || 0) - (a.filledAt || 0))[0];
@@ -246,6 +261,7 @@ async function handle(req, res) {
   if (!p.startsWith('/s/') && !p.startsWith('/api/artifacts/')) res.setHeader('x-frame-options', 'SAMEORIGIN');
 
   // ---- Health and the public status page (always reachable, never secret) ----
+  if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });
     return json(res, 200, health());

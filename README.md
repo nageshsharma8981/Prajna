@@ -615,3 +615,9 @@ Tab lands on the first option, and the option is a native button that Enter
 or Space activates in any browser. The test harness cannot emit native button
 activation, so that last step was completed by click; everything before it
 was driven by keys alone.
+
+## v0.46 — Release notes in the app (2026-09-04)
+
+`/releases` lists every version the house has shipped, newest first, parsed
+from this README (`GET /api/releases`), with the running version at the top.
+Linked from Get Help and the ⌘K palette.

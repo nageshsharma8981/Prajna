@@ -17,10 +17,11 @@ import Run from './views/Run.jsx';
 import Ledger from './views/Ledger.jsx';
 import ArtifactView from './views/ArtifactView.jsx';
 import Compare from './views/Compare.jsx';
+import Releases from './views/Releases.jsx';
 import Skills from './views/Skills.jsx';
 import Keys from './views/Keys.jsx';
 
-const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions']];
+const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions'], ['/releases', 'Release notes']];
 
 function Sidebar({ open, onClose, menuRef }) {
   const s = useStore();
@@ -120,6 +121,7 @@ function Router() {
   if (path.startsWith('/missions')) return <Floor />;
   if (path.startsWith('/run/')) return <Run id={path.split('/')[2]} />;
   if (path.startsWith('/artifact/')) return <ArtifactView id={path.split('/')[2]} />;
+  if (path.startsWith('/releases')) return <Releases />;
   if (path.startsWith('/compare/')) return <Compare leftId={path.split('/')[2]} rightId={path.split('/')[3]} />;
   if (path.startsWith('/artifacts') || path.startsWith('/ledger')) return <Ledger />;
   return <Home />;
