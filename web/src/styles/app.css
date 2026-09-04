@@ -1424,3 +1424,13 @@ abbr.cite { cursor: help; }
 @media (max-width: 700px) { .home.with-welcome .promos { flex-direction: column; } }
 
 .topup { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.8rem 1rem; }
+
+.topbar-logo { display: none; margin-left: 0.2rem; }
+.topbar-logo .logo-img { height: 34px; }
+@media (max-width: 900px) { .topbar-logo { display: block; } }
+.welcome-name { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.8rem; font-size: 0.86rem; }
+.welcome-name label { color: var(--bone-dim); } .welcome-name .key-input { max-width: 16rem; }
+
+.side-nav, .side-sub { min-width: 0; overflow-x: hidden; }
+.side-item.chat { overflow: hidden; }
+.side-item.chat .t { display: block; }

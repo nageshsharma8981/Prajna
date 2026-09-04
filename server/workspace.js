@@ -107,7 +107,7 @@ function ensure() {
       chats: [], projects: [{ id: 'p_default', name: 'My workspace', createdAt: Date.now(), chatIds: [] }],
       plugins: ['claude-skills', 'documents'], tools: { 'task-agent': true, media: false, browser: false },
       mcp: [],
-      profile: { name: 'Nagesh Sharma', email: 'just4nagesh@gmail.com', handle: 'nagesh', bio: '', avatar: 'N' },
+      profile: { name: '', email: '', handle: '', bio: '', avatar: 'P' },
       personalization: { tone: 'calm and precise', defaultModel: 'opus', defaultAdvisers: ['gpt', 'deepseek'], theme: 'night' },
       language: 'en',
       plan: 'free',
@@ -118,6 +118,8 @@ function ensure() {
       boards: [],
     };
   }
+  // The profile belongs to whoever opens the house — never a seeded name.
+  if (st.ws.profile && (st.ws.profile.email === 'just4nagesh@gmail.com' || st.ws.profile.name === 'Nagesh Sharma')) st.ws.profile = { name: '', email: '', handle: '', bio: '', avatar: 'P' };
   if (!st.ws.media) st.ws.media = [];
   if (!st.ws.showcase) st.ws.showcase = [];
   if (!st.ws.ledger) st.ws.ledger = [];

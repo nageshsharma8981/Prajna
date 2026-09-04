@@ -532,3 +532,19 @@ grants, showcase grants and top-ups — each with the balance and reserve after
 it. Payment & Invoices shows the ledger and offers demo top-ups (an honest
 line, no charge); Subscription opens with a plain explanation of what a
 credit is and how estimate, ceiling, settlement and live seats relate.
+
+## v0.37 — The tape moves to its own file (2026-09-04)
+
+A finished mission's event ledger is archived to `data/tape/<id>.json`
+(`prajna.tape.v1`) and the mission record keeps only the count, so the main
+missions file stays small and every event flush during a run stays cheap.
+Readers that need the events — the run view, replay, the bundle, the record
+digest — load the full mission on demand. Existing finished missions are
+archived once on boot. Nothing is lost: the tape is the same events, in the
+same order, with the run script beside them.
+
+The profile is the visitor's own: no seeded name or email. The greeting says
+"Hey there" until a name is given (the first-run welcome asks), the sidebar
+shows "Set up your profile" until then, email is editable and validated
+under My Profile, and the brand mark sits in the top bar on small screens
+where the sidebar is a drawer.

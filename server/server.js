@@ -146,7 +146,7 @@ function pub(m) {
 // carries a count instead, which keeps the payload small as history grows.
 function lean(m) {
   const { events, ...rest } = pub(m);
-  return { ...rest, eventCount: (events || []).length };
+  return { ...rest, eventCount: rest.eventCount ?? (events || []).length };
 }
 
 // Responses compress when the client accepts gzip (JSON payloads shrink ~8×).
@@ -371,7 +371,7 @@ async function handle(req, res) {
 
   const eventsMatch = p.match(/^\/api\/missions\/([\w]+)\/events$/);
   if (eventsMatch) {
-    const m = store.mission(eventsMatch[1]);
+    const m = store.missionFull(eventsMatch[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     const after = Number(url.searchParams.get('after') || 0);
     if (!Number.isFinite(after) || after < 0) return json(res, 400, { error: '"after" must be a non-negative number (the last seq you have).' });
@@ -405,7 +405,7 @@ async function handle(req, res) {
 
   const streamMatch = p.match(/^\/api\/missions\/([\w]+)\/stream$/);
   if (streamMatch) {
-    const m = store.mission(streamMatch[1]);
+    const m = store.missionFull(streamMatch[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     res.writeHead(200, {
       'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive',
@@ -436,7 +436,7 @@ async function handle(req, res) {
 
   const missionMatch = p.match(/^\/api\/missions\/([\w]+)$/);
   if (missionMatch) {
-    const m = store.mission(missionMatch[1]);
+    const m = store.missionFull(missionMatch[1]);
     return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
   }
 
@@ -511,7 +511,7 @@ async function handle(req, res) {
   // Audit bundle: the whole record of a mission in one file, for handover.
   const bundleMatch = p.match(/^\/api\/missions\/([\w]+)\/bundle$/);
   if (bundleMatch) {
-    const m = store.mission(bundleMatch[1]);
+    const m = store.missionFull(bundleMatch[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     const a = m.artifactId ? store.artifact(m.artifactId) : null;
     const html = m.artifactId ? store.artifactHtml(m.artifactId) : null;
@@ -738,7 +738,8 @@ async function handle(req, res) {
   if (mcpDel && req.method === 'DELETE') { const w = ws(); w.mcp = w.mcp.filter((x) => x.id !== mcpDel[1]); flushWs(); return json(res, 200, { ok: true }); }
   if (p === '/api/profile' && req.method === 'PATCH') {
     const body = await readBody(req); const w = ws();
-    for (const k of ['name', 'handle', 'bio']) if (body[k] != null) w.profile[k] = String(body[k]).slice(0, k === 'bio' ? 300 : 60);
+    for (const k of ['name', 'handle', 'email', 'bio']) if (body[k] != null) w.profile[k] = String(body[k]).trim().slice(0, k === 'bio' ? 300 : 120);
+    if (w.profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(w.profile.email)) { w.profile.email = ''; return json(res, 400, { error: 'That does not look like an email address.' }); }
     if (w.profile.name) { w.profile.avatar = w.profile.name.trim()[0].toUpperCase(); store.workspace().name = w.profile.name; store.flushWorkspace(); }
     flushWs(); return json(res, 200, w.profile);
   }
@@ -923,4 +924,5 @@ async function handle(req, res) {
 }
 
 rehydrate(notify);
+{ const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

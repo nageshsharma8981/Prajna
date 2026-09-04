@@ -84,12 +84,12 @@ function Sidebar({ open, onClose, menuRef }) {
           </Link>
           <div className="rel">
             <button className="side-user" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>
-              <span className="seat">{s.ready ? s.profile.avatar : 'N'}</span>
-              <span className="who"><b>{s.ready ? s.profile.name : '—'}</b><span>{s.ready ? s.profile.email : ''}</span></span>
+              <span className="seat">{s.ready ? ((s.profile.name || '').trim()[0] || s.profile.avatar || 'P').toUpperCase() : 'P'}</span>
+              <span className="who"><b>{s.ready ? (s.profile.name || 'Set up your profile') : '—'}</b><span>{s.ready ? (s.profile.email || s.profile.handle || 'name, handle, email') : ''}</span></span>
             </button>
             {menu && (
               <div className="user-menu" role="menu">
-                <div className="um-head"><span className="seat">{s.profile.avatar}</span><span className="who"><b>{s.profile.name}</b><span>{s.profile.email}</span></span></div>
+                <div className="um-head"><span className="seat">{((s.profile.name || '').trim()[0] || 'P').toUpperCase()}</span><span className="who"><b>{s.profile.name || 'No name yet'}</b><span>{s.profile.email || 'Add your details under My Profile'}</span></span></div>
                 {MENU.map(([id, label]) => <Link key={id} to={`/account/${id}`} role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>{label}</Link>)}
                 <div className="um-sep" />
                 <Link to="/account/settings" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Settings</Link>
@@ -189,6 +189,7 @@ function Shell() {
       <div className="main" ref={mainRef} tabIndex={-1} id="main">
         <div className="topbar">
           <button className="menu-btn" onClick={() => setSideOpen(true)} aria-label="Open navigation" ref={menuRef}><MenuIcon /></button>
+          <Link to="/" className="topbar-logo" aria-label="Prajñā home"><img className="logo-img" src="/logo.png" alt="Prajñā" width="120" height="40" /></Link>
           <span className="grow" />
           {(s.pending || []).length > 0 && <Link to={s.pending.length === 1 ? `/run/${s.pending[0].id}` : '/missions'} className="bell" aria-label={`${s.pending.length} decision${s.pending.length === 1 ? '' : 's'} needed`} title={s.pending.map((p) => `${p.serial}: ${p.prompt}`).join('\n')}><span className="pulse" aria-hidden="true" />{s.pending.length}</Link>}
           <button className="palette-hint" onClick={() => setPalette(true)}><SearchIcon /> Jump <kbd>⌘K</kbd></button>

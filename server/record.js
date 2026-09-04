@@ -10,7 +10,7 @@ const n = (x) => Number(x || 0).toFixed(1);
 
 export function missionsOfChat(chat) {
   const ids = [...new Set((chat.messages || []).map((m) => m.missionId).filter(Boolean))];
-  return ids.map((id) => store.mission(id)).filter(Boolean);
+  return ids.map((id) => store.missionFull(id)).filter(Boolean);
 }
 
 // Compact, factual digest of one mission for a model prompt.

@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const DATA_DIR = process.env.PRAJNA_DATA_DIR || path.join(__dirname, '..', 'data');
 const ARTIFACT_DIR = path.join(DATA_DIR, 'artifacts');
+const TAPE_DIR = path.join(DATA_DIR, 'tape');
 
 fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
+fs.mkdirSync(TAPE_DIR, { recursive: true });
 // BYOK keys are never stored on disk; remove any file an earlier build wrote.
 try { fs.rmSync(path.join(DATA_DIR, 'keys.json'), { force: true }); } catch {}
 
@@ -78,6 +80,35 @@ export const store = {
 
   missions() { return this.state.missions; },
   mission(id) { return this.state.missions.find((m) => m.id === id); },
+  // The tape of a finished mission moves to its own file so the main ledger
+  // stays small and every event flush stays cheap. The lean record keeps
+  // the count; readers that need the events ask for the full mission.
+  archiveMission(m) {
+    if (!m || !['FILLED', 'KILLED'].includes(m.status) || m.eventsArchived) return false;
+    const events = m.events || [];
+    if (!events.length) return false;
+    writeJson(path.join('tape', `${m.id}.json`), { schema: 'prajna.tape.v1', missionId: m.id, serial: m.serial, archivedAt: Date.now(), events, runScript: m.runScript || null });
+    m.eventCount = events.length;
+    m.events = [];
+    m.eventsArchived = true;
+    delete m.runScript;
+    this.flushMissions();
+    return true;
+  },
+  archiveFinished() {
+    let n = 0;
+    for (const m of this.state.missions) if (this.archiveMission(m)) n++;
+    return n;
+  },
+  tape(id) {
+    try { return JSON.parse(fs.readFileSync(path.join(TAPE_DIR, `${id}.json`), 'utf8')); } catch { return null; }
+  },
+  missionFull(id) {
+    const m = this.mission(id);
+    if (!m || !m.eventsArchived) return m;
+    const t = this.tape(id);
+    return { ...m, events: t?.events || [], eventsArchived: true };
+  },
   addMission(m) { this.state.missions.unshift(m); this.flushMissions(); return m; },
   updateMission(id, patch) {
     const m = this.mission(id);
@@ -113,7 +144,7 @@ export const store = {
 
   workspace() {
     if (!this.state.workspace) {
-      this.state.workspace = { credits: 2400, reserved: 0, spent: 0, name: 'Nagesh Sharma', seat: 'SEAT 001' };
+      this.state.workspace = { credits: 2400, reserved: 0, spent: 0, name: 'Workspace', seat: 'SEAT 001' };
       this.flushWorkspace();
     }
     if (this.state.workspace.reserved === undefined) this.state.workspace.reserved = 0;

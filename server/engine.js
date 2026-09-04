@@ -731,7 +731,7 @@ async function applyEvent(m, ev, notify, runner) {
   }
 
   pushEvent(m, record, notify);
-  if (ev.type === 'run.done') { settle(m, notify); tellTheStory(m); }
+  if (ev.type === 'run.done') { settle(m, notify); tellTheStory(m); store.archiveMission(m); }
   return 'ok';
 }
 
@@ -879,6 +879,7 @@ export function killMission(missionId, notify) {
   }
   settle(m, notify);
   store.flushMissions();
+  store.archiveMission(m);
   return m;
 }
 

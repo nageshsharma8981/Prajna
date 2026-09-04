@@ -53,9 +53,9 @@ export default function Account({ page }) {
             <div className="form">
               <label>Name<input className="key-input" value={f('name', s.profile.name)} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
               <label>Handle<input className="key-input" value={f('handle', s.profile.handle)} onChange={(e) => setForm({ ...form, handle: e.target.value })} /></label>
-              <label>Email<input className="key-input" value={s.profile.email} readOnly /></label>
+              <label>Email<input className="key-input" type="email" value={f('email', s.profile.email)} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></label>
               <label>Bio<textarea className="key-input" rows={3} value={f('bio', s.profile.bio)} onChange={(e) => setForm({ ...form, bio: e.target.value })} /></label>
-              <button className="btn-stamp attn-btn" onClick={() => save('/api/profile', { name: f('name', s.profile.name), handle: f('handle', s.profile.handle), bio: f('bio', s.profile.bio) }, 'Profile saved.')}>Save profile</button>
+              <button className="btn-stamp attn-btn" onClick={() => save('/api/profile', { name: f('name', s.profile.name), handle: f('handle', s.profile.handle), email: f('email', s.profile.email), bio: f('bio', s.profile.bio) }, 'Profile saved.')}>Save profile</button>
             </div>
           </>
         )}
@@ -191,7 +191,7 @@ export default function Account({ page }) {
                 <Link key={t} to={to} className="board-row"><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>?</span><span className="what"><b>{t}</b><span>{d}</span></span></Link>
               ))}
             </div></div>
-            <p className="conn-note" style={{ padding: '0.8rem 0' }}>Write to just4nagesh@gmail.com for support.</p>
+            <p className="conn-note" style={{ padding: '0.8rem 0' }}>Support: open an issue at <a href="https://github.com/nageshsharma8981/Prajna/issues" target="_blank" rel="noreferrer">github.com/nageshsharma8981/Prajna</a>.</p>
           </>
         )}
       </div>
