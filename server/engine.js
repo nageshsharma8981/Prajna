@@ -21,7 +21,6 @@ import { record as ledger } from './ledger.js';
 import { looksLikeCsv, profileCsv, dataSummary } from './data.js';
 import { gather, deliver, DELIVERABLE_CONNECTORS } from './connect.js';
 import { ws } from './workspace.js';
-import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
 // BYOK: a model is LIVE when the workspace holds a key for its provider.

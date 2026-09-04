@@ -63,6 +63,7 @@ export default function Home() {
             <ol className="welcome-steps">
               <li><b>Ask for an outcome.</b> Pick a mode below, website, mobile app, deck, research, analysis, and say what you want. The house writes a ticket: the plan and the price, before anything runs.</li>
               <li><b>Watch it run.</b> Every step, panel position and cost prints on the tape. When the gate refuses or the ceiling is hit, the decision comes to you, with a justification on the record.</li>
+              <li><b>Bring your apps.</b> Connect Google, Slack, Notion or GitHub under <Link to="/connectors">Connectors</Link> and they put what they know on the table and deliver where you say; switch on <Link to="/plugins">Plugins</Link> for skills, web search, computation and documents.</li>
               <li><b>Take the delivery.</b> The artifact carries its provenance: who wrote what, which sources, what was sealed, what you decided. Amend it with notes, compare versions, or hand over the audit bundle.</li>
             </ol>
             {!(s.profile?.name || '').trim() && (

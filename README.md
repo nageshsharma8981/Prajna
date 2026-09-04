@@ -696,3 +696,9 @@ Code coordination record intent only, and say so. For tests, API hosts can
 be redirected with PRAJNA_API_BASE_<PROVIDER> and tokens seeded with
 PRAJNA_TEST_TOKENS; neither is set in production. Set PRAJNA_PUBLIC_URL on
 the host so delivered links point at the public address.
+
+## v0.53: Connector evidence counts (2026-09-04)
+
+Figures that trace to evidence a connected app put on the table now pass
+the honesty lane in full, the first-run welcome adds "Bring your apps", and
+a leftover import is gone.
