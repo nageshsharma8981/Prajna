@@ -236,7 +236,7 @@ export default function Run({ id }) {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Fork refused.');
       await store.refresh();
-      navigate(`/?ticket=${j.id}`);
+      navigate(`/run/${j.id}`);
     } catch (e) { setActionError(e.message); setBusy(false); }
   };
 

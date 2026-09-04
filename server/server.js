@@ -275,7 +275,8 @@ async function handle(req, res) {
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
-    const m = forkMission(forkMatch[1], { goal, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
+    const feedback = Array.isArray(body.feedback) ? body.feedback : [];
+    const m = forkMission(forkMatch[1], { goal, feedback, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     return json(res, 200, pub(m));
   }
@@ -435,6 +436,26 @@ async function handle(req, res) {
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     try { return json(res, 200, pub(editPlan(planMatch[1], body.plan))); }
     catch (e) { return json(res, 400, { error: String(e.message || e) }); }
+  }
+
+  // Owner notes on a delivery: the raw material for the next version.
+  const noteMatch = p.match(/^\/api\/artifacts\/([\w]+)\/notes(?:\/([\w]+))?$/);
+  if (noteMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+    const a = store.artifact(noteMatch[1]);
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const notes = Array.isArray(a.notes) ? a.notes : [];
+    if (req.method === 'POST') {
+      const body = await readBody(req);
+      const text = String(body.text || '').trim().slice(0, 500);
+      if (!text) return json(res, 400, { error: 'Write the note first.' });
+      if (notes.length >= 12) return json(res, 400, { error: 'Twelve notes at most — the next version should be able to address them all.' });
+      const note = { id: crypto.randomBytes(4).toString('hex'), text, at: Date.now(), by: ws().profile.handle || ws().profile.name };
+      store.refreshArtifact(a.id, { notes: [...notes, note] }, store.artifactHtml(a.id));
+      return json(res, 200, { ok: true, note, notes: [...notes, note] });
+    }
+    const left = notes.filter((n) => n.id !== noteMatch[2]);
+    store.refreshArtifact(a.id, { notes: left }, store.artifactHtml(a.id));
+    return json(res, 200, { ok: true, notes: left });
   }
 
   const shareMatch = p.match(/^\/api\/artifacts\/([\w]+)\/share$/);

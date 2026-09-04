@@ -874,15 +874,17 @@ export function voidTicket(missionId, notify) {
 
 // Fork: amend & re-run. A new OPEN ticket on the same desk with the same
 // panel, carrying lineage so the next artifact is v(n+1) and supersedes.
-export function forkMission(missionId, { goal, installedSkills, queuedConnectors }) {
+export function forkMission(missionId, { goal, installedSkills, queuedConnectors, feedback }) {
   const parent = store.mission(missionId);
   if (!parent) return null;
   const version = ((parent.lineage && parent.lineage.version) || 1) + 1;
-  return writeContract({
+  const notes = (Array.isArray(feedback) ? feedback : []).map((x) => String(x).trim().slice(0, 500)).filter(Boolean).slice(0, 12);
+  const next = writeContract({
     goal: goal || parent.goal, deskId: parent.desk, lead: parent.lead, advisers: parent.advisers,
-    installedSkills, queuedConnectors,
-    lineage: { parentId: parent.id, parentSerial: parent.serial, parentArtifactId: parent.artifactId || null, version },
+    installedSkills, queuedConnectors, variant: parent.variant, template: parent.template, depth: parent.depth, chatId: parent.chatId,
+    lineage: { parentId: parent.id, parentSerial: parent.serial, parentArtifactId: parent.artifactId || null, version, feedback: notes, previousDraft: parent.authored?.live ? parent.authored.content : null },
   });
+  return next;
 }
 
 export async function decideAttention(missionId, requestId, decision, justification, notify) {

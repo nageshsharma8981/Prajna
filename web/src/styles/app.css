@@ -1327,3 +1327,10 @@ h1.pg-title {
 .plan-why p { margin: 0.5rem 0; line-height: 1.5; }
 .plan-why ol { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
 .plan-why b { font-family: var(--mono); font-size: 0.7rem; color: var(--led); }
+
+.notes-panel { padding: 0.7rem 1.2rem; background: var(--hall); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.5rem; }
+.notes-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.notes-panel li { display: flex; gap: 0.6rem; align-items: center; font-size: 0.85rem; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.7rem; }
+.notes-panel li span { flex: 1; } .notes-panel li button { color: var(--bone-faint); font-size: 1.1rem; line-height: 1; }
+.notes-panel li.empty { color: var(--bone-faint); font-style: italic; border-style: dashed; }
+.notes-add { display: flex; gap: 0.5rem; } .notes-add .key-input { flex: 1; }

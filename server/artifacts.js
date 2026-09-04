@@ -41,7 +41,7 @@ function provenanceObject(mission) {
       why: mission.contract.why || null,
       steps: mission.contract.plan.map((p) => ({ id: p.id, tool: p.tool, cost: p.cost, access: p.access, rationale: p.rationale || null, seats: (p.seats || []).map((s) => ({ name: s.name, live: !!s.live, cost: s.cost })) })),
     },
-    lineage: mission.lineage || null,
+    lineage: mission.lineage ? { parentId: mission.lineage.parentId, parentSerial: mission.lineage.parentSerial, parentArtifactId: mission.lineage.parentArtifactId, version: mission.lineage.version, feedback: mission.lineage.feedback || [], revisedFromDraft: !!mission.lineage.previousDraft } : null,
     planVsActual: {
       planned: mission.contract.plan.length,
       done: mission.contract.plan.filter((p) => p.status === 'FILLED').length,
@@ -93,7 +93,8 @@ function provenance(mission) {
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <div class="prov-row"><span>Definition of done</span><strong>${prov.assertions.length ? `${prov.assertions.filter((a) => a.status === 'SEALED').length}/${prov.assertions.length} assertions sealed by two independent validator lanes${prov.validation.acceptedRisks.length ? ` · ${prov.validation.acceptedRisks.length} accepted risk` : ''}${prov.validation.patches.length ? ` · patched: ${prov.validation.patches.join(', ')}` : ''}` : 'no assertions recorded'}</strong></div>
     <div class="prov-row"><span>Plan vs actual</span><strong>${prov.planVsActual.planned} planned · ${prov.planVsActual.done} done${prov.planVsActual.skipped.length ? ` · ${prov.planVsActual.skipped.length} skipped on the record` : ''}${prov.planVsActual.notReached ? ` · ${prov.planVsActual.notReached} not reached` : ''}${prov.access ? ` · access: ${prov.access.read} read / ${prov.access.write} write / ${prov.access.external} external` : ''}</strong></div>
-    ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version} — supersedes ${esc(prov.lineage.parentSerial)}</strong></div>` : ''}
+    ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version} — supersedes ${esc(prov.lineage.parentSerial)}${prov.lineage.feedback.length ? ` · written against ${prov.lineage.feedback.length} owner note(s)` : ''}</strong></div>` : ''}
+    ${prov.lineage && prov.lineage.feedback.length ? `<div class="prov-row"><span>Owner notes</span><strong>${prov.lineage.feedback.map((f) => esc(f)).join(' · ')}${prov.mode === 'live' ? '' : ' — scripted substance cannot act on notes; they are recorded, not applied'}</strong></div>` : ''}
     <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
     <p><strong>Definition of done — assertion verdicts:</strong></p><ul>${prov.assertions.map((a) => `<li><strong>${esc(a.id)}</strong> ${esc(a.title)} — <em>${esc(a.status.toLowerCase())}</em> (owner ${esc(a.owner)})</li>`).join('') || '<li>none</li>'}</ul>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>

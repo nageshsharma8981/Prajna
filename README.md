@@ -374,3 +374,13 @@ skill steps, connector steps and the ceiling rule — plus a one-line rationale
 per step. All of it is carried in the provenance block (`contract.why`,
 `contract.steps`). Deterministic and honest: the house explains its own
 reasoning; it does not ask a model to invent one.
+
+## v0.19 — Amend from notes (2026-09-04)
+
+Leave notes on any delivery (artifact view → Notes) and amend with them: the
+next version's ticket carries the notes in its lineage, the lead author is
+written against them and against its own previous draft, and the artifact's
+provenance records the notes it was written to address. A scripted version
+records the notes too and says plainly that scripted substance cannot act on
+them. `POST/DELETE /api/artifacts/:id/notes`, `POST /api/missions/:id/fork
+{feedback: [...]}`.

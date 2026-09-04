@@ -29,7 +29,9 @@ export function authorPrompt(mission) {
   const shape = SHAPES[shapeFor(mission)];
   const sources = (mission.sources || []).map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n    ${s.extract}`).join('\n');
   const positions = (mission.events || []).filter((e) => e.type === 'council.position' && e.text).map((e) => `- ${e.model || e.seat}: ${e.text}`).join('\n');
-  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, an outcome exchange.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes — describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
+  const lin = mission.lineage || {};
+  const feedback = (lin.feedback || []).length ? `This is version ${lin.version}, superseding ${lin.parentSerial}. The owner's notes on the previous version — address every one:\n${lin.feedback.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n${lin.previousDraft ? `Previous draft (JSON) to revise, keeping what was not criticised:\n${JSON.stringify(lin.previousDraft).slice(0, 5000)}\n` : ''}` : '';
+  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, an outcome exchange.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${feedback}${sources ? `Retrieved sources (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes — describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
 }
 
 export function parseAuthored(text) {
