@@ -830,6 +830,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   const forkMatch = p.match(/^\/api\/missions\/([\w]+)\/fork$/);
   if (forkMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
@@ -849,6 +850,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   if (p === '/api/standing' && req.method === 'GET') return json(res, 200, { orders: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })), cadences: Object.keys(CADENCES) });
   const standingNew = p.match(/^\/api\/missions\/([\w]+)\/standing$/);
   if (standingNew && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const body = await readBody(req);
     const r = addStandingOrder(standingNew[1], String(body.cadence || 'weekly'), body.cap);
     if (r.error) return json(res, 400, { error: r.error });
@@ -856,8 +858,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const standingOne = p.match(/^\/api\/standing\/([\w]+)(?:\/(pause|run))?$/);
   if (standingOne && req.method === 'DELETE') return json(res, removeStandingOrder(standingOne[1]) ? 200 : 404, { ok: true });
-  if (standingOne && req.method === 'POST' && standingOne[2] === 'pause') { const body = await readBody(req); const o = pauseStandingOrder(standingOne[1], !!body.paused); return o ? json(res, 200, o) : json(res, 404, { error: 'Standing order not found.' }); }
-  if (standingOne && req.method === 'POST' && standingOne[2] === 'run') { const o = standingOrders().find((x) => x.id === standingOne[1]); if (!o) return json(res, 404, { error: 'Standing order not found.' }); return json(res, 200, { order: o, run: runOrder(o, standingDeps()) }); }
+  if (standingOne && req.method === 'POST' && standingOne[2] === 'pause') { if (guestGate(req, res, 'write')) return; const body = await readBody(req); const o = pauseStandingOrder(standingOne[1], !!body.paused); return o ? json(res, 200, o) : json(res, 404, { error: 'Standing order not found.' }); }
+  if (standingOne && req.method === 'POST' && standingOne[2] === 'run') { if (guestGate(req, res, 'spend')) return; const o = standingOrders().find((x) => x.id === standingOne[1]); if (!o) return json(res, 404, { error: 'Standing order not found.' }); return json(res, 200, { order: o, run: runOrder(o, standingDeps()) }); }
 
   const deltaMatch = p.match(/^\/api\/missions\/([\w]+)\/delta$/);
   if (deltaMatch && req.method === 'GET') { const m = store.mission(deltaMatch[1]); if (!m) return json(res, 404, { error: 'Mission not found.' }); return json(res, 200, { delta: missionDelta(m) }); }
@@ -970,6 +972,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   // ---- Community showcase: a delivered artifact, submitted with its provenance, becomes public ----
   if (p === '/api/showcase' && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const body = await readBody(req);
     const a = store.artifact(String(body.artifactId || ''));
     if (!a) return json(res, 404, { error: 'Artifact not found.' });
@@ -1000,6 +1003,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   // ---- Media studio: hosted generation on the user's own key; bytes kept under the data dir ----
   if (p === '/api/media/generate' && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const prompt = String(body.prompt || '').trim().slice(0, 2000);
@@ -1053,6 +1057,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   const runShare = p.match(/^\/api\/missions\/([\w]+)\/share$/);
   if (runShare && (req.method === 'POST' || req.method === 'DELETE')) {
+    if (guestGate(req, res, 'spend')) return;
     const m = store.mission(runShare[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     if (req.method === 'POST' && m.status === 'OPEN') return json(res, 400, { error: 'An unstamped ticket has no record to share yet.' });
@@ -1066,6 +1071,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // before (or the ones named), recorded as re-deliveries on the mission.
   const redeliver = p.match(/^\/api\/missions\/([\w]+)\/redeliver$/);
   if (redeliver && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const m = store.mission(redeliver[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     if (m.status !== 'FILLED' || !m.artifactId) return json(res, 400, { error: 'Only a delivered mission can be delivered again.' });
@@ -1103,6 +1109,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // Owner notes on a delivery: the raw material for the next version.
   const noteMatch = p.match(/^\/api\/artifacts\/([\w]+)\/notes(?:\/([\w]+))?$/);
   if (noteMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+    if (guestGate(req, res, 'write')) return;
     const a = store.artifact(noteMatch[1]);
     if (!a) return json(res, 404, { error: 'Artifact not found.' });
     const notes = Array.isArray(a.notes) ? a.notes : [];
@@ -1122,6 +1129,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   const shareMatch = p.match(/^\/api\/artifacts\/([\w]+)\/share$/);
   if (shareMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+    if (guestGate(req, res, 'spend')) return;
     const a = store.artifact(shareMatch[1]);
     if (!a) return json(res, 404, { error: 'Artifact not found.' });
     const token = req.method === 'POST' ? (a.shareToken || crypto.randomBytes(16).toString('hex')) : null;
@@ -1432,6 +1440,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   // Top-up: demo billing, an honest ledger line, nothing charged.
   if (p === '/api/credits/topup' && req.method === 'POST') {
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     const amount = Math.round(Number(body.amount) || 0);
     if (![100, 250, 500, 1000, 2500, 5000].includes(amount)) return json(res, 400, { error: 'Top-ups come in 100, 250, 500, 1000, 2500 or 5000 credits.' });
@@ -1448,6 +1457,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     return json(res, 200, { days, text: digestText({ days }), to: ws().profile.email || null, connected: !!store.token('google') });
   }
   if (p === '/api/digest/send' && req.method === 'POST') {
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     const to = String(body.to || ws().profile.email || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json(res, 400, { error: 'No email to send to, add one under My Profile.' });

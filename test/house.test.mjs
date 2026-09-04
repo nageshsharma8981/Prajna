@@ -1002,6 +1002,26 @@ test('an owner can say what a guest may do, without locking the door', async () 
     assert.equal(shut.status, 403);
     assert.match(shut.j.error, /open to read/);
     assert.equal((await call('/api/chats', guest, { title: 'nor talk' })).status, 403);
+    // Nor anything else that spends the house's key or credits, or puts its
+    // work in front of the world.
+    const art = (await call('/api/bootstrap', guest, null, 'GET')).j.artifacts[0];
+    for (const [p2, body, method] of [
+      ['/api/media/generate', { prompt: 'a picture on someone else\'s key' }, 'POST'],
+      [`/api/artifacts/${art.id}/share`, null, 'POST'],
+      [`/api/artifacts/${art.id}/notes`, { text: 'a note on the record' }, 'POST'],
+      ['/api/showcase', { artifactId: art.id }, 'POST'],
+    ]) {
+      const r = await call(p2, guest, body, method);
+      assert.equal(r.status, 403, `${method} ${p2} is refused to a read-only guest`);
+    }
+    // The owner's money and mailbox are the owner's, whatever the guest policy.
+    assert.equal((await call('/api/guests', boss, { mode: 'work' }, 'PUT')).status, 200);
+    for (const p3 of ['/api/credits/topup', '/api/digest/send']) {
+      const r = await call(p3, guest, { amount: 100 });
+      assert.equal(r.status, 403, `${p3} is the owner's even when guests work freely`);
+      assert.equal(r.j.owner, true);
+    }
+    assert.equal((await call('/api/guests', boss, { mode: 'read' }, 'PUT')).status, 200);
     assert.equal((await call('/api/bootstrap', guest, null, 'GET')).status, 200, 'but the record is still readable');
     assert.equal((await call('/api/missions', boss, { goal: 'Guests test: the owner is unbound', deskId: 'brief', depth: 'fast' })).status, 200);
     assert.equal((await call('/api/guests', boss, { mode: 'nonsense' }, 'PUT')).status, 400);

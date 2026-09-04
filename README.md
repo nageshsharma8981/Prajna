@@ -1412,3 +1412,15 @@ costs no honesty about what your key was used for. An endpoint that
 cannot stream is asked plainly instead, which four of my own tests
 proved was necessary by breaking the moment I claimed a fallback I had
 not written.
+
+## v1.16: The guest policy, audited against itself (2026-09-05)
+
+Reviewing what I shipped two versions ago found it half done. Tickets
+and conversations were held to the policy, but a guest could still
+generate media on your provider key, fork a ticket, start or run a
+standing order, publish an artifact or a whole record at a public link,
+submit to the showcase, re-deliver to your connected apps, or write
+notes on the record. Every one of those now answers to the same policy,
+and topping up credits and sending the digest through your own mailbox
+are the owner's alone whatever the policy says. The test walks each one
+as a read-only guest and as a guest in a house that works freely.
