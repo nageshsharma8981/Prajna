@@ -200,6 +200,52 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   return store.addMission(mission);
 }
 
+/* ------------------------------ PLAN EDITING ------------------------------ */
+
+// The owner edits the ticket before stamping it: trim, reorder, retitle or
+// add steps. The contract is recomputed — estimate, ceiling, access counts,
+// assertion ownership — and the edit is recorded on the contract itself.
+export const PLAN_TOOLS = () => [...Object.keys(TOOL_LINES), 'council'];
+const DEFAULT_COST = { scope: 6, search: 14, 'cite-guard': 8, steelman: 8, storyboard: 8, compose: 12, 'deck-doctor': 6, 'copy-cutter': 7, build: 16, 'a11y-audit': 6, ingest: 8, analyze: 12, 'chart-smith': 8, 'connector-post': 6, design: 12, council: 12 };
+export function editPlan(missionId, steps) {
+  const m = store.mission(missionId);
+  if (!m) throw new Error('Mission not found.');
+  if (m.status !== 'OPEN') throw new Error('Only an unstamped ticket can be edited.');
+  if (!Array.isArray(steps) || !steps.length) throw new Error('A plan needs at least one step.');
+  if (steps.length > 12) throw new Error('At most twelve steps on a ticket.');
+  const tools = new Set(PLAN_TOOLS());
+  const old = Object.fromEntries(m.contract.plan.map((p) => [p.id, p]));
+  const ids = [];
+  const plan = steps.map((s, i) => {
+    const prev = s.id && old[s.id] ? old[s.id] : null;
+    const tool = String(s.tool || prev?.tool || 'compose');
+    if (!tools.has(tool)) throw new Error(`Unknown tool "${tool}".`);
+    const title = String(s.title || prev?.title || '').trim().slice(0, 120);
+    if (!title) throw new Error(`Step ${i + 1} needs a title.`);
+    const access = ['read', 'write', 'external'].includes(s.access) ? s.access : prev?.access || (tool === 'build' || tool === 'compose' || tool === 'design' ? 'write' : 'read');
+    const id = prev ? prev.id : `n${i + 1}_${Math.random().toString(36).slice(2, 6)}`;
+    const dependsOn = [...new Set((Array.isArray(s.dependsOn) ? s.dependsOn : prev?.dependsOn || []).filter((d) => ids.includes(d)))];
+    if (!dependsOn.length && i > 0 && !Array.isArray(s.dependsOn)) dependsOn.push(ids[i - 1]);
+    ids.push(id);
+    const cost = prev ? prev.cost : Math.min(40, Math.max(1, Number(s.cost) || DEFAULT_COST[tool] || 8));
+    return { ...(prev || {}), id, title, tool, access, cost, dependsOn, status: 'QUEUED', requiresConfirmation: access === 'external' || !!prev?.requiresConfirmation, contextHash: hash(`${m.desk}:${i}:${tool}:${m.goal}`) };
+  });
+  // Assertion ownership follows the tool that produces each promise.
+  const fallbackOwner = plan.find((p) => ['compose', 'build', 'design'].includes(p.tool)) || plan[plan.length - 1];
+  const catalog = ASSERTIONS[m.variant === 'design' ? 'design' : m.desk] || [];
+  const assertions = catalog.map((a) => ({ id: a.id, title: a.title, owner: (plan.find((p) => p.tool === a.owner) || fallbackOwner).id, status: 'PENDING' }));
+  for (const p of plan) p.targets = assertions.filter((a) => a.owner === p.id).map((a) => a.id);
+  const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
+  const before = m.contract.plan.map((p) => p.id);
+  m.contract = {
+    ...m.contract, plan, assertions, estimate, ceiling: Math.ceil(estimate * 1.25),
+    access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
+    edited: { at: Date.now(), edits: ((m.contract.edited && m.contract.edited.edits) || 0) + 1, added: plan.filter((p) => !before.includes(p.id)).length, removed: before.filter((id) => !ids.includes(id)).length, steps: plan.length },
+  };
+  store.flushMissions();
+  return m;
+}
+
 /* ------------------------------ COUNCIL SCRIPT ---------------------------- */
 
 const VOICES = {

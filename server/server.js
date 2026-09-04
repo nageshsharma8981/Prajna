@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
 import { PROVIDERS, testKey, maskKey } from './providers.js';
-import { liveSeat } from './engine.js';
+import { liveSeat, editPlan, PLAN_TOOLS } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
 import { callModel, streamModel, generateImage } from './providers.js';
@@ -427,6 +427,14 @@ async function handle(req, res) {
       res.writeHead(200, { 'content-type': rec.mime, 'cache-control': 'private, max-age=31536000, immutable', 'content-length': bytes.length });
       return res.end(bytes);
     } catch { return json(res, 404, { error: 'The file is gone from the data directory.' }); }
+  }
+
+  const planMatch = p.match(/^\/api\/missions\/([\w]+)\/plan$/);
+  if (planMatch && req.method === 'PATCH') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    try { return json(res, 200, pub(editPlan(planMatch[1], body.plan))); }
+    catch (e) { return json(res, 400, { error: String(e.message || e) }); }
   }
 
   const shareMatch = p.match(/^\/api\/artifacts\/([\w]+)\/share$/);

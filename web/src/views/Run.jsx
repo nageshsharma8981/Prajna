@@ -129,6 +129,8 @@ function GateGrid({ ev }) {
 export default function Run({ id }) {
   const store = useStore();
   const [mission, setMission] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [draftPlan, setDraftPlan] = useState([]);
   const [events, setEvents] = useState([]);
   const [now, setNow] = useState(Date.now());
   const [burn, setBurn] = useState(null); // {total, estimateSoFar, variance}
@@ -272,6 +274,19 @@ export default function Run({ id }) {
       setBusy(false);
     }
   };
+  // Plan editor: only an unstamped ticket can be reshaped.
+  const TOOLS = ['scope', 'search', 'cite-guard', 'steelman', 'storyboard', 'compose', 'deck-doctor', 'copy-cutter', 'build', 'a11y-audit', 'ingest', 'analyze', 'chart-smith', 'design', 'council'];
+  const openEditor = () => { setDraftPlan(mission.contract.plan.map((p) => ({ id: p.id, title: p.title, tool: p.tool, access: p.access }))); setEditing(true); };
+  const move = (i, d) => setDraftPlan((pl) => { const n = [...pl]; const j = i + d; if (j < 0 || j >= n.length) return pl; [n[i], n[j]] = [n[j], n[i]]; return n; });
+  const savePlan = async () => {
+    setBusy(true); setActionError(null);
+    try {
+      const r = await fetch(`/api/missions/${mission.id}/plan`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: draftPlan }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'The plan was refused.');
+      setMission(j); setEditing(false); store.refresh();
+    } catch (e) { setActionError(`Plan not saved: ${e.message}`); } finally { setBusy(false); }
+  };
   const stampAndRun = async () => {
     setBusy(true);
     setActionError(null);
@@ -350,6 +365,31 @@ export default function Run({ id }) {
                 </li>
               ))}
             </ol>
+            {mission.contract.edited && <p className="ticket-deliv" style={{ marginTop: '0.4rem' }}>plan edited before stamping · {mission.contract.edited.steps} steps{mission.contract.edited.added ? ` · ${mission.contract.edited.added} added` : ''}{mission.contract.edited.removed ? ` · ${mission.contract.edited.removed} removed` : ''}</p>}
+            {mission.status === 'OPEN' && !editing && <button className="btn-quiet" style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem' }} onClick={openEditor} disabled={busy}>Edit plan</button>}
+            {editing && (
+              <div className="plan-editor" role="group" aria-label="Edit plan">
+                {draftPlan.map((p, i) => (
+                  <div key={p.id} className="pe-row">
+                    <span className="n">{i + 1}</span>
+                    <input className="key-input" value={p.title} onChange={(e) => setDraftPlan((pl) => pl.map((x, k) => (k === i ? { ...x, title: e.target.value } : x)))} aria-label={`Step ${i + 1} title`} />
+                    <select className="key-input" value={p.tool} onChange={(e) => setDraftPlan((pl) => pl.map((x, k) => (k === i ? { ...x, tool: e.target.value } : x)))} aria-label={`Step ${i + 1} tool`}>{TOOLS.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+                    <span className="pe-btns">
+                      <button onClick={() => move(i, -1)} aria-label="Move up" disabled={i === 0}>↑</button>
+                      <button onClick={() => move(i, 1)} aria-label="Move down" disabled={i === draftPlan.length - 1}>↓</button>
+                      <button onClick={() => setDraftPlan((pl) => pl.filter((_, k) => k !== i))} aria-label="Remove step" disabled={draftPlan.length <= 1}>✕</button>
+                    </span>
+                  </div>
+                ))}
+                <div className="pe-actions">
+                  <button className="btn-quiet" onClick={() => setDraftPlan((pl) => [...pl, { id: null, title: 'New step', tool: 'compose', access: 'write' }])} disabled={draftPlan.length >= 12}>Add step</button>
+                  <span className="grow" />
+                  <button className="btn-quiet" onClick={() => setEditing(false)}>Cancel</button>
+                  <button className="btn-stamp attn-btn" onClick={savePlan} disabled={busy}>Save plan</button>
+                </div>
+                <p className="conn-note">Steps run in this order; each depends on the one before unless the original graph said otherwise. Estimate, ceiling and assertion ownership are recomputed on save, and the edit is recorded on the contract.</p>
+              </div>
+            )}
             <div className="ticket-tally">
               <div className="cell"><span className="k">Estimate</span><span className="v">{mission.contract.estimate} cr</span></div>
               <div className="cell"><span className="k">Settled</span><span className="v">{mission.spent.toFixed(1)} cr</span></div>

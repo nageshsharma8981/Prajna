@@ -37,6 +37,7 @@ function provenanceObject(mission) {
       estimate: mission.contract.estimate,
       ceiling: mission.contract.ceiling,
       dimensions: mission.contract.dimensions || [],
+      edited: mission.contract.edited || null,
     },
     lineage: mission.lineage || null,
     planVsActual: {

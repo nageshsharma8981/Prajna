@@ -1305,3 +1305,12 @@ h1.pg-title {
 
 .code { color: #f1e7cf; }
 .code code { color: inherit; }
+
+.plan-editor { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.pe-row { display: grid; grid-template-columns: 1.4rem 1fr 7.5rem auto; gap: 0.35rem; align-items: center; }
+.pe-row .n { font-family: var(--mono); font-size: 0.7rem; color: var(--bone-faint); }
+.pe-row .key-input { padding: 0.35rem 0.5rem; font-size: 0.8rem; }
+.pe-btns { display: inline-flex; gap: 2px; }
+.pe-btns button { width: 26px; height: 26px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--bone-dim); font-size: 0.8rem; }
+.pe-btns button:disabled { opacity: 0.35; }
+.pe-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.3rem; }

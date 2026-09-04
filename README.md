@@ -354,3 +354,12 @@ and is not figure-checked.
   asks for a deliverable; the house strips it, writes the ticket, launches, and
   drops the run card into the thread. Without a live seat, a plain-language
   request ("build a pitch deck for…") is read directly and started the same way.
+
+## v0.17 — Edit the plan before you stamp it (2026-09-04)
+
+An unstamped ticket is editable from the run view: retitle, reorder, remove
+or add steps (any house tool, up to twelve). On save the contract is
+recomputed — estimate, ceiling, access counts, assertion ownership — and the
+edit is recorded on the contract (`contract.edited`: count, added, removed)
+and in every artifact's provenance. `PATCH /api/missions/:id/plan` refuses
+anything but an OPEN ticket, unknown tools and oversized plans.
