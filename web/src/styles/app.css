@@ -1465,3 +1465,7 @@ abbr.cite { cursor: help; }
 .disclaimer { color: var(--bone-dim); }
 
 :root[data-theme="day"] .badge-n { color: var(--led); }
+
+:root[data-theme="day"] .badge-n { background: #14140d; color: #ffb300; }
+
+:root[data-theme="day"] .side-item.decisions .badge-n { color: #ffb300; background: #14140d; }
