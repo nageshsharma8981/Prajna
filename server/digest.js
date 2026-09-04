@@ -29,6 +29,8 @@ export function digestText({ days = 1 } = {}) {
   lines.push('');
   if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) lines.push(`  • ${m.serial}, ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)`); lines.push(''); }
   lines.push(`Balance ${n(w.credits)} credits, ${n(w.reserved)} reserved, ${n(w.spent)} spent to date.`);
+  const hc = ws().lastHouseCheck;
+  if (hc) lines.push(hc.failed?.length ? `House check: ${hc.failed.length} problem${hc.failed.length === 1 ? '' : 's'} found. ${hc.failed.map((f) => `${f.id}: ${f.detail}`).join('; ')}. Open Settings for the full result.` : `House check: ${hc.ok} of ${hc.total} ok at ${new Date(hc.at).toISOString().replace('T', ' ').slice(0, 16)} UTC.`);
   lines.push('');
   lines.push('Every line above comes from the mission ledger. Open the workspace for the tape, the decisions and the deliveries.');
   return lines.join('\n');

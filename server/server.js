@@ -65,8 +65,15 @@ async function houseCheck() {
   const last = ms.flatMap((m) => (m.deliveries || []).filter((d) => d.ok && d.link && !d.linkRevokedAt)).sort((a, b) => b.at - a.at)[0];
   if (last) { try { const r = await fetch(last.link); add('last-delivery-link', r.ok, `${last.link} → ${r.status}`); } catch (e) { add('last-delivery-link', false, `${last.link} unreachable (${e.message})`); } }
   const result = { at: Date.now(), version: VERSION, ok: rows.filter((r) => r.ok).length, total: rows.length, rows };
-  ws().lastHouseCheck = { at: result.at, ok: result.ok, total: result.total }; flushWs();
+  ws().lastHouseCheck = { at: result.at, ok: result.ok, total: result.total, failed: rows.filter((r) => !r.ok).map((r) => ({ id: r.id, detail: r.detail })) }; flushWs();
   return result;
+}
+// The house checks itself a minute after boot and once a day after that;
+// failures go to the log, the digest and the Home page.
+function scheduleHouseCheck() {
+  const run = () => houseCheck().then((r) => { const bad = r.rows.filter((x) => !x.ok); if (bad.length) console.error(`prajna: house check found ${bad.length} problem(s): ${bad.map((x) => `${x.id} (${x.detail})`).join('; ')}`); else console.log(`prajna: house check ${r.ok} of ${r.total} ok`); }).catch((e) => console.error('prajna: house check failed to run,', e.message));
+  setTimeout(run, 60 * 1000).unref();
+  setInterval(run, 24 * 60 * 60 * 1000).unref();
 }
 function health() {
   const ms = store.missions();
@@ -404,6 +411,7 @@ async function handle(req, res) {
       models: allModels().map((m) => ({ ...m, live: !!store.keyFor(m.provider), custom: String(m.id).startsWith('c_') })),
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
       legalVersion: LEGAL.version,
+      houseCheck: ws().lastHouseCheck || null,
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
@@ -1133,5 +1141,6 @@ async function handle(req, res) {
 rehydrate(notify);
 { const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
 scheduleDigest();
+scheduleHouseCheck();
 seedTestTokens();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

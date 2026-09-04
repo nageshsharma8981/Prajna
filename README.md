@@ -816,3 +816,10 @@ the reserve equals the in-flight ceilings, the house rules are accepted at
 the current version, each connected token still answers, and the last
 delivered public link resolves. The status page shows when it last ran and
 how many rows passed. `POST /api/housecheck`.
+
+## v0.67: The house checks itself (2026-09-04)
+
+The house check now runs a minute after boot and once a day after that,
+without anyone pressing Run. A failing row is logged, named in the daily
+digest email, and shown as a notice at the top of Home with a link to the
+detail under Settings. The bootstrap payload carries the last result.

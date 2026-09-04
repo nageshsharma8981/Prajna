@@ -56,6 +56,7 @@ export default function Home() {
         <Link to="/?mode=chat" className="promo"><span className="promo-ic"><SparkIcon /></span><span>Try the companion,<br />a mind by your side</span><ArrowIcon /></Link>
       </aside>
       <div className="home-center">
+        {s.houseCheck?.failed?.length > 0 && <p className="house-warn" role="status">The house check found {s.houseCheck.failed.length} problem{s.houseCheck.failed.length === 1 ? '' : 's'}: {s.houseCheck.failed.map((f) => f.id).join(', ')}. <Link to="/account/settings">See the detail under Settings.</Link></p>}
         {showWelcome && (
           <section className="welcome" aria-label="Welcome">
             <div className="welcome-head"><span className="k">First run</span><button className="x" onClick={dismiss} aria-label="Dismiss welcome">×</button></div>

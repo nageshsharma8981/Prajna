@@ -1103,6 +1103,8 @@ h1.pg-title {
 .fa-slab.three { right: 36px; top: 34px; background: var(--led); }
 .fa-coin { position: absolute; right: 30px; top: 25px; width: 70px; height: 70px; border-radius: 50%; background: var(--led); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
 .fa-coin.two { right: 0; top: 50px; width: 46px; height: 46px; background: #f4f1e8; }
+.house-warn { margin: 0 0 1rem; padding: 0.7rem 1rem; border: 1px solid var(--amber); border-radius: 8px; font-size: 0.8rem; color: var(--bone); background: color-mix(in srgb, var(--amber) 12%, transparent); }
+.house-warn a { color: inherit; text-decoration: underline; }
 .disclaimer { text-align: center; font-size: 0.72rem; color: var(--bone-faint); font-style: italic; margin: 2.5rem 0 0; }
 
 /* composer */
