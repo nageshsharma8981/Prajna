@@ -1059,3 +1059,10 @@ no number invented: settled credits over the period, deliveries counted,
 the costliest named by serial, balance and reserve as the ledger holds
 them, each standing order with its cadence and next run. A live model
 receives the same figures as context and is told to use only those.
+
+## v0.88: Copy, retry, and the time on every answer (2026-09-04)
+
+Every answer in a conversation now carries a quiet row that appears on
+hover, or always on touch screens: Copy puts the answer on the clipboard
+and says so, Retry asks the same question again, and the time it was
+answered sits beside them. Answers from the ledger are labelled as such.

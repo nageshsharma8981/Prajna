@@ -48,6 +48,9 @@ export default function Chat({ id }) {
   const s = useStore();
   const [chat, setChat] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [copied, setCopied] = useState(null);
+  const copy = async (m) => { try { await navigator.clipboard.writeText(m.text); setCopied(m.id); setTimeout(() => setCopied((c) => (c === m.id ? null : c)), 1500); } catch { setCopied(`no:${m.id}`); setTimeout(() => setCopied(null), 1500); } };
+  const retry = (m) => { const i = chat.messages.findIndex((x) => x.id === m.id); const prev = [...chat.messages.slice(0, i)].reverse().find((x) => x.role === 'user'); if (prev) stream({ text: prev.text, mode: 'chat', attachments: [] }); };
   const [draft, setDraft] = useState(null); // streaming assistant reply in flight
   const endRef = useRef(null);
 
@@ -115,9 +118,16 @@ export default function Chat({ id }) {
                 <div className="bubble">{m.text}{m.attachments?.length ? <div className="attach-row">{m.attachments.map((a, i) => <span key={i} className="attach-chip">{a.name || a}</span>)}</div> : null}{m.read?.length ? <div className="attach-row" aria-label="Attachments read">{m.read.map((d, i) => <span key={i} className="attach-chip" title="Read by the house, on the table">{`Read: ${d.name} · ${d.words} words`}</span>)}</div> : null}{m.pages?.length ? <div className="attach-row" aria-label="Pages read">{m.pages.map((pg, i) => <a key={i} className="attach-chip" href={pg.url} target="_blank" rel="noreferrer" title={pg.error ? `Not read: ${pg.error}` : `Read by the house, ${pg.words} words`}>{pg.error ? `Not read: ${pg.url.replace(/^https?:\/\//, '').slice(0, 40)}` : `Read: ${pg.title.slice(0, 50)} · ${pg.words} words`}</a>)}</div> : null}</div>
               ) : (
                 <div className="answer">
-                  <div className="answer-meta">{m.kind === 'live' ? `${m.model} · live on your key` : m.kind === 'run' ? 'mission' : m.kind === 'narrative' ? 'the house · what happened, from the tape' : m.kind === 'record' ? 'the house · answered from the record' : m.model || 'Prajñā'}</div>
+                  <div className="answer-meta">{m.kind === 'live' ? `${m.model} · live on your key` : m.kind === 'run' ? 'mission' : m.kind === 'narrative' ? 'the house · what happened, from the tape' : m.kind === 'record' ? 'the house · answered from the record' : m.kind === 'house' ? 'the house · from the ledger' : m.model || 'Prajñā'}</div>
                   <p>{m.text}</p>
                   {m.missionId && m.kind !== 'narrative' && <RunCard missionId={m.missionId} />}
+                  {!m.id.startsWith('tmp-') && (
+                    <div className="answer-tools" role="group" aria-label="Answer actions">
+                      <button type="button" onClick={() => copy(m)} title="Copy this answer">{copied === m.id ? 'Copied' : copied === `no:${m.id}` ? 'Copy blocked' : 'Copy'}</button>
+                      {!m.missionId && !['run', 'narrative'].includes(m.kind) && <button type="button" onClick={() => retry(m)} title="Ask the same question again">Retry</button>}
+                      {m.at && <span title={new Date(m.at).toLocaleString('en-GB')}>{new Date(m.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

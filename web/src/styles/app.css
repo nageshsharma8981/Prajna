@@ -1214,6 +1214,11 @@ h1.pg-title {
 .msg.user { display: flex; justify-content: flex-end; }
 .bubble { max-width: 80%; background: var(--panel); border: 1px solid var(--line); border-radius: 14px 14px 4px 14px; padding: 0.75rem 1rem; font-size: 0.95rem; white-space: pre-wrap; }
 .answer { max-width: 92%; }
+.answer-tools { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.35rem; font-size: 0.72rem; color: var(--bone-faint); opacity: 0; transition: opacity 0.15s var(--ease); }
+.answer:hover .answer-tools, .answer:focus-within .answer-tools { opacity: 1; }
+.answer-tools button { background: none; border: 1px solid var(--line); color: var(--bone-dim); border-radius: 4px; padding: 0.15rem 0.5rem; font: inherit; font-size: 0.72rem; cursor: pointer; }
+.answer-tools button:hover { color: var(--bone); border-color: var(--line-strong); }
+@media (hover: none) { .answer-tools { opacity: 1; } }
 .answer-meta { font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; margin-bottom: 0.3rem; }
 .answer p { margin: 0 0 0.6rem; font-size: 0.97rem; line-height: 1.6; white-space: pre-wrap; }
 .chat-composer { position: sticky; bottom: 0; background: linear-gradient(180deg, transparent, var(--ground) 30%); padding: 1rem 1.5rem 1.2rem; }
