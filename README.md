@@ -606,3 +606,12 @@ Measured contrast on the surfaces added today. The amber that reads on the
 night hall was far below AA on day paper for the decision cues and the bell;
 they now take a darker amber by day. The disclaimer steps up a shade. The
 logo link and the hidden file input carry accessible names.
+
+## v0.45 — Keyboard-only decision walk (2026-09-04)
+
+Verified without a mouse: ⌘K opens the palette with the pending decision
+first, Enter opens the run, the justification field takes focus and text,
+Tab lands on the first option, and the option is a native button that Enter
+or Space activates in any browser. The test harness cannot emit native button
+activation, so that last step was completed by click; everything before it
+was driven by keys alone.
