@@ -275,3 +275,20 @@ holds the streaming adapters.
 - **Quality from the ledger.** The dashboard now computes gate-cleared-first-
   time rate, patched-before-delivery rate, accepted risks, live-authored share,
   estimate variance and per-desk delivery from the mission ledger.
+
+## v0.12 — Access gate and share links (2026-09-04)
+
+- **Access gate.** Set `PRAJNA_ACCESS_CODE` on the host (Railway → Variables)
+  and every API call needs a session cookie minted by that code; the app shows
+  a locked-house screen until it is entered. The cookie is an HMAC of the
+  code (HttpOnly, SameSite=Lax, Secure behind TLS, 30 days), so restarts do
+  not log anyone out and nothing secret is written to disk. Twelve wrong
+  attempts per ten minutes per address. Unset, the house is open (local
+  development). Log out clears the cookie.
+- **Share links.** Any delivered artifact can be shared at `/s/<token>` —
+  public, `noindex`, provenance block included — and revoked at any time from
+  the artifact bar. The token lives on the artifact record.
+
+```bash
+railway variables --service prajna --set PRAJNA_ACCESS_CODE=your-code
+```

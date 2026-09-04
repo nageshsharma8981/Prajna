@@ -19,12 +19,15 @@ async function post(url, body) {
 export function StoreProvider({ children }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [locked, setLocked] = useState(false);
   const dataRef = useRef(null);
 
   const refresh = useCallback(async () => {
     try {
       const r = await fetch('/api/bootstrap');
+      if (r.status === 401) { setLocked(true); setError(null); return; }
       if (!r.ok) throw new Error(`bootstrap ${r.status}`);
+      setLocked(false);
       const next = await r.json();
       const PRO = new Set(['opus', 'gpt', 'deepseek']);
       next.models = (next.models || []).map((m) => ({ ...m, pro: PRO.has(m.id) }));
@@ -52,7 +55,14 @@ export function StoreProvider({ children }) {
   const api = {
     ...(data || {}),
     ready: !!data,
+    locked,
     error,
+    async unlock(code) {
+      const r = await fetch('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'The house refused the code.');
+      await refresh();
+    },
     refresh,
     async writeTicket(body) {
       const mission = await post('/api/missions', body);

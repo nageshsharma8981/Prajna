@@ -89,7 +89,7 @@ function Sidebar({ open, onClose, menuRef }) {
                 <Link to="/account/settings" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Settings</Link>
                 <Link to="/account/help" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Get Help</Link>
                 <div className="um-sep" />
-                <button role="menuitem" className="um-item danger" onClick={async () => { await fetch('/api/logout', { method: 'POST' }); localStorage.removeItem('prajna-theme'); setMenu(false); navigate('/'); }}>Log out</button>
+                <button role="menuitem" className="um-item danger" onClick={async () => { await fetch('/api/logout', { method: 'POST' }); localStorage.removeItem('prajna-theme'); setMenu(false); navigate('/'); s.refresh(); }}>Log out</button>
               </div>
             )}
           </div>
@@ -118,6 +118,26 @@ function Router() {
   return <Home />;
 }
 
+function Gate() {
+  const s = useStore();
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const go = async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { await s.unlock(code); } catch (x) { setErr(x.message); } finally { setBusy(false); } };
+  return (
+    <div className="gate">
+      <form className="gate-card" onSubmit={go}>
+        <span className="mark">PRAJÑĀ</span>
+        <h1>The house is locked</h1>
+        <p>Enter the access code to open this workspace. Nothing here runs, and no credits move, until you do.</p>
+        <input className="key-input" type="password" autoComplete="off" autoFocus placeholder="Access code" value={code} onChange={(e) => setCode(e.target.value)} aria-label="Access code" />
+        <button className="btn-stamp attn-btn" disabled={busy || !code}>Open the house</button>
+        {err && <p role="alert" className="key-err">{err}</p>}
+      </form>
+    </div>
+  );
+}
+
 function readTheme() {
   const q = new URLSearchParams(location.search).get('theme');
   if (q === 'day' || q === 'night') { const url = new URL(location.href); url.searchParams.delete('theme'); history.replaceState(null, '', url.pathname + url.search); return q; }
@@ -125,6 +145,7 @@ function readTheme() {
 }
 
 function Shell() {
+  const s = useStore();
   const [theme, setThemeState] = useState(readTheme);
   const [sideOpen, setSideOpen] = useState(false);
   const [palette, setPalette] = useState(false);
@@ -148,6 +169,7 @@ function Shell() {
     return () => removeEventListener('keydown', onKey);
   }, []);
   const full = path.startsWith('/artifact/');
+  if (s.locked) return <Gate />;
   return (
     <div className="shell">
       <Sidebar open={sideOpen} onClose={() => setSideOpen(false)} menuRef={menuRef} />

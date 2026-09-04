@@ -1,5 +1,6 @@
 // Prajñā — zero-dependency Node server: API + SSE + static SPA.
 import http from 'node:http';
+import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,6 +20,34 @@ import { GENERATORS } from './artifacts.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, '..', 'web', 'dist');
 const PORT = process.env.PORT || 3005;
+
+// ---- Access gate. Set PRAJNA_ACCESS_CODE on the host and every API call
+// needs a session cookie minted by that code; unset, the house is open
+// (local development). The cookie is an HMAC of the code, so restarts do not
+// log anyone out and nothing secret is written to disk.
+const ACCESS_CODE = String(process.env.PRAJNA_ACCESS_CODE || '').trim();
+const sessionToken = () => crypto.createHmac('sha256', ACCESS_CODE).update('prajna-session-v1').digest('hex');
+function cookieOf(req, name) {
+  const m = String(req.headers.cookie || '').match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function authed(req) {
+  if (!ACCESS_CODE) return true;
+  const got = cookieOf(req, 'prajna_session') || '';
+  const want = sessionToken();
+  return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+}
+function sessionCookie(req, value, maxAge) {
+  const secure = String(req.headers['x-forwarded-proto'] || '').includes('https');
+  return `prajna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+}
+const attempts = new Map(); // ip → { n, at } — a dozen tries per ten minutes
+function tooMany(ip) {
+  const now = Date.now(); const a = attempts.get(ip) || { n: 0, at: now };
+  if (now - a.at > 600000) { a.n = 0; a.at = now; }
+  a.n++; attempts.set(ip, a);
+  return a.n > 12;
+}
 
 /* --------------------------------- seeding -------------------------------- */
 
@@ -165,6 +194,36 @@ async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
 
+  // ---- Session (always reachable) ----
+  if (p === '/api/session') {
+    if (req.method === 'POST') {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      if (tooMany(ip)) return json(res, 429, { error: 'Too many attempts. Wait ten minutes.' });
+      const body = await readBody(req);
+      const code = String(body.code || '').trim();
+      if (!ACCESS_CODE) return json(res, 200, { ok: true, open: true });
+      const ok = code.length === ACCESS_CODE.length && crypto.timingSafeEqual(Buffer.from(code), Buffer.from(ACCESS_CODE));
+      if (!ok) return json(res, 401, { error: 'That code does not open the house.' });
+      res.setHeader('set-cookie', sessionCookie(req, sessionToken(), 60 * 60 * 24 * 30));
+      return json(res, 200, { ok: true });
+    }
+    return json(res, 200, { open: !ACCESS_CODE, locked: !authed(req) });
+  }
+
+  // ---- Shared artifact (public by explicit share link; provenance travels with it) ----
+  const shared = p.match(/^\/s\/([a-f0-9]{32})$/);
+  if (shared) {
+    const a = store.artifacts().find((x) => x.shareToken === shared[1]);
+    const html = a ? store.artifactHtml(a.id) : null;
+    if (!html) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This share link is not on the books — it may have been revoked.</p>'); }
+    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, html);
+  }
+
+  if (p.startsWith('/api/') && !authed(req)) {
+    if (p === '/api/bootstrap') return json(res, 401, { locked: true, error: 'The house is locked. Enter the access code.' });
+    return json(res, 401, { locked: true, error: 'Session required.' });
+  }
+
   // ---- API ----
   if (p === '/api/bootstrap') {
     const cs = connectorState();
@@ -298,6 +357,15 @@ async function handle(req, res) {
   if (missionMatch) {
     const m = store.mission(missionMatch[1]);
     return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
+  }
+
+  const shareMatch = p.match(/^\/api\/artifacts\/([\w]+)\/share$/);
+  if (shareMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+    const a = store.artifact(shareMatch[1]);
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const token = req.method === 'POST' ? (a.shareToken || crypto.randomBytes(16).toString('hex')) : null;
+    store.refreshArtifact(a.id, { shareToken: token, sharedAt: token ? (a.sharedAt || Date.now()) : null }, store.artifactHtml(a.id));
+    return json(res, 200, { ok: true, shareToken: token, path: token ? `/s/${token}` : null });
   }
 
   const artifactHtml = p.match(/^\/api\/artifacts\/([\w]+)\/html$/);
@@ -466,7 +534,7 @@ async function handle(req, res) {
     const b = { id: `b_${Math.random().toString(36).slice(2, 8)}`, name: String(body.name || 'Board').slice(0, 60), mode: String(body.mode || 'website'), createdAt: Date.now(), missionIds: [] };
     w.boards.push(b); flushWs(); return json(res, 200, b);
   }
-  if (p === '/api/logout' && req.method === 'POST') return json(res, 200, { ok: true, note: 'Single-workspace build: nothing to sign out of yet. Local preferences cleared client-side.' });
+  if (p === '/api/logout' && req.method === 'POST') { res.setHeader('set-cookie', sessionCookie(req, '', 0)); return json(res, 200, { ok: true, note: ACCESS_CODE ? 'Session closed. The access code opens the house again.' : 'Open house (no access code set): local preferences cleared client-side.' }); }
 
   // ---- OAuth connectors (apps + tokens memory-only) ----
   const appMatch = p.match(/^\/api\/oauth\/([\w]+)\/app$/);
