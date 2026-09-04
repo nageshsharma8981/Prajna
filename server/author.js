@@ -3,7 +3,7 @@
 // JSON at the compose/build/design step. The house generators lay it out, the
 // provenance block records who wrote what, and the validator lanes gate it
 // exactly as they gate scripted output. No key → scripted substance, labeled.
-import { callModel } from './providers.js';
+import { callModel, takeUsage } from './providers.js';
 import { dataSummary } from './data.js';
 
 const SHAPES = {
@@ -50,7 +50,7 @@ export async function authorContent(mission, live, { revise } = {}) {
   const content = parseAuthored(text);
   const ok = MIN[shapeFor(mission)];
   if (!ok || !ok(content)) throw new Error('the reply did not match the required shape');
-  return { live: true, model: live.model.name, modelId: live.model.modelId, chars: text.length, ms: Date.now() - started, at: Date.now(), content, revisions: (mission.authored?.revisions || 0) + (revise ? 1 : 0) };
+  return { live: true, model: live.model.name, modelId: live.model.modelId, chars: text.length, ms: Date.now() - started, at: Date.now(), content, usage: takeUsage(), revisions: (mission.authored?.revisions || 0) + (revise ? 1 : 0) };
 }
 
 // Adviser critique: a live adviser reads the lead's draft before the gate and

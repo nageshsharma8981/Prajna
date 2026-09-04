@@ -1147,3 +1147,15 @@ provenance says which model stood in and for whom. Only when every key
 on the panel refuses does the house fall back, and even then it prefers
 quoting real sources to inventing prose. Proved by a test that runs two
 model endpoints, one that always fails and one that answers.
+
+## v0.96: What your own key was used for (2026-09-04)
+
+A run on your own key is priced at zero house credits, which said
+nothing about what your provider charged you. Every model call now
+records what the provider itself reported: calls made, prompt tokens and
+completion tokens, per model, across authoring, adviser critique and
+panel positions. The run page and the artifact's provenance state it
+plainly and add that the house does not guess a price, because token
+prices change and an invented figure would be worse than none. A
+provider that reports no counts adds nothing but the call itself, and a
+refused call bills nothing and is not counted.

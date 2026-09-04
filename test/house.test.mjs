@@ -458,7 +458,7 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
         claims: [1, 2, 3].map((n) => ({ text: `Claim number ${n} written by the stand-in model.`, grade: 'B', detail: `Support for claim ${n}, one sentence long.`, src: 0, source: { title: `A source class described honestly for claim ${n}`, kind: 'analysis' } })),
         refuted: [], moves: [], tripwires: 'Commit further only if the first move clears.', dissent: { seat: 'an adviser', text: 'The adviser held that the pace is optimistic.' } };
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(brief) } }] }));
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(brief) } }], usage: { prompt_tokens: 1200, completion_tokens: 340 } }));
     });
   });
   const bad = http.createServer((req, res) => { asked.push('bad'); res.writeHead(500, { 'content-type': 'application/json' }); res.end('{"error":"the provider is down"}'); });
@@ -490,6 +490,12 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
     assert.match(html, /standing in after Flaky Lead refused/);
     assert.match(html, /A stand-in model wrote this brief/);
+    // What your own key was actually used for, counted from the provider's own numbers.
+    assert.ok(m.keyUse && m.keyUse.reported >= 1, JSON.stringify(m.keyUse));
+    assert.equal(m.keyUse.prompt % 1200, 0); assert.equal(m.keyUse.completion % 340, 0);
+    assert.equal(m.keyUse.calls, m.keyUse.reported, 'every counted call reported its tokens; a refusal bills nothing and is not counted');
+    assert.match(html, /Your own key was called \d+ times? for this run, using [\d,]+ prompt and [\d,]+ completion tokens as reported by the provider itself/);
+    assert.match(html, /the house does not guess a price/);
   } finally {
     await api('/api/keys/openai', { method: 'DELETE' });
     good.close(); bad.close();

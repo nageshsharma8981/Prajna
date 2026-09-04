@@ -447,6 +447,7 @@ export default function Run({ id }) {
                 <ol>{mission.sources.map((src, i) => (
                   <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}{src.words ? ` · ${src.words} words` : ''}</em>{(() => { const row = (mission.evidence?.rows || []).find((r) => r.url === src.url); return row ? <em className={`src-live${row.ok === false ? ' gone' : ''}`}> · {row.detail}</em> : null; })()}</li>
                 ))}</ol>
+                {mission.keyUse && <p className="src-check">On your own key: {mission.keyUse.calls} call{mission.keyUse.calls === 1 ? '' : 's'}{mission.keyUse.reported ? `, ${mission.keyUse.prompt.toLocaleString('en-GB')} prompt and ${mission.keyUse.completion.toLocaleString('en-GB')} completion tokens as the provider reported them` : ', with no token counts reported by the provider'}. Billed to you by your provider, not to the house; the house does not guess a price.</p>}
                 {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}), recorded, not hidden.</p>}
                 {(mission.sources || []).some((s) => s.url) && (
                   <p className="src-check">

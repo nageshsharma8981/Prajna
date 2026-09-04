@@ -73,6 +73,7 @@ export const PROVIDERS = {
       }), TIMEOUT_MS, 'Anthropic');
       const j = await readJson(r);
       if (!r.ok) throw new Error(j?.error?.message || `Anthropic ${r.status}`);
+      lastUsage = { prompt: j.usage?.input_tokens ?? null, completion: j.usage?.output_tokens ?? null };
       return (j.content || []).map((c) => c.text || '').join('').trim();
     },
   },
@@ -88,6 +89,7 @@ export const PROVIDERS = {
       }), TIMEOUT_MS, 'OpenAI-compatible');
       const j = await readJson(r);
       if (!r.ok) throw new Error(j?.error?.message || j?.raw || `HTTP ${r.status}`);
+      lastUsage = { prompt: j.usage?.prompt_tokens ?? null, completion: j.usage?.completion_tokens ?? null };
       return (j.choices?.[0]?.message?.content || '').trim();
     },
   },
@@ -102,6 +104,7 @@ export const PROVIDERS = {
       }), TIMEOUT_MS, 'Gemini');
       const j = await readJson(r);
       if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
+      lastUsage = { prompt: j.usageMetadata?.promptTokenCount ?? null, completion: j.usageMetadata?.candidatesTokenCount ?? null };
       return (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
     },
   },
@@ -178,11 +181,17 @@ export async function streamModel({ provider, key, baseUrl, modelId, prompt, max
   } finally { clearTimeout(t); }
 }
 
+// What the provider itself said the last call used. Never estimated: when a
+// provider reports nothing, the house records nothing rather than guessing.
+let lastUsage = null;
+export function takeUsage() { const u = lastUsage; lastUsage = null; return u && (u.prompt !== null || u.completion !== null) ? u : null; }
+
 export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTokens }) {
   const p = PROVIDERS[provider];
   if (!p) throw new Error(`Unknown provider "${provider}".`);
   if (p.kind === 'search') throw new Error(`${p.label} is a search key, not a model.`);
   if (!key) throw new Error(`No key on file for ${p.label}.`);
+  lastUsage = null;
   const text = await p.call({ key, baseUrl, modelId, prompt, maxTokens });
   if (!text) throw new Error(`${p.label} returned an empty reply.`);
   return text;

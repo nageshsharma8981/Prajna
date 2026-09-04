@@ -16,6 +16,24 @@ import { callModel } from './providers.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { composeFor } from './compose.js';
+import { takeUsage } from './providers.js';
+
+// Tokens the owner's own provider says a call used. Counted, never estimated:
+// a provider that reports nothing adds nothing but the call itself.
+function countUsage(m, model) {
+  const u = takeUsage();
+  if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} };
+  m.keyUse.calls += 1;
+  if (u) {
+    m.keyUse.reported += 1;
+    m.keyUse.prompt += u.prompt || 0;
+    m.keyUse.completion += u.completion || 0;
+    const k = model || 'a model';
+    const at = (m.keyUse.models[k] = m.keyUse.models[k] || { calls: 0, prompt: 0, completion: 0 });
+    at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0;
+  }
+  return u;
+}
 import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
@@ -592,6 +610,7 @@ async function applyEvent(m, ev, notify, runner) {
         record.text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: positionPrompt(m, live.model) });
         record.live = true;
         record.modelId = live.model.modelId;
+        countUsage(m, live.model.name);
       } catch (e) {
         record.live = false;
         record.liveError = String(e.message || e).slice(0, 200);
@@ -718,6 +737,7 @@ async function applyEvent(m, ev, notify, runner) {
         for (const seat of bench) {
           try {
             m.authored = await authorContent(m, seat);
+            if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[seat.model.name] = m.keyUse.models[seat.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else if (m.authored.live) { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
             if (refused.length) { m.authored.steppedIn = { after: refused.map((r) => r.name), lead: modelById(m.lead).name }; }
             pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it${refused.length ? ` · stepped in after ${refused.map((r) => `${r.name} refused (${r.error})`).join('; ')}` : ''}` }, notify);
             return 'ok';
@@ -782,6 +802,7 @@ async function applyEvent(m, ev, notify, runner) {
         if (!live) continue;
         try {
           const c = await critiqueContent(m, live);
+          countUsage(m, live.model.name);
           m.critiques.push({ seat: seatId, ...c });
           pushEvent(m, { type: 'council.critique', seat: seatId, model: c.model, live: true, verdict: c.verdict, issues: c.issues, text: c.verdict === 'pass' ? `${c.model}: the draft passes my read.` : `${c.model}: revise, ${c.issues.join(' · ') || 'no issues stated'}` }, notify);
           if (c.verdict === 'revise' && c.issues.length) issues.push(...c.issues.map((x) => `${c.model}: ${x}`));
