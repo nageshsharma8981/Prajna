@@ -27,7 +27,13 @@ function readJson(file, fallback) {
     return fallback;
   }
 }
+// Every write moves the house on by one. A tab can ask for this number
+// instead of the whole workspace, and only pull the workspace when it changes.
+let revision = 1;
+export const houseRevision = () => revision;
+
 function writeJson(file, value) {
+  revision += 1;
   // Atomic write: a crash mid-flush must not truncate the ledger.
   const full = path.join(DATA_DIR, file);
   const tmp = `${full}.tmp`;

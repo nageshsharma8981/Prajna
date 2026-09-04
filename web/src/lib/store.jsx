@@ -43,14 +43,29 @@ export function StoreProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  // While anything is running, the credit meter, ticker and boards keep pace
-  // with the ledger on a light poll, every surface, not just the run tape.
+  // While anything is running, every surface keeps pace with the ledger. The
+  // poll asks the house one cheap question, has anything changed, and pulls
+  // the workspace only when the answer moves; an idle tab costs a few bytes
+  // instead of the whole record every four seconds.
+  const busy = (data?.missions || []).some((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
+  const revRef = useRef(null);
   useEffect(() => {
-    const busy = (data?.missions || []).some((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
-    if (!busy) return;
-    const t = setInterval(refresh, 4000);
-    return () => clearInterval(t);
-  }, [data, refresh]);
+    if (!busy) return undefined;
+    let on = true;
+    const tick = async () => {
+      try {
+        const r = await fetch('/api/pulse');
+        if (!r.ok || !on) return;
+        const { rev } = await r.json();
+        if (revRef.current !== null && rev === revRef.current) return; // nothing moved
+        revRef.current = rev;
+        await refresh();
+      } catch { /* the house will be asked again in four seconds */ }
+    };
+    tick();
+    const t = setInterval(tick, 4000);
+    return () => { on = false; clearInterval(t); };
+  }, [busy, refresh]);
 
   // Decisions the house is waiting on: paused missions with an undecided
   // attention item. Surfaced in the title, the sidebar and (opt-in) a

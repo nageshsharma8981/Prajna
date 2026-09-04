@@ -5,7 +5,7 @@ import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { store } from './store.js';
+import { store, houseRevision } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
 import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat, editPlan, PLAN_TOOLS } from './engine.js';
@@ -420,6 +420,13 @@ async function handle(req, res) {
     const { zip, count } = exportWorkspace({ version: VERSION });
     res.writeHead(200, { 'content-type': 'application/zip', 'content-length': zip.length, 'content-disposition': `attachment; filename="prajna-export-${new Date().toISOString().slice(0, 10)}.zip"`, 'cache-control': 'no-store', 'x-entries': String(count) });
     return res.end(zip);
+  }
+  // The cheap question: has anything changed? A tab asks this, not for the
+  // whole workspace, and pulls the workspace only when the answer moves.
+  if (p === '/api/pulse' && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const pending = store.missions().reduce((a, m) => a + (m.attention || []).filter((x) => !x.decision).length, 0);
+    return json(res, 200, { rev: houseRevision(), pending, live: store.missions().filter((m) => m.status === 'LIVE').length });
   }
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });

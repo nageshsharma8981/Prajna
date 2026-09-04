@@ -1283,3 +1283,16 @@ since paraphrase is not fabrication, and it fires only on the shape of a
 citation attached to the wrong evidence. A run that trips it stops at
 the gate for your decision instead of delivering. Composed briefs pass
 by construction, because their claims are quotations.
+
+## v1.7: The house stops shouting (2026-09-04)
+
+While a run was in flight, every open tab pulled the entire workspace
+every four seconds, six hundred kilobytes at a time on a busy house, and
+rebuilt its own timer on each pull. Now a tab asks one cheap question,
+has anything changed, and pulls the workspace only when the answer
+moves. The pulse is thirty bytes and carries what a waiting tab needs:
+the house revision, how many decisions are waiting and how many runs are
+live. Measured in the browser: an idle-but-busy tab went from three full
+pulls in twelve seconds to none, and a single change still refreshes it
+once. A sweep of every room found nothing else broken, and the test
+suite's own second server now keeps its own house, so it cannot race.

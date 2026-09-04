@@ -643,12 +643,17 @@ test('when the sweep finds nothing, the house offers a smaller ticket instead of
   const empty = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ query: { search: [] } })); });
   await new Promise((r) => empty.listen(0, '127.0.0.1', r));
   const port = empty.address().port;
-  const child2 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT + 1), PRAJNA_DATA_DIR: DIR, PRAJNA_WIKI_BASE: `http://127.0.0.1:${port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Its own data directory: two servers writing one directory would race, and
+  // a suite that races is worth less than no suite at all.
+  const DIR2 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-ground-'));
+  const child2 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT + 1), PRAJNA_DATA_DIR: DIR2, PRAJNA_WIKI_BASE: `http://127.0.0.1:${port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
   const B2 = `http://localhost:${PORT + 1}`;
   const j2 = async (p, o) => { const r = await fetch(B2 + p, { headers: { 'content-type': 'application/json' }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B2}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = await (await fetch(`${B2}/api/legal`)).json();
+    await j2('/api/consent', { method: 'POST', body: JSON.stringify({ accept: true, version: legal.version, name: 'Ground Test' }) });
     const w = await j2('/api/missions', { method: 'POST', body: JSON.stringify({ goal: 'Ground test: should we enter the market for a thing nobody has written about?', deskId: 'brief' }) });
     assert.equal(w.status, 200);
     const dead = w.j.contract.plan.filter((p) => ['cite-guard', 'steelman'].includes(p.tool));
@@ -676,7 +681,7 @@ test('when the sweep finds nothing, the house offers a smaller ticket instead of
     assert.equal(next.contract.plan.filter((p) => ['cite-guard', 'steelman'].includes(p.tool)).length, 0, 'the empty steps are gone');
     assert.ok(next.contract.ceiling < w.j.contract.ceiling, `a smaller ceiling: ${next.contract.ceiling} vs ${w.j.contract.ceiling}`);
     assert.equal(next.lineage.parentId, w.j.id);
-  } finally { child2.kill(); empty.close(); }
+  } finally { child2.kill(); empty.close(); fs.rmSync(DIR2, { recursive: true, force: true }); }
 });
 
 test('the house records who came through the door and says when the door is open', async () => {
@@ -749,4 +754,24 @@ test('a claim citing a source that does not speak to it is caught at the gate', 
     assert.ok(gate && /VAL-CLAIMS-SOURCE-SPEAKS/.test(gate.prompt), gate?.prompt);
     assert.equal(m.status, 'PAUSED_ATTENTION', 'the house stops rather than delivering it');
   } finally { await api('/api/keys/openai', { method: 'DELETE' }); liar.close(); }
+});
+
+test('the pulse is cheap and moves only when the house does', async () => {
+  const p1 = await api('/api/pulse');
+  assert.equal(p1.status, 200);
+  assert.equal(typeof p1.j.rev, 'number');
+  assert.ok(JSON.stringify(p1.j).length < 120, `a pulse is small: ${JSON.stringify(p1.j)}`);
+  const boot = await api('/api/bootstrap');
+  assert.ok(JSON.stringify(boot.j).length > JSON.stringify(p1.j).length * 50, 'the workspace is far larger than a pulse');
+  // Reading does not move the house on.
+  const p2 = await api('/api/pulse');
+  assert.equal(p2.j.rev, p1.j.rev, 'a read changes nothing');
+  // Writing does.
+  assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: 'A change that moves the house on.' }) })).status, 200);
+  const p3 = await api('/api/pulse');
+  assert.ok(p3.j.rev > p2.j.rev, `the revision moved: ${p2.j.rev} → ${p3.j.rev}`);
+  assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: '' }) })).status, 200);
+  // It also carries what a waiting tab needs to know without a full pull.
+  assert.equal(typeof p3.j.pending, 'number');
+  assert.equal(typeof p3.j.live, 'number');
 });
