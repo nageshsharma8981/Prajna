@@ -427,3 +427,10 @@ embedded in a sandboxed frame, and the machine-readable record
 - **What changed.** The dashboard opens with a seven-day digest computed from
   the ledger: delivered vs started, credits settled, gate-first-time count,
   live-authored count, amendments, notes left, showcase submissions.
+
+## v0.24 — Mobile pass and keyboard polish (2026-09-04)
+
+Promo cards stack below 700px, the greeting, chat thread, run card and plan
+editor tighten for small screens, and no page scrolls sideways on a phone.
+`/` focuses the composer from anywhere on a page that has one; `⌘K` still
+opens the jump palette and `Esc` closes overlays.

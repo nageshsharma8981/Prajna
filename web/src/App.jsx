@@ -164,6 +164,11 @@ function Shell() {
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((v) => !v); }
+      // "/" focuses the composer when nothing else is being typed into.
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') && !document.activeElement?.isContentEditable) {
+        const box = document.querySelector('.composer-input');
+        if (box) { e.preventDefault(); box.focus(); }
+      }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
