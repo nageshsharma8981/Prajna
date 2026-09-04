@@ -1269,3 +1269,17 @@ someone had already accepted the rules, because the log did not exist
 yet. The acceptance on file is now the first line of that record, so an
 owner sees the person who is actually in the house rather than nobody.
 The daily digest names anyone who accepted in the last day.
+
+## v1.6: A citation is a claim, so the house checks it (2026-09-04)
+
+The gate proved that figures traced to a source and that references
+listed only cited sources. It never checked the thing that matters most:
+whether the source a claim cites actually speaks to that claim. It does
+now. For every claim that cites a source on the table, the house takes
+the claim's distinctive words and looks for them in that source, and
+fails the lane when not one of them appears, naming the claim, the
+source and the words that are missing. It is deliberately forgiving,
+since paraphrase is not fabrication, and it fires only on the shape of a
+citation attached to the wrong evidence. A run that trips it stops at
+the gate for your decision instead of delivering. Composed briefs pass
+by construction, because their claims are quotations.

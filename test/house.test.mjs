@@ -715,3 +715,38 @@ test('a house that was already occupied does not claim nobody has entered', asyn
   assert.equal(rebuilt[0].name, 'The Earlier Occupant');
   w.consentLog = kept;
 });
+
+test('a claim citing a source that does not speak to it is caught at the gate', async () => {
+  // A model that cites source [1] for something the page never mentions.
+  const liar = http.createServer((req, res) => {
+    const brief = { stand: 'A brief with a citation attached to the wrong evidence.', verdict: 'Proceed carefully. The recommendation is stated before the evidence, in two sentences.',
+      claims: [1, 2, 3].map((n) => ({ text: `Photosynthesis in mangrove seedlings governs quarterly retention, finding ${n}.`, grade: 'B', detail: `Support ${n}.`, src: 1 })),
+      refuted: [], moves: [], tripwires: 'Stop if the first move fails.', dissent: { seat: 'an adviser', text: 'The adviser doubted the pace.' } };
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(brief) } }], usage: { prompt_tokens: 100, completion_tokens: 50 } })); });
+  });
+  await new Promise((r) => liar.listen(0, '127.0.0.1', r));
+  try {
+    assert.equal((await api('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` }) })).status, 200);
+    const model = await post('/api/models', { name: 'Confident Fabricator', provider: 'openai', modelId: 'fab-1', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` });
+    if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
+    const w = await post('/api/missions', { goal: `Citation test: what do the rules at ${BASE}/legal/terms say?`, deskId: 'brief', depth: 'fast', lead: model.j.id, advisers: [] });
+    assert.ok((w.j.sources || []).some((s) => s.engine === 'page'), 'a real page is on the table to cite');
+    assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+    let m; const started = Date.now();
+    while (Date.now() - started < 90000) {
+      m = (await api(`/api/missions/${w.j.id}`)).j;
+      if ((m.attention || []).some((a) => a.kind === 'gate' && !a.decision)) break;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    const rows = (m.validations || []).flatMap((v) => v.rows);
+    const caught = rows.find((r) => r.id === 'VAL-CLAIMS-SOURCE-SPEAKS' && r.lane === 'scrutiny' && !r.passed);
+    assert.ok(caught, `the gate caught it: ${JSON.stringify(rows.map((r) => `${r.id}:${r.lane}:${r.passed}`))}`);
+    assert.match(caught.detail, /rest on a source that does not speak to them/);
+    assert.match(caught.detail, /photosynthesis|mangrove|seedlings/);
+    const gate = (m.attention || []).find((a) => a.kind === 'gate');
+    assert.ok(gate && /VAL-CLAIMS-SOURCE-SPEAKS/.test(gate.prompt), gate?.prompt);
+    assert.equal(m.status, 'PAUSED_ATTENTION', 'the house stops rather than delivering it');
+  } finally { await api('/api/keys/openai', { method: 'DELETE' }); liar.close(); }
+});

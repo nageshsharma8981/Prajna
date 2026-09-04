@@ -43,6 +43,38 @@ function unsupportedFigures(html, { allowLabelled = false } = {}) {
 const HONESTY = { id: 'VAL-FIGURES-SOURCED', title: 'Every figure in a live-authored deliverable traces to the goal or a retrieved source', owner: 'compose',
   scrutiny: (h) => unsupportedFigures(h), surface: (h) => unsupportedFigures(h, { allowLabelled: true }) };
 
+// A citation is a claim about a source, so the house checks it like any other
+// claim: does the source it points at actually speak to it? Deterministic and
+// deliberately forgiving, it fails only when a cited source shares not one
+// distinctive word with the claim resting on it, which is the shape of a
+// citation attached to the wrong evidence.
+const CITE_STOP = new Set(['about', 'above', 'across', 'after', 'against', 'almost', 'already', 'although', 'always', 'among', 'another', 'because', 'become', 'before', 'behind', 'being', 'below', 'better', 'between', 'beyond', 'britain', 'cannot', 'could', 'despite', 'during', 'either', 'enough', 'every', 'except', 'first', 'further', 'greater', 'having', 'however', 'important', 'inside', 'instead', 'itself', 'largely', 'likely', 'little', 'making', 'market', 'matter', 'means', 'might', 'money', 'months', 'mostly', 'moving', 'neither', 'number', 'often', 'other', 'others', 'ought', 'outside', 'people', 'perhaps', 'point', 'points', 'possible', 'probably', 'rather', 'really', 'result', 'results', 'right', 'second', 'several', 'should', 'similar', 'simply', 'since', 'small', 'still', 'strong', 'suggest', 'suggests', 'their', 'themselves', 'there', 'therefore', 'these', 'thing', 'things', 'think', 'those', 'though', 'through', 'together', 'toward', 'towards', 'under', 'until', 'value', 'very', 'where', 'whether', 'which', 'while', 'whole', 'whose', 'within', 'without', 'would', 'years']);
+export function distinctive(text, limit = 8) {
+  return [...new Set(String(text).toLowerCase().match(/[a-z][a-z-]{5,}/g) || [])].filter((w) => !CITE_STOP.has(w)).slice(0, limit);
+}
+function unsupportedCitations(mission) {
+  const A = mission?.authored;
+  if (!A || !(A.live || A.composed) || !A.content) return { ok: true, detail: 'scripted substance is house-labelled sample; citations not checked' };
+  const claims = Array.isArray(A.content.claims) ? A.content.claims : [];
+  const sources = mission.sources || [];
+  const cited = claims.filter((c) => Number(c.src) > 0 && sources[Number(c.src) - 1]);
+  if (!cited.length) return { ok: true, detail: 'no claim cites a source on the table' };
+  const bad = [];
+  for (const c of cited) {
+    const src = sources[Number(c.src) - 1];
+    const hay = `${src.title || ''} ${src.extract || ''} ${src.text || ''}`.toLowerCase();
+    const terms = distinctive(c.text);
+    if (!terms.length) continue; // nothing distinctive to look for; not judged
+    if (!terms.some((t) => hay.includes(t))) bad.push(`“${String(c.text).slice(0, 70)}…” cites [${c.src}] ${src.title}, which does not mention ${terms.slice(0, 3).join(', ')}`);
+  }
+  return bad.length
+    ? { ok: false, detail: `${bad.length} of ${cited.length} cited claim(s) rest on a source that does not speak to them: ${bad.slice(0, 3).join('; ')}` }
+    : { ok: true, detail: `${cited.length} cited claim(s) each share wording with the source they rest on` };
+}
+const SUPPORTED = { id: 'VAL-CLAIMS-SOURCE-SPEAKS', title: 'Every claim that cites a source shares wording with it', owner: 'compose',
+  scrutiny: (h, ctx) => unsupportedCitations(ctx?.mission),
+  surface: (h, ctx) => { const refs = [...h.matchAll(/data-ref="(src-\d+)"/g)].map((m) => m[1]); const n = (ctx?.mission?.sources || []).length; return refs.length && n ? { ok: refs.every((r) => Number(r.split('-')[1]) <= n), detail: `${refs.length} citation(s) point inside the ${n} source(s) on the table` } : { ok: true, detail: 'no citations to resolve' }; } };
+
 // A recorded dissent must travel into every deliverable, not just the brief.
 const CARRIED = (owner) => ({ id: 'VAL-DISSENT-CARRIED', title: 'The panel dissent, when one was recorded, is carried in the deliverable', owner,
   scrutiny: (h) => { const p = provenance(h); if (!p?.dissent) return { ok: true, detail: 'no dissent was recorded' }; return has(body(h), /class="carried-dissent"/) && has(body(h), new RegExp(p.dissent.model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))) ? { ok: true, detail: `dissent by ${p.dissent.model} carried` } : { ok: false, detail: `dissent by ${p.dissent.model} missing from the deliverable` }; },
@@ -52,6 +84,7 @@ const CARRIED = (owner) => ({ id: 'VAL-DISSENT-CARRIED', title: 'The panel disse
 // would hit (runnable script, resolvable anchors, parseable audit object).
 export const ASSERTIONS = {
   brief: [
+    SUPPORTED,
     { id: 'VAL-CLAIMS-GRADED', title: 'Every lead claim carries an evidence grade and a source ref', owner: 'compose',
       scrutiny: (h) => count(h, /class="claim"/g) >= 3 && count(h, /class="grade g[ABC]"/g) >= count(h, /class="claim"/g),
       surface: (h) => { const refs = [...h.matchAll(/data-ref="(src-\d+)"/g)].map((m) => m[1]); return refs.length > 0 && refs.every((r) => h.includes(`id="${r}"`)); } },
@@ -128,14 +161,14 @@ export const ASSERTIONS = {
 };
 
 // Run both lanes over the artifact. Returns per-assertion verdicts per lane.
-export function validateArtifact(desk, html, assertionIds) {
+export function validateArtifact(desk, html, assertionIds, ctx = {}) {
   const catalog = ASSERTIONS[desk] || [];
   const rows = [];
   for (const a of catalog) {
     if (!assertionIds.includes(a.id)) continue;
     for (const lane of ['scrutiny', 'surface']) {
       let passed = false, error = null, detail = null;
-      try { const out = a[lane](html); if (out && typeof out === 'object') { passed = !!out.ok; detail = out.detail || null; } else passed = !!out; } catch (e) { passed = false; error = String(e.message || e).slice(0, 80); }
+      try { const out = a[lane](html, ctx); if (out && typeof out === 'object') { passed = !!out.ok; detail = out.detail || null; } else passed = !!out; } catch (e) { passed = false; error = String(e.message || e).slice(0, 80); }
       rows.push({ id: a.id, lane, passed, error, detail });
     }
   }

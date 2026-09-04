@@ -905,7 +905,7 @@ async function applyEvent(m, ev, notify, runner) {
 function runValidation(m, notify, runner) {
   const html = m.artifactId ? store.artifactHtml(m.artifactId) : '';
   const ids = (m.contract.assertions || []).map((a) => a.id);
-  const rows = validateArtifact(m.variant === 'design' ? 'design' : m.desk, html || '', ids);
+  const rows = validateArtifact(m.variant === 'design' ? 'design' : m.desk, html || '', ids, { mission: m });
   const round = (m.validations?.length || 0) + 1;
   for (const lane of ['scrutiny', 'surface']) {
     const laneRows = rows.filter((r) => r.lane === lane);
