@@ -478,13 +478,45 @@ async function handle(req, res) {
   }
 
   // ---- Shared artifact (public by explicit share link; provenance travels with it) ----
+  // A shared delivery can be taken away, not only read: the same formats the
+  // owner has, at the same link, with no account and no key.
+  const sharedFile = p.match(/^\/s\/([a-f0-9]{32})\.(docx|pptx|xlsx)$/);
+  if (sharedFile) {
+    if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
+    const a = store.artifacts().find((x) => x.shareToken === sharedFile[1]);
+    const html = a ? store.artifactHtml(a.id) : null;
+    if (!a || !html) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('This share link is not on the books, it may have been revoked.'); }
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    const link = m?.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null;
+    const kind = sharedFile[2];
+    const buf = kind === 'docx' ? docxFromArtifact({ artifact: a, mission: m, html, publicUrl: link })
+      : kind === 'pptx' ? pptxFromArtifact({ artifact: a, mission: m, html, publicUrl: link })
+      : m && xlsxFromMission({ artifact: a, mission: m, publicUrl: link });
+    if (!buf) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end(kind === 'pptx' ? 'This delivery has no slides.' : 'This delivery has no data table.'); }
+    const type = kind === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      : kind === 'pptx' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'delivery'}.${kind}`;
+    res.writeHead(200, { 'content-type': type, 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+    return res.end(buf);
+  }
+
   const shared = p.match(/^\/s\/([a-f0-9]{32})$/);
   if (shared) {
     if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
     const a = store.artifacts().find((x) => x.shareToken === shared[1]);
     const html = a ? store.artifactHtml(a.id) : null;
     if (!html) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This share link is not on the books, it may have been revoked.</p>'); }
-    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, html);
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    const has = { docx: true, pptx: /<section class="slide/.test(html), xlsx: !!m?.data?.series };
+    const bar = `<div style="position:sticky;top:0;z-index:99;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.55rem .9rem;background:#121614;color:#efe7d6;font:600 12px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;letter-spacing:.06em">
+<span style="text-transform:uppercase;color:#a8ab9c">Shared delivery · ${String(a.serial || '').replace(/[<>&"]/g, '')}</span><span style="flex:1"></span>
+<a href="/s/${a.shareToken}.docx" style="color:#ffb300;text-decoration:none;border:1px solid #3a3d36;border-radius:6px;padding:.25rem .6rem">Word</a>
+${has.pptx ? `<a href="/s/${a.shareToken}.pptx" style="color:#ffb300;text-decoration:none;border:1px solid #3a3d36;border-radius:6px;padding:.25rem .6rem">PowerPoint</a>` : ''}
+${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decoration:none;border:1px solid #3a3d36;border-radius:6px;padding:.25rem .6rem">Excel</a>` : ''}
+</div>`;
+    const withBar = html.replace(/<body([^>]*)>/i, (mm, attrs) => `<body${attrs}>${bar}`);
+    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, withBar);
   }
 
   // Shared mission record (public by explicit share link): the audit bundle.

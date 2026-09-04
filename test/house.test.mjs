@@ -584,3 +584,31 @@ test('an analysis can leave as a workbook: the series, the segments and the arit
   if (noData) { const bad = await fetch(`${BASE}/api/artifacts/${noData.id}/xlsx`); assert.equal(bad.status, 400); assert.match((await bad.json()).error, /no data table/); }
   assert.equal(b.artifacts.find((x) => x.id === m.artifactId)?.hasData, true, 'the delivery is flagged as having data');
 });
+
+test('a shared delivery can be taken away, in the same formats, with no account', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const deck = b.artifacts.find((x) => /deck/i.test(x.kind) || /deck/i.test(x.title));
+  const share = await post(`/api/artifacts/${deck.id}/share`); assert.equal(share.status, 200);
+  const token = share.j.path.split('/').pop();
+  // The shared page offers the formats it actually has.
+  const page = await fetch(`${BASE}/s/${token}`); assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /Shared delivery/);
+  assert.ok(html.includes(`/s/${token}.docx`), 'Word offered');
+  assert.ok(html.includes(`/s/${token}.pptx`), 'PowerPoint offered for a deck');
+  assert.ok(!html.includes(`/s/${token}.xlsx`), 'no workbook offered without data');
+  assert.ok(html.indexOf('Shared delivery') < html.indexOf('prajna.provenance'), 'the bar sits above the delivery, which is untouched');
+  // Anyone with the link can take the file; no session, no key.
+  for (const [kind, type] of [['docx', /wordprocessingml/], ['pptx', /presentationml/]]) {
+    const r = await fetch(`${BASE}/s/${token}.${kind}`);
+    assert.equal(r.status, 200, kind);
+    assert.match(r.headers.get('content-type'), type);
+    assert.match(r.headers.get('content-disposition'), /attachment; filename=".*\.(docx|pptx)"/);
+    assert.equal(Buffer.from(await r.arrayBuffer()).readUInt32LE(0), 0x04034b50, `${kind} is a real file`);
+  }
+  assert.equal((await fetch(`${BASE}/s/${token}.xlsx`)).status, 404, 'a deck has no workbook');
+  // Revoking the link takes the files with it.
+  assert.equal((await api(`/api/artifacts/${deck.id}/share`, { method: 'DELETE' })).status, 200);
+  assert.equal((await fetch(`${BASE}/s/${token}.docx`)).status, 404);
+  assert.equal((await fetch(`${BASE}/s/${token}`)).status, 404);
+});

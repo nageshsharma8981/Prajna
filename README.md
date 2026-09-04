@@ -1194,3 +1194,22 @@ delivery, the mission, the file it read, what wrote the substance, what
 it settled and the record link. Numbers are stored as numbers, so the
 workbook can be worked in rather than retyped. Checked by an independent
 parser, by the house reading its own file, and by macOS rendering it.
+
+## v1.0: The handover is complete (2026-09-04)
+
+A share link used to be something to read. Now it is something to take:
+the shared page offers Word, and PowerPoint or Excel when the delivery
+has slides or data, at the same link, with no account and no key. The
+files are built at request time from the stored artifact, so the
+delivery and its provenance are untouched, and revoking the link takes
+the files with it in the same instant.
+
+That closes the loop this house was built for. A request becomes a
+contract with a plan, a price and a ceiling. The run happens in the
+open, every step, cost, position and decision on a tape that survives a
+restart. The delivery carries its own evidence, cites addresses the
+house re-visits, and leaves in the format the reader expects. The
+ledger, the limits, the backups, the export and the erasure are the
+owner's. Keys are never written to disk. Ninety-three iterations, each
+verified before it shipped, and a suite of twenty-nine tests the deploy
+refuses to skip.
