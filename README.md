@@ -775,3 +775,12 @@ steps for exactly those apps on the new ticket (a parent that delivered
 nowhere queues every connected app, as before), records them in the new
 ticket's lineage, and the delivery text says which version it is and what
 it supersedes, so a v2 never strands recipients on v1.
+
+## v0.63: One page per deliverable (2026-09-04)
+
+A new version or a re-delivery no longer scatters copies. Notion: the page
+the earlier delivery created is retitled and the new version appended
+beneath a dated heading. Slack: the post lands in the earlier thread. GitHub:
+a comment on the earlier issue. Gmail drafts stay one per delivery. The
+earlier delivery is found on the same mission or up the lineage chain, and
+the handover names where the update went.

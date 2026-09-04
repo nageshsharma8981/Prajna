@@ -123,8 +123,22 @@ function summary(m, link) {
   return lines.join('\n\n');
 }
 
+// The earlier delivery this one continues: the same mission's last delivery
+// to that app (a re-delivery), or an ancestor version's (an amendment).
+export function priorDelivery(m, cid) {
+  const own = [...(m.deliveries || [])].reverse().find((d) => d.connector === cid && d.ok && d.id);
+  if (own) return own;
+  let cur = m; let hops = 0;
+  while (cur?.lineage?.parentId && hops++ < 10) {
+    cur = store.mission(cur.lineage.parentId);
+    const d = cur && [...(cur.deliveries || [])].reverse().find((x) => x.connector === cid && x.ok && x.id);
+    if (d) return d;
+  }
+  return null;
+}
+
 const DELIVER = {
-  async slack(t, m, link) {
+  async slack(t, m, link, prior) {
     const target = targets().slack;
     let channel = target;
     if (!channel) {
@@ -132,14 +146,22 @@ const DELIVER = {
       channel = (j.channels || []).find((c) => c.is_member)?.id || (j.channels || [])[0]?.id;
       if (!channel) throw new Error('no channel to post to; set one on the Connectors page');
     }
-    const j = await call(`${base('slack')}/api/chat.postMessage`, { method: 'POST', headers: { ...auth(t), 'content-type': 'application/json' }, body: JSON.stringify({ channel, text: summary(m, link) }) }, 'Slack post');
-    return { id: j.ts || null, url: j.permalink || null, where: `Slack ${channel}` };
+    const threaded = prior && (prior.target === channel || String(prior.where || '').startsWith(`Slack ${channel}`)) ? prior.id : null;
+    const j = await call(`${base('slack')}/api/chat.postMessage`, { method: 'POST', headers: { ...auth(t), 'content-type': 'application/json' }, body: JSON.stringify({ channel, text: summary(m, link), ...(threaded ? { thread_ts: threaded } : {}) }) }, 'Slack post');
+    return { id: threaded || j.ts || null, url: j.permalink || null, where: `Slack ${channel}${threaded ? ' (in the earlier thread)' : ''}`, target: channel };
   },
-  async notion(t, m, link) {
-    const parent = targets().notion;
-    if (!parent) throw new Error('no Notion parent page set; paste a page id on the Connectors page');
+  async notion(t, m, link, prior) {
     const h = { ...auth(t), 'Notion-Version': '2022-06-28', 'content-type': 'application/json' };
     const paras = summary(m, link).split('\n\n').map((text) => ({ object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: text.slice(0, 1900) } }] } }));
+    if (prior && prior.id) {
+      // One page per deliverable: retitle it and append this version beneath a heading.
+      await call(`${base('notion')}/v1/pages/${prior.id}`, { method: 'PATCH', headers: h, body: JSON.stringify({ properties: { title: { title: [{ type: 'text', text: { content: `${m.serial}: ${m.deliverable}${m.lineage ? ` (v${m.lineage.version})` : ''}` } }] } } }) }, 'Notion retitle');
+      const heading = { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ type: 'text', text: { content: `${m.lineage ? `Version ${m.lineage.version}` : 'Delivered again'}, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC` } }] } };
+      await call(`${base('notion')}/v1/blocks/${prior.id}/children`, { method: 'PATCH', headers: h, body: JSON.stringify({ children: [heading, ...paras] }) }, 'Notion append');
+      return { id: prior.id, url: prior.url || null, where: 'Notion page (updated in place)' };
+    }
+    const parent = targets().notion;
+    if (!parent) throw new Error('no Notion parent page set; paste a page id on the Connectors page');
     const j = await call(`${base('notion')}/v1/pages`, { method: 'POST', headers: h, body: JSON.stringify({ parent: { page_id: parent }, properties: { title: { title: [{ type: 'text', text: { content: `${m.serial}: ${m.deliverable}` } }] } }, children: paras }) }, 'Notion page');
     return { id: j.id || null, url: j.url || null, where: 'Notion page' };
   },
@@ -150,11 +172,15 @@ const DELIVER = {
     const j = await call(`${base('google', 'gmail')}/gmail/v1/users/me/drafts`, { method: 'POST', headers: { ...auth(t), 'content-type': 'application/json' }, body: JSON.stringify({ message: { raw } }) }, 'Gmail draft');
     return { id: j.id || null, url: j.id ? `https://mail.google.com/mail/u/0/#drafts/${j.message?.id || ''}` : null, where: `Gmail draft to ${to}` };
   },
-  async github(t, m, link) {
+  async github(t, m, link, prior) {
     const repo = targets().github;
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo || '')) throw new Error('no GitHub repository set (owner/repo) on the Connectors page');
+    if (prior && prior.id && (prior.target === repo || String(prior.where || '').startsWith(`GitHub ${repo}`))) {
+      const j = await call(`${base('github')}/repos/${repo}/issues/${prior.id}/comments`, { method: 'POST', headers: { ...auth(t), 'user-agent': 'prajna', accept: 'application/vnd.github+json', 'content-type': 'application/json' }, body: JSON.stringify({ body: `${m.lineage ? `**Version ${m.lineage.version}**\n\n` : '**Delivered again**\n\n'}${summary(m, link)}` }) }, 'GitHub comment');
+      return { id: prior.id, url: j.html_url || prior.url || null, where: `GitHub ${repo} (comment on the earlier issue)`, target: repo };
+    }
     const j = await call(`${base('github')}/repos/${repo}/issues`, { method: 'POST', headers: { ...auth(t), 'user-agent': 'prajna', accept: 'application/vnd.github+json', 'content-type': 'application/json' }, body: JSON.stringify({ title: `${m.serial}: ${m.deliverable}`, body: summary(m, link) }) }, 'GitHub issue');
-    return { id: j.number || null, url: j.html_url || null, where: `GitHub ${repo}` };
+    return { id: j.number || null, url: j.html_url || null, where: `GitHub ${repo}`, target: repo };
   },
 };
 
@@ -164,6 +190,6 @@ export async function deliver(cid, mission, link) {
   if (!tok) throw new Error(`${cid}: no live token in memory`);
   const fn = DELIVER[cid];
   if (!fn) throw new Error(`${cid}: delivery is not wired for this connector`);
-  return fn(tok.token, mission, link);
+  return fn(tok.token, mission, link, priorDelivery(mission, cid));
 }
 export const DELIVERABLE_CONNECTORS = Object.keys(DELIVER);
