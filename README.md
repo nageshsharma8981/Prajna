@@ -1380,3 +1380,18 @@ unstamped until you stamp it. Read only: the record is open and nothing
 else. A refusal says which it is and who can act, rather than failing
 blankly. Proved in a house of its own with a real owner and a real
 guest, through all three settings.
+
+## v1.14: Every desk, with a real model (2026-09-05)
+
+Only the research desk had ever been exercised with a live model. Now a
+test runs all five, deck, landing page, mobile prototype, analysis and
+brief, each answered in its own shape by a model of the test's own, and
+checks that what the model wrote actually reaches the delivered artifact
+and that its provenance says live. Nothing was broken, which is worth
+knowing rather than assuming.
+
+It did expose a sharp edge in claiming a house. When `PRAJNA_OWNER`
+names an owner, you must sign in under exactly that name, and the
+refusal now says so: who the house is held for, who you are signed in
+as, and where to fix it. Being locked out of your own settings by a
+spelling is not a lesson anyone should have to learn twice.

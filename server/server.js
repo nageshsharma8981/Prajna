@@ -228,8 +228,16 @@ function isOwner(req) {
 function ownerGate(req, res) {
   if (isOwner(req)) return false;
   const w = ws();
-  const who = (w.visitors || {})[w.ownerId]?.name || ownerName() || 'the house\'s own';
-  json(res, 403, { error: `Only ${who} can do that: it changes the house itself, not the work in it.`, owner: true });
+  const named = ownerName();
+  const who = named || (w.visitors || {})[w.ownerId]?.name || "the house's own";
+  const me = meOf(req);
+  json(res, 403, {
+    error: named && (!me || me.name.toLowerCase() !== named.toLowerCase())
+      // The environment names the owner, so say exactly what to do about it.
+      ? `This house is held for “${named}” by its environment. Sign in under My Profile with that name, exactly, and this is yours.${me ? ` You are signed in as “${me.name}”.` : ' Nobody is signed in on this browser.'}`
+      : `Only ${who} can do that: it changes the house itself, not the work in it.`,
+    owner: true, named: named || null,
+  });
   return true;
 }
 // What a guest may do. The default is the house as it has always been:

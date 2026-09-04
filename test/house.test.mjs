@@ -975,7 +975,10 @@ test('an owner can say what a guest may do, without locking the door', async () 
     const guest = await signIn('Sam');
     assert.equal((await call('/api/bootstrap', boss, null, 'GET')).j.owner.mine, true, 'the environment names the owner');
     assert.equal((await call('/api/bootstrap', guest, null, 'GET')).j.owner.mine, false);
-    assert.equal((await call('/api/guests', guest, { mode: 'read' }, 'PUT')).status, 403, 'a guest cannot set the policy');
+    const refusedPolicy = await call('/api/guests', guest, { mode: 'read' }, 'PUT');
+    assert.equal(refusedPolicy.status, 403, 'a guest cannot set the policy');
+    assert.match(refusedPolicy.j.error, /held for “Boss” by its environment/, 'and is told exactly how the house is claimed');
+    assert.match(refusedPolicy.j.error, /signed in as “Sam”/);
 
     // Work freely, the default.
     const free = await call('/api/missions', guest, { goal: 'Guests test: a brief', deskId: 'brief', depth: 'fast' });
@@ -1003,4 +1006,72 @@ test('an owner can say what a guest may do, without locking the door', async () 
     assert.equal((await call('/api/missions', boss, { goal: 'Guests test: the owner is unbound', deskId: 'brief', depth: 'fast' })).status, 200);
     assert.equal((await call('/api/guests', boss, { mode: 'nonsense' }, 'PUT')).status, 400);
   } finally { child4.kill(); fs.rmSync(DIR4, { recursive: true, force: true }); }
+});
+
+test('every desk delivers with a live model, not just the research desk', async () => {
+  // One house, one model endpoint that answers in each desk's own shape. If a
+  // desk's generator cannot take what its author returns, this finds it.
+  const DRAFTS = {
+    brief: { stand: 'A live stance for the lede.', verdict: 'Proceed with a narrow first move. The recommendation is stated before the evidence.',
+      claims: [1, 2, 3].map((n) => ({ text: `Live claim ${n} about the coastal ferry programme.`, grade: 'B', detail: `Support ${n}.`, src: 0, source: { title: `Source class ${n}`, kind: 'analysis' } })),
+      refuted: [], moves: [{ move: 'A first move', commitment: 'small', signal: 'weekly numbers' }], tripwires: 'Stop if the signal does not appear.', dissent: { seat: 'an adviser', text: 'The pace is optimistic.' } },
+    deck: { sub: 'The argument in six beats.', one: 'The whole case in one sentence.', close: 'End on the claim.',
+      slides: ['The problem', 'The shift', 'The mechanism', 'The proof', 'The economics', 'The ask'].map((n, i) => ({ n, h: `Headline ${i + 1}`, s: `One supporting line for ${n.toLowerCase()}.` })) },
+    site: { brand: 'Ferry Works', headline: 'Get across the water faster', sub: 'A landing page written live for the test.', primary: 'Book a crossing', secondary: 'See timetables', strip: 'Serving four districts',
+      why: [1, 2, 3].map((n) => ({ k: `Kicker ${n}`, h: `Heading ${n}`, p: `Thirty words or fewer about reason ${n}.` })), closing: { h: 'Ready when you are', cta: 'Start' } },
+    mobile: { short: 'Ferry', screens: [1, 2, 3, 4].map((n) => ({ tab: `Tab${n}`, title: `Screen ${n}`, body: `What screen ${n} is for.`, items: [1, 2, 3].map((i) => ({ b: `Item ${i}`, s: `Context for item ${i}.` })), cta: `Action ${n}` })) },
+    analysis: { read: 'A live read of what the numbers would need to show.', trend: 'Twelve periods of the series', segment: 'The segment breakdown', caveat: 'The series is sample data until a connector supplies real numbers.' },
+  };
+  const DIR5 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-desks-'));
+  const P5 = PORT + 4;
+  const B5 = `http://localhost:${P5}`;
+  let desk = 'brief';
+  const model = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      const prompt = JSON.parse(body).messages[0].content;
+      const payload = /CRITIQUE the draft/.test(prompt) ? { verdict: 'pass', issues: [] } : DRAFTS[desk];
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }));
+    });
+  });
+  await new Promise((r) => model.listen(0, '127.0.0.1', r));
+  const child5 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P5), PRAJNA_DATA_DIR: DIR5, PRAJNA_OWNER: 'Desk Test' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let cookie = '';
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B5 + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); if (!cookie) { const set = r.headers.get('set-cookie') || ''; if (set.includes('prajna_who=')) cookie = set.split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; '); } return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B5}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Desk Test' });
+    // The environment names the owner, so the test must be that person.
+    assert.equal((await call('/api/me', { name: 'Desk Test' })).status, 200);
+    assert.equal((await call('/api/bootstrap', null, 'GET')).j.owner.mine, true, 'signed in as the house');
+    assert.equal((await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${model.address().port}/v1` }, 'PUT')).status, 200);
+    const lead = (await call('/api/models', { name: 'Desk Model', provider: 'openai', modelId: 'desk-1', baseUrl: `http://127.0.0.1:${model.address().port}/v1` })).j;
+    for (const [id, deskId] of [['brief', 'brief'], ['deck', 'deck'], ['site', 'site'], ['mobile', 'mobile'], ['analysis', 'analysis']]) {
+      desk = id;
+      const w = await call('/api/missions', { goal: `Live desk test: a ${id} for a Kochi ferry startup`, deskId, depth: 'fast', lead: lead.id, advisers: [] });
+      assert.equal(w.status, 200, `${id} ticket: ${JSON.stringify(w.j)}`);
+      assert.equal((await call(`/api/missions/${w.j.id}/launch`)).status, 200, `${id} launch`);
+      let m; const started = Date.now();
+      while (Date.now() - started < 120000) {
+        m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+        if (m.status === 'FILLED' || m.status === 'KILLED') break;
+        if (m.status.startsWith('PAUSED')) {
+          const a = (m.attention || []).find((x) => !x.decision);
+          if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'accept-risk', 'continue'].find((o) => a.options.includes(o)) || a.options[0];
+            await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `desk test, ${pick}` }); }
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      assert.equal(m.status, 'FILLED', `${id} delivered (ended ${m.status})`);
+      assert.equal(m.authored?.live, true, `${id} was written by the model: ${JSON.stringify(m.authored).slice(0, 160)}`);
+      const html = await (await fetch(`${B5}/api/artifacts/${m.artifactId}/html`)).text();
+      assert.match(html, /Live run: the substance of this deliverable was written by Desk Model/, `${id} provenance says live`);
+      // The model's own words must actually be in the delivery.
+      const marker = { brief: 'Live claim 1 about the coastal ferry programme', deck: 'The whole case in one sentence', site: 'Get across the water faster', mobile: 'What screen 1 is for', analysis: 'A live read of what the numbers would need to show' }[id];
+      assert.ok(html.includes(marker), `${id} carries what the model wrote: looked for “${marker}”`);
+    }
+  } finally { child5.kill(); model.close(); fs.rmSync(DIR5, { recursive: true, force: true }); }
 });
