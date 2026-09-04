@@ -445,9 +445,15 @@ export default function Run({ id }) {
               <details className="plan-why sources-panel" open>
                 <summary>Sources on the table · {mission.sources.length}</summary>
                 <ol>{mission.sources.map((src, i) => (
-                  <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}{src.words ? ` · ${src.words} words` : ''}</em></li>
+                  <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}{src.words ? ` · ${src.words} words` : ''}</em>{(() => { const row = (mission.evidence?.rows || []).find((r) => r.url === src.url); return row ? <em className={`src-live${row.ok === false ? ' gone' : ''}`}> · {row.detail}</em> : null; })()}</li>
                 ))}</ol>
                 {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}), recorded, not hidden.</p>}
+                {(mission.sources || []).some((s) => s.url) && (
+                  <p className="src-check">
+                    {mission.evidence ? `${mission.evidence.checked - mission.evidence.dead} of ${mission.evidence.checked} cited address(es) still resolve, checked ${new Date(mission.evidence.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.` : 'The addresses cited here have not been re-visited since the run.'}
+                    <button className="btn-quiet" style={{ padding: '0.2rem 0.5rem', marginLeft: '0.5rem' }} disabled={busy} onClick={async () => { setBusy(true); setActionError(null); try { const r = await fetch(`/api/missions/${mission.id}/evidence`, { method: 'POST' }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Refused.'); setMission((m) => ({ ...m, evidence: j })); } catch (e) { setActionError(e.message); } finally { setBusy(false); } }}>Check them now</button>
+                  </p>
+                )}
               </details>
             )}
             {mission.contract.edited && <p className="ticket-deliv" style={{ marginTop: '0.4rem' }}>plan edited before stamping · {mission.contract.edited.steps} steps{mission.contract.edited.added ? ` · ${mission.contract.edited.added} added` : ''}{mission.contract.edited.removed ? ` · ${mission.contract.edited.removed} removed` : ''}</p>}

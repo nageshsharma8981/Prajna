@@ -308,3 +308,26 @@ test('house limits refuse a ticket before anything is reserved, and let it throu
   const l = (await api('/api/limits')).j; assert.deepEqual(l.limits, { ticketCeiling: null, monthlySpend: null, dailyRuns: null });
   assert.ok(l.usage.runsToday >= 1);
 });
+
+test('the evidence check re-visits cited addresses and catches one that has gone', async () => {
+  // A delivery that cites a public link: the link is revoked afterwards, so the
+  // evidence it rested on is gone. The house should say so, not imply otherwise.
+  const b = (await api('/api/bootstrap')).j;
+  const art = b.artifacts[0];
+  const share = await post(`/api/artifacts/${art.id}/share`); assert.equal(share.status, 200);
+  const link = `${BASE}${share.j.path}`;
+  if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
+  const w = await post('/api/missions', { goal: `Evidence test: summarise ${link} and ${BASE}/legal/ai`, deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200);
+  const cited = (w.j.sources || []).filter((s) => s.url);
+  assert.equal(cited.length, 2, `both pages on the table: ${JSON.stringify((w.j.sources || []).map((s) => s.url))}`);
+  const first = await post(`/api/missions/${w.j.id}/evidence`);
+  assert.equal(first.status, 200); assert.equal(first.j.checked, 2); assert.equal(first.j.dead, 0, JSON.stringify(first.j.rows));
+  assert.ok(first.j.rows.every((r) => /resolves \(200\)/.test(r.detail)), JSON.stringify(first.j.rows));
+  assert.equal((await api(`/api/artifacts/${art.id}/share`, { method: 'DELETE' })).status, 200);
+  const again = await post(`/api/missions/${w.j.id}/evidence`);
+  assert.equal(again.j.dead, 1, JSON.stringify(again.j.rows));
+  const goneRow = again.j.rows.find((r) => r.ok === false);
+  assert.equal(goneRow.url, link); assert.match(goneRow.detail, /gone or refused \(404\)/);
+  assert.equal((await api(`/api/missions/${w.j.id}`)).j.evidence.dead, 1, 'the finding is on the record');
+});

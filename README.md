@@ -1089,3 +1089,15 @@ with nothing spent; the run page says so before you reach the stamp; a
 standing order run is skipped and records the limit as the reason. The
 house check carries a limits row showing where each stands. Leave a
 field empty for no limit. `GET`/`PUT /api/limits`.
+
+## v0.91: The evidence is re-visited (2026-09-04)
+
+A delivery cites addresses on the open web, and addresses die. The house
+now goes back and looks: Settings → Evidence check re-visits the
+addresses cited by the fifteen most recent deliveries, and any run page
+with cited sources marks each one "resolves (200)" or "gone or refused
+(404)" and offers to check them again. Findings go on the mission's
+record and into the house check, so a delivery resting on a page that has
+gone says so instead of implying the evidence still stands. Read-only, a
+HEAD then a GET only if refused, never a private address, and the sweep
+stops after forty-five seconds and reports what it covered.

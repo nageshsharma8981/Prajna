@@ -21,6 +21,7 @@ import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { search } from './search.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
+import { checkMission as checkEvidence, sweep as sweepEvidence, evidenceHealth } from './evidence.js';
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
@@ -63,6 +64,7 @@ async function houseCheck() {
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
   const lh = limitHealth(); add('limits', lh.ok, lh.detail);
+  const eh = evidenceHealth(); if (eh) add('evidence', eh.ok, eh.detail);
   if (process.uptime() > 600 || listBackups().length) { const bh = backupHealth(); add('backups', bh.ok, bh.detail); }
   const sh = standingHealth();
   if (sh.total) add('standing', !sh.orphaned.length && !sh.overdue.length, `${sh.total} standing order(s)${sh.orphaned.length ? `, ${sh.orphaned.length} orphaned (ticket gone): ${sh.orphaned.map((o) => o.serial).join(', ')}` : ''}${sh.overdue.length ? `, ${sh.overdue.length} overdue by more than one interval: ${sh.overdue.map((o) => o.serial).join(', ')}` : ''}`);
@@ -557,6 +559,21 @@ async function handle(req, res) {
     return json(res, 200, { ok: true, removed: before, files: removed.files, consentKept: !!kept });
   }
 
+  // ---- Evidence: the addresses a delivery cites, re-visited ----
+  if (p === '/api/evidence' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const r = await sweepEvidence({ limit: 15 });
+    console.log(`prajna: evidence sweep, ${r.checked} address(es) across ${r.missions} deliveries, ${r.dead} gone`);
+    return json(res, 200, r);
+  }
+  const evidenceOne = p.match(/^\/api\/missions\/([\w]+)\/evidence$/);
+  if (evidenceOne && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const e = await checkEvidence(evidenceOne[1]);
+    if (!e) return json(res, 404, { error: 'Mission not found.' });
+    return json(res, 200, e);
+  }
+
   // ---- The house check and its repair (after the gate: both change the workspace) ----
   if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseRepair()); }
   if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
@@ -580,6 +597,7 @@ async function handle(req, res) {
       standing: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })),
       backups: listBackups().slice(0, 5),
       limits: limits(),
+      evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,

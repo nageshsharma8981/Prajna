@@ -868,6 +868,9 @@ h1.pg-title {
   flex: none; width: 4.4rem; text-align: center;
 }
 .palette-item .t { flex: 1; font-size: 0.88rem; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-live { font-style: normal; color: var(--green); font-size: 0.68rem; }
+.src-live.gone { color: var(--red); font-weight: 700; }
+.src-check { font-size: 0.72rem; color: var(--bone-dim); margin: 0.5rem 0 0; }
 .pal-where { font-style: normal; color: var(--led); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.62rem; font-weight: 700; }
 .pal-snip { display: block; font-size: 0.72rem; color: var(--bone-dim); margin-top: 0.15rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .palette-empty { padding: 1.4rem; text-align: center; color: var(--bone-faint); font-size: 0.85rem; }
