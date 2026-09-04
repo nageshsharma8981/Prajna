@@ -709,3 +709,12 @@ Connector cards now say what they are: "Connected", "Connect" when the
 provider's OAuth app is registered, "Set up app" when sign-in is wired but
 the app is not yet registered, and "Not wired yet" for catalogue entries
 with no sign-in behind them. Nothing pretends to connect.
+
+## v0.55: Tools that switch something (2026-09-04)
+
+The three switches under Tools now change behaviour and say so. Task Agent
+on: the companion may start a mission from conversation (a live model's
+directive, or a plain-language request without a key); off: it only talks
+and says why. Media Generation off: the media studio refuses to generate and
+says so. Browser: no headless browser exists inside the house; the switch
+records intent and the card says so.

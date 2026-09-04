@@ -13,7 +13,7 @@ export default function Tools() {
     if (!r.ok) { setErr(j.error || 'Refused.'); return; }
     setName(''); setUrl(''); setAdding(false); s.refresh();
   };
-  const notes = { 'task-agent': 'Delegated sub-missions appear as nested lines on the tape.', media: 'Unlocks the media studio, local generation now, hosted models when a media key is loaded.', browser: 'Reads pages with a real browser session when the browser plugin is enabled.' };
+  const notes = { 'task-agent': 'Wired: on, the companion may start a mission from conversation (a live model directive, or a plain request without a key); off, it only talks and says why.', media: 'Wired: on, the media studio generates locally and on your OpenAI or Google key; off, generation is refused and the studio says so.', browser: 'Not wired yet: the house has no headless browser; this switch records the intent.' };
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center' }}>

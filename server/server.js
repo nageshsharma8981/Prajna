@@ -557,6 +557,7 @@ async function handle(req, res) {
     const prompt = String(body.prompt || '').trim().slice(0, 2000);
     const provider = String(body.provider || 'openai');
     if (!prompt) return json(res, 400, { error: 'Describe the image first.' });
+    if (!ws().tools?.media) return json(res, 400, { error: 'Media Generation is switched off under Tools. Nothing was generated.' });
     const k = store.keyFor(provider);
     if (!k) return json(res, 400, { error: `No ${PROVIDERS[provider]?.label || provider} key in memory, load one under Your keys. Nothing was generated.` });
     const started = Date.now();
@@ -722,7 +723,8 @@ async function handle(req, res) {
         reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
-        if (mm) {
+        if (mm && !ws().tools?.['task-agent']) reply = reply.replace(mm[0], '').trim() + '\n\n(The Task Agent tool is switched off under Tools, so I did not start a mission for this. Switch it on, or pick a mode in the composer.)';
+        if (mm && ws().tools?.['task-agent']) {
           reply = reply.replace(mm[0], '').trim();
           const started = startMissionFromChat(c, mm[1].toLowerCase(), mm[2].trim().slice(0, 400), seatId);
           const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
@@ -738,7 +740,7 @@ async function handle(req, res) {
         emit('done', { message: m, chat: getChat(c.id) });
         return res.end();
       }
-      const mode = inferMode(text);
+      const mode = ws().tools?.['task-agent'] ? inferMode(text) : null;
       if (mode) {
         const started = startMissionFromChat(c, mode, text.slice(0, 400), seatId);
         const m = addMessage(c.id, { role: 'assistant', text: started.text, missionId: started.mission.id, kind: started.kind });
