@@ -212,6 +212,26 @@ function whoId(req) {
   if (!id || !sig) return null;
   return signWho(id).endsWith(sig) ? id : null;
 }
+// The house's own: the first person to sign in, or whoever the environment
+// names. House-wide acts, erasing, restoring, keys, limits, the door itself,
+// belong to them; everyone else can work in the house without being able to
+// take it apart. An unclaimed house lets anyone act, so a fresh one is usable.
+function ownerName() { return String(process.env.PRAJNA_OWNER || '').trim(); }
+function isOwner(req) {
+  const w = ws();
+  const named = ownerName();
+  const me = meOf(req);
+  if (named) return !!me && me.name.toLowerCase() === named.toLowerCase();
+  if (!w.ownerId) return true; // nobody has claimed this house yet
+  return whoId(req) === w.ownerId;
+}
+function ownerGate(req, res) {
+  if (isOwner(req)) return false;
+  const w = ws();
+  const who = (w.visitors || {})[w.ownerId]?.name || ownerName() || 'the house\'s own';
+  json(res, 403, { error: `Only ${who} can do that: it changes the house itself, not the work in it.`, owner: true });
+  return true;
+}
 function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
 function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
 
@@ -602,6 +622,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Backups: run now, list, download, restore ----
   if (p === '/api/housebrief' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     const text = String(body.text || '').trim().slice(0, 2000);
     ws().houseBrief = text; flushWs();
@@ -609,6 +630,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/hooks' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     const r = setHooks(body || {});
     if (r.error) return json(res, 400, { error: r.error });
@@ -616,22 +638,25 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/hooks/test' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     if (!hooks().url) return json(res, 400, { error: 'Give the house an address first.' });
     const r = await fireHook('housecheck.failed', { test: true, note: 'A test from the house. Nothing is wrong.' }, { force: true });
     return json(res, 200, { sent: !!r, ...r, log: hookState().log });
   }
   if (p === '/api/limits' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     const r = setLimits(body || {});
     if (r.error) return json(res, 400, { error: r.error });
     console.log(`prajna: house limits set to ${JSON.stringify(r.limits)}`);
     return json(res, 200, { limits: r.limits, usage: limitUsage() });
   }
-  if (p === '/api/backup' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); try { return json(res, 200, writeBackup({ version: VERSION })); } catch (e) { return json(res, 500, { error: `Backup failed: ${e.message}` }); } }
+  if (p === '/api/backup' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); if (ownerGate(req, res)) return; try { return json(res, 200, writeBackup({ version: VERSION })); } catch (e) { return json(res, 500, { error: `Backup failed: ${e.message}` }); } }
   const backupOne = p.match(/^\/api\/backups\/([\w.-]+)\/restore$/);
   if (backupOne && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     if (body.confirm !== 'REPLACE') return json(res, 400, { error: 'Type REPLACE to confirm. Nothing was changed.' });
     const buf = readBackup(backupOne[1]);
@@ -647,6 +672,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Restore: a workspace export goes back in whole, by typed confirmation ----
   if (p === '/api/import' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     if (url.searchParams.get('confirm') !== 'REPLACE') return json(res, 400, { error: 'Add ?confirm=REPLACE: the restore replaces the whole workspace. Nothing was changed.' });
     const buf = await readRaw(req);
     if (buf.__tooLarge) return json(res, 413, { error: 'The export is larger than 64 MB.' });
@@ -662,6 +688,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Erase: the owner's own workspace, by typed confirmation, then a fresh house ----
   if (p === '/api/erase' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     if (body.confirm !== 'ERASE') return json(res, 400, { error: 'Type ERASE to confirm. Nothing was removed.' });
     const before = { missions: store.missions().length, artifacts: store.artifacts().length, chats: (ws().chats || []).length, media: (ws().media || []).length };
@@ -694,7 +721,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // ---- The house check and its repair (after the gate: both change the workspace) ----
-  if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseRepair()); }
+  if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); if (ownerGate(req, res)) return; return json(res, 200, await houseRepair()); }
   if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
 
   if (p.startsWith('/api/') && !authed(req)) {
@@ -719,6 +746,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
       me: meOf(req),
+      owner: { name: (ws().visitors || {})[ws().ownerId]?.name || ownerName() || null, mine: isOwner(req) },
       people: Object.keys(ws().visitors || {}).length,
       consentLog: (ws().consentLog || []).slice(0, 12),
       openHouse: !ACCESS_CODE,
@@ -1308,6 +1336,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const toolMatch = p.match(/^\/api\/tools\/([\w-]+)\/toggle$/);
   if (toolMatch && req.method === 'POST') {
+    if (ownerGate(req, res)) return;
     if (!TOOLS.some((x) => x.id === toolMatch[1])) return json(res, 404, { error: 'Unknown tool.' });
     const w = ws(); w.tools[toolMatch[1]] = !w.tools[toolMatch[1]]; flushWs(); return json(res, 200, { enabled: w.tools[toolMatch[1]] });
   }
@@ -1330,6 +1359,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     let id = whoId(req);
     if (!id) { id = crypto.randomBytes(12).toString('hex'); res.setHeader('set-cookie', whoCookie(req, encodeURIComponent(signWho(id)), 60 * 60 * 24 * 365)); }
     const first = Object.keys(visitors()).length === 0;
+    if (first && !ws().ownerId) ws().ownerId = id;
     visitors()[id] = { ...(visitors()[id] || {}), name, email, handle: String(body.handle || '').trim().slice(0, 60), bio: String(body.bio || '').trim().slice(0, 300), at: visitors()[id]?.at || Date.now(), lastSeen: Date.now() };
     // The first person to sign in is the house's own: the digest and the
     // workspace name follow them, and nobody after that changes them.
@@ -1449,6 +1479,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- BYOK: keys + custom models (keys never leave the server) ----
   const keyMatch = p.match(/^\/api\/keys\/([\w-]+)$/);
   if (keyMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+    if (ownerGate(req, res)) return;
     const prov = keyMatch[1];
     if (!PROVIDERS[prov]) return json(res, 404, { error: 'Unknown provider.' });
     if (req.method === 'DELETE') { store.removeKey(prov); return json(res, 200, { ok: true }); }
@@ -1478,6 +1509,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     }
   }
   if (p === '/api/models' && req.method === 'POST') {
+    if (ownerGate(req, res)) return;
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const name = String(body.name || '').trim().slice(0, 40);

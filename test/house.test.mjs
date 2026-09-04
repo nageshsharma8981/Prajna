@@ -919,3 +919,39 @@ test('a conversation belongs to whoever started it', async () => {
   // The missions and their artifacts stay shared: that is the house record.
   assert.ok((await get('/api/bootstrap', theirs)).j.missions.length > 0);
 });
+
+test('the house itself belongs to its own: a visitor can work, not dismantle', async () => {
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const guest = await signIn('A Passing Guest');
+  const boot = (await call('/api/bootstrap', guest, null, 'GET')).j;
+  assert.ok(boot.owner?.name, 'the house names its own');
+  assert.equal(boot.owner.mine, false, 'a guest is not the house');
+  // Everything that changes the house itself is refused, in plain words.
+  for (const [p, body, method] of [
+    ['/api/erase', { confirm: 'ERASE' }, 'POST'],
+    ['/api/limits', { ticketCeiling: 1 }, 'PUT'],
+    ['/api/housebrief', { text: 'a guest rewriting the house style' }, 'PUT'],
+    ['/api/hooks', { url: 'https://example.org/steal' }, 'PUT'],
+    ['/api/backup', null, 'POST'],
+    ['/api/keys/openai', { key: 'sk-a-guests-key' }, 'PUT'],
+    ['/api/housecheck/repair', null, 'POST'],
+  ]) {
+    const r = await call(p, guest, body, method);
+    assert.equal(r.status, 403, `${method} ${p} is refused`);
+    assert.equal(r.j.owner, true);
+    assert.match(r.j.error, /can do that: it changes the house itself/);
+  }
+  // Nothing the guest tried took effect.
+  const after = (await call('/api/bootstrap', guest, null, 'GET')).j;
+  assert.equal(after.limits.ticketCeiling, null, 'the limits are untouched');
+  assert.equal(after.houseBrief, '', 'the house instructions are untouched');
+  assert.equal(after.hooks.url, null, 'no address was set');
+  assert.ok(after.missions.length > 3, 'the workspace was not erased');
+  // But the work of the house is open to them.
+  const w = await call('/api/missions', guest, { goal: 'A guest may still ask for a brief', deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200);
+  assert.equal(w.j.writtenBy.name, 'A Passing Guest');
+  assert.equal((await call('/api/housecheck', guest)).status, 200, 'and may still look at the house');
+});

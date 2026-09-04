@@ -1354,3 +1354,18 @@ belong to nobody and stay visible, so nothing already here disappears.
 
 Missions and their artifacts stay shared, because those are the house's
 record rather than anyone's private line.
+
+## v1.12: The house belongs to its own (2026-09-05)
+
+A visitor could erase the workspace, restore over it, load keys, rewrite
+the limits or the house instructions, and point the house at an address
+of their choosing. Those acts change the house itself rather than the
+work in it, so they now belong to the house's own: the first person to
+sign in, or whoever `PRAJNA_OWNER` names, which lets you claim a house
+from the environment if someone else signed in first. An unclaimed house
+still lets anyone act, so a fresh one is usable out of the box.
+
+Everyone else can still do the work: write tickets, watch runs, take
+deliveries, answer decisions and look at the house check. A guest is
+told plainly whose house it is, and a refusal says what it protects
+rather than simply failing.
