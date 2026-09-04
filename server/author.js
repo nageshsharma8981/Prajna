@@ -68,5 +68,5 @@ export async function critiqueContent(mission, live) {
 }
 
 // Generators call this: authored substance only when it is live and present.
-export const authored = (mission) => (mission.authored && mission.authored.live && mission.authored.content ? mission.authored.content : null);
+export const authored = (mission) => (mission.authored && (mission.authored.live || mission.authored.composed) && mission.authored.content ? mission.authored.content : null);
 export const str = (v, d = '') => (typeof v === 'string' && v.trim() ? v.trim() : d);

@@ -21,7 +21,7 @@ export function subjectOf(goal) {
 function provenanceObject(mission) {
   return {
     schema: 'prajna.provenance.v1',
-    mode: mission.authored?.live ? 'live' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
+    mode: mission.authored?.live ? 'live' : mission.authored?.composed ? 'composed' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
     retrieval: mission.retrieval ? { ...mission.retrieval, sources: (mission.sources || []).map((s) => ({ id: s.id, title: s.title, url: s.url, engine: s.engine || null, retrieved: s.retrieved, extract: (s.extract || '').slice(0, s.engine === 'attachment' || s.engine === 'connector' ? 4000 : 700) })) } : null,
     computed: mission.computed && !mission.computed.none ? mission.computed : null,
     data: mission.data ? { name: mission.data.name, rows: mission.data.rows, columns: mission.data.columns, series: mission.data.series?.column || null, segments: mission.data.segments?.column || null } : null,
@@ -104,7 +104,7 @@ function provenance(mission) {
     <p><strong>Definition of done, assertion verdicts:</strong></p><ul>${prov.assertions.map((a) => `<li><strong>${esc(a.id)}</strong> ${esc(a.title)}, <em>${esc(a.status.toLowerCase())}</em> (owner ${esc(a.owner)})</li>`).join('') || '<li>none</li>'}</ul>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
     ${prov.planVsActual.skipped.length ? `<p><strong>Skipped by decision:</strong> ${prov.planVsActual.skipped.map(esc).join('; ')}</p>` : ''}
-    <p class="note">${prov.mode === 'live' ? `Live run: the substance of this deliverable was written by ${esc(prov.authored.model)} on your own key at the authoring step; the house laid it out, two validator lanes gated it, and any panel positions marked live were real calls. Figures and charts remain illustrative until a connector supplies real data.` : prov.mode === 'hybrid' ? 'Hybrid run: panel positions from models marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
+    <p class="note">${prov.mode === 'composed' ? `Composed run: no model was loaded, so the house formed no judgement of its own. Every claim below is a quotation from a source on the table, carrying the address it came from and the date it was read; nothing was invented and nothing was graded. Load a key to have a model weigh the evidence.` : prov.mode === 'live' ? `Live run: the substance of this deliverable was written by ${esc(prov.authored.model)} on your own key at the authoring step; the house laid it out, two validator lanes gated it, and any panel positions marked live were real calls. Figures and charts remain illustrative until a connector supplies real data.` : prov.mode === 'hybrid' ? 'Hybrid run: panel positions from models marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
   </footer>
   <script type="application/json" id="prajna-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
 }

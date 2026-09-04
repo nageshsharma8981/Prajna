@@ -1112,3 +1112,16 @@ want. An optional signing secret is held in memory only, like every key
 here, and signs each body so your endpoint can verify it. Every attempt
 is on a short log with what the endpoint answered, one retry on failure,
 and clearing the address stops everything.
+
+## v0.93: Without a model, the house quotes instead of inventing (2026-09-04)
+
+A research brief run with no key loaded used to deliver house-scripted
+sample prose, labelled but hollow. Now, when real sources are on the
+table, the house composes the brief out of them: the lede says plainly
+that no model was loaded and no judgement was formed, and every claim is
+a quotation from a source, carrying the address it came from and the
+date it was read. Headings are never quoted as findings, each source
+speaks before any source speaks twice, and if fewer than three real
+sentences can be quoted the house declines and falls back to the
+labelled sample. The artifact's provenance says "composed run" and the
+gate is cleared honestly, not waived.

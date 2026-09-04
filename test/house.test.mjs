@@ -384,3 +384,36 @@ test('house webhooks carry decisions, deliveries and refusals to an address of y
     assert.equal(got.length, quiet, 'with no address, nothing is sent');
   } finally { sink.close(); }
 });
+
+test('without a model, a brief is composed from the real sources, quoted and cited, never invented', async () => {
+  if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
+  const w = await post('/api/missions', { goal: `What do the house rules at ${BASE}/legal/terms and ${BASE}/legal/privacy say about data?`, deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200);
+  assert.ok((w.j.sources || []).filter((s) => s.engine === 'page').length === 2, JSON.stringify((w.j.sources || []).map((s) => s.url)));
+  assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+  const started = Date.now(); let m;
+  while (Date.now() - started < 120000) {
+    m = (await api(`/api/missions/${w.j.id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${m.id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+  assert.equal(m.authored?.composed, true, JSON.stringify(m.authored));
+  assert.ok(m.authored.content.claims.length >= 2);
+  const composedLog = (m.events || []).find((e) => e.label === 'compose');
+  assert.ok(composedLog && /every claim is a quotation/.test(composedLog.detail), composedLog?.detail);
+
+  const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
+  assert.match(html, /Composed run: no model was loaded/);
+  assert.ok(!/Sector regulatory filing digest \(sample\)/.test(html), 'no scripted sample sources');
+  assert.ok(!/The demand signal is real but younger than the headlines imply/.test(html), 'no scripted sample claims');
+  // Every claim in the artifact must be text that actually appears in a source.
+  for (const c of m.authored.content.claims) {
+    const src = m.sources[c.src - 1];
+    assert.ok(src, `claim points at a real source: ${JSON.stringify(c)}`);
+    const quoted = c.text.replace(/…$/, '');
+    assert.ok(src.extract.replace(/\s+/g, ' ').includes(quoted.slice(0, 60)), `the claim is quoted from ${src.title}: ${quoted.slice(0, 80)}`);
+  }
+  assert.match(m.authored.content.stand, /forms no judgement/);
+});

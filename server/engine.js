@@ -15,6 +15,7 @@ import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
+import { composeFor } from './compose.js';
 import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
@@ -228,7 +229,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     attachments: [...(attachments || []).map((d) => ({ name: d.name, chars: d.text.length })), ...(pages || []).map((p) => ({ name: p.title, chars: (p.text || '').length, url: p.url, words: p.words, page: true }))],
     // Owner data: the first CSV attached to an analysis mission is the data the charts plot.
     data: ['analysis', 'brief'].includes(desk.id) ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
-    sources: [...(attachments || []).map((d) => ({ title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })), ...(pages || []).map((p) => ({ title: p.title, url: p.url, kind: 'page', engine: 'page', retrieved: p.retrieved, words: p.words, extract: (p.text || p.extract || '').replace(/\s+/g, ' ').trim().slice(0, 4000) }))].map((s, i) => ({ ...s, id: `src-${i + 1}` })),
+    sources: [...(attachments || []).map((d) => ({ title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })), ...(pages || []).map((p) => ({ title: p.title, url: p.url, kind: 'page', engine: 'page', retrieved: p.retrieved, words: p.words, extract: (p.text || p.extract || '').replace(/[^\S\n]+/g, ' ').replace(/\n{2,}/g, '\n').trim().slice(0, 4000) }))].map((s, i) => ({ ...s, id: `src-${i + 1}` })),
     connected: [...(queuedConnectors || [])],
     patches: [],
     acceptedRisks: [],
@@ -717,6 +718,15 @@ async function applyEvent(m, ev, notify, runner) {
           log = { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${live.model.name} could not author (${m.authored.error}), house-scripted substance used and recorded as such` };
         }
         pushEvent(m, log, notify);
+        return 'ok';
+      }
+      // No model loaded. If real sources are on the table, the house composes
+      // the brief out of them: every claim a quotation, nothing invented,
+      // and the absence of judgement stated in the lede.
+      const composed = composeFor(m);
+      if (composed) {
+        m.authored = { live: false, composed: true, model: 'the house, quoting the sources', chars: JSON.stringify(composed).length, at: Date.now(), content: composed };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'compose', live: false, detail: `No model is loaded, so the house composed the brief from the ${composed.composedFrom} real source(s) on the table: every claim is a quotation with its address, nothing invented, nothing graded.` }, notify);
         return 'ok';
       }
     }
