@@ -8,6 +8,7 @@
 //   prajna artifacts                   delivered artifacts
 //   prajna get <artifact-id> [--out dir]
 //   prajna bundle <mission-id> [--out dir]   the whole record in one HTML file
+//   prajna watch                       ring when a run needs a decision
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted — never the access code, never a provider key).
@@ -143,6 +144,22 @@ async function bundle() {
   fs.writeFileSync(file, await r.text());
   console.log(green('Saved'), file, dim(`(${m.events?.length || 0} events, artifact ${m.artifactId ? 'embedded' : 'none'})`));
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, get: async () => save(need(), positional[0]) };
+async function watch() {
+  // Sit on the board and say when the house needs a decision. Ctrl-C to stop.
+  const cfg = need(); const seen = new Set();
+  console.log(dim('Watching for decisions… (Ctrl-C to stop)'));
+  for (;;) {
+    const boot = await api(cfg, '/api/bootstrap');
+    const pending = (boot.missions || []).filter((m) => m.status.startsWith('PAUSED') && (m.attention || []).some((a) => !a.decision));
+    for (const m of pending) {
+      const a = m.attention.find((x) => !x.decision);
+      if (seen.has(a.id)) continue; seen.add(a.id);
+      process.stdout.write('\u0007');
+      console.log(`${amber('DECISION NEEDED')} ${bold(m.serial)} ${dim(a.kind)}\n   ${a.prompt}\n   options: ${a.options.join(' / ')}  →  ${cfg.workspace}/run/${m.id}`);
+    }
+    await sleep(5000);
+  }
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

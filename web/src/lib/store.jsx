@@ -52,8 +52,27 @@ export function StoreProvider({ children }) {
     return () => clearInterval(t);
   }, [data, refresh]);
 
+  // Decisions the house is waiting on: paused missions with an undecided
+  // attention item. Surfaced in the title, the sidebar and (opt-in) a
+  // browser notification when a new one arrives.
+  const pending = (data?.missions || []).filter((m) => m.status.startsWith('PAUSED') && (m.attention || []).some((a) => !a.decision)).map((m) => ({ id: m.id, serial: m.serial, subject: m.subject, prompt: (m.attention || []).find((a) => !a.decision)?.prompt || '', kind: (m.attention || []).find((a) => !a.decision)?.kind || '' }));
+  const seenRef = useRef(new Set());
+  useEffect(() => {
+    let notify = false;
+    try { notify = localStorage.getItem('prajna-notify') === 'on'; } catch { /* no storage */ }
+    for (const p of pending) {
+      if (seenRef.current.has(p.id)) continue;
+      seenRef.current.add(p.id);
+      if (notify && typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+        try { const n = new Notification(`Decision needed · ${p.serial}`, { body: p.prompt.slice(0, 160), tag: p.id }); n.onclick = () => { window.focus(); location.href = `/run/${p.id}`; }; } catch { /* blocked */ }
+      }
+    }
+    for (const id of [...seenRef.current]) if (!pending.some((p) => p.id === id)) seenRef.current.delete(id);
+  }, [pending.map((p) => p.id).join(',')]); // eslint-disable-line
+
   const api = {
     ...(data || {}),
+    pending,
     ready: !!data,
     locked,
     error,

@@ -464,3 +464,12 @@ to say when it does not say. Without a live seat the house answers
 deterministically from the narrative and ledger ("why did this cost more than
 the estimate?", "what did the gate refuse?", "which sources?") and labels the
 reply "answered from the record".
+
+## v0.28 — Decision needed (2026-09-04)
+
+When a run pauses for a decision the tab title starts with "(n) Decision
+needed", the sidebar shows a pulsing "Decision needed" item with a count that
+opens the run (or the board when several wait), and the top bar carries a
+bell. Browser notifications are opt-in under Settings, stored per browser,
+and fire only when the tab is in the background. `prajna watch` rings the
+terminal bell and prints the prompt, the options and the run URL.

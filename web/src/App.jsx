@@ -51,6 +51,11 @@ function Sidebar({ open, onClose, menuRef }) {
           <Link to="/" className={`side-item${path === '/' ? ' on' : ''}`} onClick={onClose}><EditIcon /> New chat</Link>
           <Link to="/plugins" className={`side-item${active('/plugins') ? ' on' : ''}`} onClick={onClose}><PluginIcon /> Plugins</Link>
           <Link to="/factory/cli" className={`side-item${active('/factory') ? ' on' : ''}`} onClick={onClose}><FactoryIcon /> Factory</Link>
+          {(s.pending || []).length > 0 && (
+            <Link to={s.pending.length === 1 ? `/run/${s.pending[0].id}` : '/missions'} className={`side-item decisions${active('/run/') ? ' on' : ''}`} onClick={onClose} title={s.pending.map((p) => `${p.serial}: ${p.prompt}`).join('\n')}>
+              <span className="pulse" aria-hidden="true" /> Decision needed <span className="badge-n">{s.pending.length}</span>
+            </Link>
+          )}
           <button className={`side-group${boardsOpen ? ' open' : ''}`} onClick={() => setBoardsOpen((v) => !v)} aria-expanded={boardsOpen}><BoardIcon /> Boards <span className="beta">beta</span><ChevronIcon /></button>
           {boardsOpen && <div className="side-sub"><Link to="/boards" className={`side-item sm${active('/boards') ? ' on' : ''}`} onClick={onClose}>Mission board</Link><Link to="/missions" className={`side-item sm${active('/missions') ? ' on' : ''}`} onClick={onClose}>Tickets &amp; runs</Link></div>}
           <button className={`side-group${chatsOpen ? ' open' : ''}`} onClick={() => setChatsOpen((v) => !v)} aria-expanded={chatsOpen}>Chats <ChevronIcon /></button>
@@ -158,11 +163,12 @@ function Shell() {
   useEffect(() => { if (theme === 'day') document.documentElement.setAttribute('data-theme', 'day'); else document.documentElement.removeAttribute('data-theme'); }, [theme]);
   useEffect(() => {
     const t = TITLES.find(([prefix]) => path.startsWith(prefix));
-    document.title = `${t ? `${t[1]} · ` : ''}Prajñā`;
+    const n = s.pending?.length || 0;
+    document.title = `${n ? `(${n}) Decision needed · ` : ''}${t ? `${t[1]} · ` : ''}Prajñā`;
     const scroller = mainRef.current?.querySelector('.scroll');
     if (scroller) scroller.scrollTop = 0;
     mainRef.current?.focus({ preventScroll: true });
-  }, [path]);
+  }, [path, s.pending?.length]);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((v) => !v); }
@@ -184,6 +190,7 @@ function Shell() {
         <div className="topbar">
           <button className="menu-btn" onClick={() => setSideOpen(true)} aria-label="Open navigation" ref={menuRef}><MenuIcon /></button>
           <span className="grow" />
+          {(s.pending || []).length > 0 && <Link to={s.pending.length === 1 ? `/run/${s.pending[0].id}` : '/missions'} className="bell" aria-label={`${s.pending.length} decision${s.pending.length === 1 ? '' : 's'} needed`} title={s.pending.map((p) => `${p.serial}: ${p.prompt}`).join('\n')}><span className="pulse" aria-hidden="true" />{s.pending.length}</Link>}
           <button className="palette-hint" onClick={() => setPalette(true)}><SearchIcon /> Jump <kbd>⌘K</kbd></button>
           <button className="ic round" onClick={() => setTheme(theme === 'day' ? 'night' : 'day')} aria-label={theme === 'day' ? 'Switch to night hall' : 'Switch to day desk'} title="Theme">{theme === 'day' ? <MoonIcon /> : <SunIcon />}</button>
         </div>

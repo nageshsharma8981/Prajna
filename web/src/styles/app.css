@@ -1386,3 +1386,8 @@ abbr.cite { cursor: help; }
 .narrative { margin: 0.8rem 1rem 1rem; border: 1px solid var(--line-strong); border-left: 4px solid var(--led); border-radius: 8px; padding: 0.8rem 1rem; background: var(--panel); }
 .narrative .k { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
 .narrative p { margin: 0.4rem 0 0; font-size: 0.92rem; line-height: 1.6; }
+
+.side-item.decisions { color: var(--led); border: 1px dashed color-mix(in srgb, var(--led) 50%, var(--line)); }
+.badge-n { margin-left: auto; font-family: var(--led-font); font-weight: 700; color: var(--led); background: var(--led-bg); border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.8rem; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--led); box-shadow: 0 0 8px var(--led); display: inline-block; animation: flapflip 1.2s linear infinite; }
+.bell { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid color-mix(in srgb, var(--led) 50%, var(--line)); border-radius: 999px; padding: 0.3rem 0.7rem; font-family: var(--led-font); font-weight: 700; color: var(--led); text-decoration: none; font-size: 0.85rem; }
