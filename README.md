@@ -988,3 +988,12 @@ width under about 900 pixels, now takes a full line with the buttons
 wrapping beneath; and the keys page's OAuth callback address now breaks
 instead of running off the edge. Everything else measured clean at 375
 pixels. (v0.80.1 widened the bar fix from phones to tablets.)
+
+## v0.81: Reachable by keyboard and screen reader (2026-09-04)
+
+An accessibility pass over Home, a run, Settings, Connectors and Keys:
+every control has an accessible name, every input a label, every image
+alt text, the document a language, focus is visible and reduced motion
+is honoured; that was already so. Two gaps closed: a skip link is now the
+first thing a keyboard reaches and jumps to the main landmark, and the
+run page's ticket goal is its top-level heading.

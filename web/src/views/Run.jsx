@@ -403,7 +403,7 @@ export default function Run({ id }) {
           {killed && !mission.voidedBeforeRun && <div className="stamp in" aria-hidden="true">Stopped</div>}
           {killed && mission.voidedBeforeRun && <div className="stamp in" aria-hidden="true">Void</div>}
           <div className="ticket-inner">
-            <p className="ticket-goal">{mission.goal}</p>
+            <h1 className="ticket-goal">{mission.goal}</h1>
             <p className="ticket-deliv">panel: {mission.councilNames.join(', ')}</p>
             <ol className="ticket-plan">
               {mission.contract.plan.map((p, i) => (

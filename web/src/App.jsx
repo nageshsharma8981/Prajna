@@ -184,7 +184,8 @@ function Shell() {
   return (
     <div className="shell">
       <Sidebar open={sideOpen} onClose={() => setSideOpen(false)} menuRef={menuRef} />
-      <div className="main" ref={mainRef} tabIndex={-1} id="main">
+      <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); mainRef.current?.focus(); }}>Skip to content</a>
+      <div className="main" role="main" ref={mainRef} tabIndex={-1} id="main">
         <div className="topbar">
           <button className="menu-btn" onClick={() => setSideOpen(true)} aria-label="Open navigation" ref={menuRef}><MenuIcon /></button>
           <Link to="/" className="topbar-logo" aria-label="Prajñā home"><img className="logo-img" src="/logo.png" alt="Prajñā" width="120" height="40" /></Link>
