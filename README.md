@@ -1039,3 +1039,13 @@ for each file read, the live model receives the text as material it must
 cite by name, and without a key the house quotes the opening and says it
 can quote but not discuss. A file that is not text is recorded by name
 and left unread, and the reply says so by omission rather than pretence.
+
+## v0.86: Ask the house, not only the thread (2026-09-04)
+
+The companion used to answer from the missions of the current
+conversation alone. Now a question that names a serial reaches that
+mission from any thread, and a question about the last or latest
+delivery reaches the three most recent in the house; the live model gets
+the same record, and a serial the house does not have is not answered
+from the record at all. A test asks about a mission from another thread,
+about the latest delivery, and about a serial that does not exist.

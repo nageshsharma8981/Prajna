@@ -240,3 +240,17 @@ test('the companion reads an attached text file and quotes it, even without a mo
   assert.ok(user && user.read.length === 1 && user.read[0].name === 'board-note.txt' && user.read[0].words > 20, JSON.stringify(user?.read));
   assert.deepEqual(user.attachments, ['board-note.txt', 'photo.png'], 'both names recorded, only the text one read');
 });
+
+test('the record answers about any serial and about the latest delivery, not only this thread', async () => {
+  const b = await api('/api/bootstrap');
+  const done = b.j.missions.filter((m) => m.status === 'FILLED' && m.narrative).sort((x, y) => (y.filledAt || 0) - (x.filledAt || 0));
+  assert.ok(done.length >= 1, 'a delivered mission with a narrative');
+  const c = await post('/api/chats', { title: 'Record test' });
+  const ask = async (text) => { const r = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); const raw = await r.text(); return raw.split('\n\n').map((x) => x.trim()).filter((x) => x.startsWith('event: done')).map((x) => JSON.parse(x.split('\ndata: ')[1]))[0].message; };
+  const named = await ask(`What happened in ${done[0].serial}?`);
+  assert.equal(named.kind, 'record', named.text.slice(0, 160)); assert.match(named.text, /^From the record:/);
+  const latest = await ask('What did the latest delivery cost?');
+  assert.equal(latest.kind, 'record', latest.text.slice(0, 160));
+  const none = await ask('What happened in PJ-999999?');
+  assert.notEqual(none.kind, 'record', 'an unknown serial is not answered from the record');
+});

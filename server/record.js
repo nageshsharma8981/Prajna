@@ -41,8 +41,22 @@ export function digest(m) {
   ].filter(Boolean).join('\n');
 }
 
-export function recordContext(chat, limit = 7000) {
-  const ms = missionsOfChat(chat);
+// What the record offers a question: the thread's missions, any mission the
+// question names by serial (from any thread), and, when it asks about the
+// last or latest delivery, the three most recent deliveries in the house.
+const RECENT = /\b(last|latest|recent|newest|most recent|today|yesterday|this week)\b/i;
+export function missionsFor(chat, text = '') {
+  const named = [...new Set((String(text).match(/PJ-\d+/gi) || []).map((s) => s.toUpperCase()))];
+  const all = store.missions();
+  const byName = named.map((s) => all.find((m) => m.serial === s)).filter(Boolean).map((m) => store.missionFull(m.id));
+  const thread = missionsOfChat(chat);
+  const recent = RECENT.test(text) ? all.filter((m) => m.status === 'FILLED').sort((a, b) => (b.filledAt || 0) - (a.filledAt || 0)).slice(0, 3).map((m) => store.missionFull(m.id)) : [];
+  const seen = new Set(); const out = [];
+  for (const m of [...byName, ...thread, ...recent]) if (!seen.has(m.id)) { seen.add(m.id); out.push(m); }
+  return out;
+}
+export function recordContext(chat, limit = 7000, question = '') {
+  const ms = missionsFor(chat, question);
   if (!ms.length) return '';
   let text = ms.map(digest).join('\n\n');
   if (text.length > limit) text = text.slice(0, limit) + '\n[record truncated]';
@@ -69,7 +83,8 @@ export function answerFromRecord(question, missions) {
   const topic = TOPICS.find((t) => t.re.test(q));
   if (!wantsAll && !topic) return null;
   const serialAsked = (q.match(/PJ-\d+/i) || [])[0];
-  const targets = serialAsked ? missions.filter((m) => m.serial.toLowerCase() === serialAsked.toLowerCase()) : [missions.at(-1)];
+  const targets = serialAsked ? missions.filter((m) => m.serial.toLowerCase() === serialAsked.toLowerCase()) : RECENT.test(q) ? [[...missions].filter((m) => m.status === 'FILLED').sort((a, b) => (b.filledAt || 0) - (a.filledAt || 0))[0] || missions.at(-1)] : [missions.at(-1)];
+  if (!targets[0]) return null;
   const answers = targets.map((m) => {
     if (topic?.delta) { const d = missionDelta(m); return d && d.lines.length ? `${m.serial} against v${d.parent.version} (${d.parent.serial}): ${d.lines.join(' ')}` : `${m.serial} has no earlier version to compare with; it is v1.`; }
     const sentences = (m.narrative || '').split(/(?<=\.)\s+/).filter(Boolean);

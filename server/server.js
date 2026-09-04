@@ -14,7 +14,7 @@ import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, ren
 import { callModel, streamModel, generateImage } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
-import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
+import { recordContext, answerFromRecord, missionsOfChat, missionsFor } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
@@ -986,7 +986,7 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${docsPrompt}${pagesPrompt}${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${docsPrompt}${pagesPrompt}${recordContext(c, 7000, text) ? `\n\nRecord of missions the user may be asking about (this thread, any serial named, the latest deliveries), answer ONLY from this record and say plainly when it does not say:\n${recordContext(c, 7000, text)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
         if (mm && !ws().tools?.['task-agent']) reply = reply.replace(mm[0], '').trim() + '\n\n(The Task Agent tool is switched off under Tools, so I did not start a mission for this. Switch it on, or pick a mode in the composer.)';
@@ -1000,7 +1000,7 @@ async function handle(req, res) {
         }
       } catch (e) { reply = `The live model (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
-      const fromRecord = answerFromRecord(text, missionsOfChat(c));
+      const fromRecord = answerFromRecord(text, missionsFor(c, text));
       if (fromRecord) {
         const m = addMessage(c.id, { role: 'assistant', text: fromRecord, kind: 'record', model: 'the house' });
         emit('done', { message: m, chat: getChat(c.id) });
@@ -1057,11 +1057,11 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''}\n\n${history}\nAssistant:`, maxTokens: 900 });
+        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).${recordContext(c, 7000, text) ? `\n\nRecord of missions the user may be asking about (this thread, any serial named, the latest deliveries), answer ONLY from this record and say plainly when it does not say:\n${recordContext(c, 7000, text)}` : ''}\n\n${history}\nAssistant:`, maxTokens: 900 });
         kind = 'live';
       } catch (e) { reply = `The live model (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
-      reply = answerFromRecord(text, missionsOfChat(c)) || `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode, Website, Mobile App, Slide Deck or Research: and I will run it as a mission with a visible contract.`;
+      reply = answerFromRecord(text, missionsFor(c, text)) || `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode, Website, Mobile App, Slide Deck or Research: and I will run it as a mission with a visible contract.`;
       if (reply.startsWith('From the record:')) kind = 'record';
     }
     const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
