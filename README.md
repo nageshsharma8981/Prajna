@@ -983,7 +983,8 @@ horizontal overflow.
 The phone pass reached Connectors, Plugins, Keys, Tools, Media, the
 welcome card, chat mode, the assets list, an artifact page, the legal
 pages and the status page. Two needed work: the artifact bar, whose title
-and meta line collapsed to one word per line beside the buttons, now
-takes a full line with the buttons wrapping beneath; and the keys page's
-OAuth callback address now breaks instead of running off the edge.
-Everything else measured clean at 375 pixels.
+and meta line collapsed to one word per line beside the buttons at any
+width under about 900 pixels, now takes a full line with the buttons
+wrapping beneath; and the keys page's OAuth callback address now breaks
+instead of running off the edge. Everything else measured clean at 375
+pixels. (v0.80.1 widened the bar fix from phones to tablets.)
