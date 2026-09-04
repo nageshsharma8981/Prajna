@@ -21,7 +21,7 @@ const api = async (p, opts = {}) => {
 const post = (p, body) => api(p, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
 
 before(async () => {
-  child = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT), PRAJNA_DATA_DIR: DIR, PRAJNA_PUBLIC_URL: BASE }, stdio: ['ignore', 'pipe', 'pipe'] });
+  child = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT), PRAJNA_DATA_DIR: DIR, PRAJNA_PUBLIC_URL: BASE, PRAJNA_ALLOW_LOCAL_PAGES: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   const started = Date.now();
   while (Date.now() - started < 15000) {
     try { const r = await fetch(`${BASE}/api/health`); if (r.ok) return; } catch { /* not yet */ }
@@ -185,4 +185,23 @@ test('backups: written on demand, listed, healthy, downloadable, and a way back'
   const no = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'no' }); assert.equal(no.status, 400);
   const r = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'REPLACE' }); assert.equal(r.status, 200, JSON.stringify(r.j));
   assert.ok((await api('/api/bootstrap')).j.missions.some((m) => m.id === w.j.id), 'the ticket came back from the backup');
+});
+
+test('the Browser tool reads the pages a ticket names and puts them on the table', async () => {
+  const t = await post('/api/tools/browser/toggle'); assert.equal(t.status, 200);
+  if (!t.j.enabled) await post('/api/tools/browser/toggle');
+  const w = await post('/api/missions', { goal: `Summarise the house rules at ${BASE}/legal/terms for a new user`, deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200, JSON.stringify(w.j));
+  assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+  const started = Date.now(); let m;
+  while (Date.now() - started < 120000) {
+    m = (await api(`/api/missions/${w.j.id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${m.id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+  const page = (m.sources || []).find((s) => s.engine === 'page');
+  assert.ok(page, `a page source on the table: ${JSON.stringify((m.sources || []).map((s) => s.engine))}`);
+  assert.match(page.title, /Terms and Conditions/); assert.ok(page.words > 500);
+  const read = (m.events || []).find((e) => e.type === 'log' && e.label === 'read'); assert.ok(read && /1 page\(s\) read/.test(read.detail), read?.detail);
 });

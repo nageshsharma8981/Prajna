@@ -13,7 +13,7 @@ export default function Tools() {
     if (!r.ok) { setErr(j.error || 'Refused.'); return; }
     setName(''); setUrl(''); setAdding(false); s.refresh();
   };
-  const notes = { 'task-agent': 'Wired: on, the companion may start a mission from conversation (a live model directive, or a plain request without a key); off, it only talks and says why.', media: 'Wired: on, the media studio generates locally and on your OpenAI or Google key; off, generation is refused and the studio says so.', browser: 'Not wired yet: the house has no headless browser; this switch records the intent.' };
+  const notes = { 'task-agent': 'Wired: on, the companion may start a mission from conversation (a live model directive, or a plain request without a key); off, it only talks and says why.', media: 'Wired: on, the media studio generates locally and on your OpenAI or Google key; off, generation is refused and the studio says so.', browser: 'Wired: on, any web address in a ticket is read server-side and put on the table as a cited source, with the read on the tape; off, addresses are left alone.' };
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center' }}>

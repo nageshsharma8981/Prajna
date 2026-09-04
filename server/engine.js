@@ -14,7 +14,7 @@ import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
 import { authorContent, critiqueContent } from './author.js';
-import { retrieve } from './retrieve.js';
+import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
@@ -609,16 +609,27 @@ async function applyEvent(m, ev, notify, runner) {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
     if (step && step.tool === 'search' && !m.retrieval) {
       pushEvent(m, record, notify);
+      // The Browser tool: pages the ticket names are read first and kept as owned sources.
+      let pages = [];
+      if (ws().tools?.browser) {
+        const urls = urlsIn(m.goal);
+        if (urls.length) {
+          const results = await readPages(urls);
+          pages = results.filter((r) => !r.error);
+          const failed = results.filter((r) => r.error);
+          pushEvent(m, { type: 'log', stepId: step.id, label: 'read', live: pages.length > 0, detail: `${pages.length} page(s) read${pages.length ? `: ${pages.map((p) => `${p.title} (${p.words} words)`).join('; ')}` : ''}${failed.length ? `; ${failed.length} not read: ${failed.map((f) => `${f.url} (${f.error})`).join('; ')}` : ''}` }, notify);
+        }
+      }
       try {
         const started = Date.now();
         const { query, sources, engines } = await retrieve(m.goal);
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
-        const owned = (m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector');
+        const owned = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector'), ...pages];
         m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}”, the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
-        m.sources = [];
+        m.sources = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector'), ...pages].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}), recorded; the brief carries no retrieved reading` }, notify);
       }
       return 'ok';

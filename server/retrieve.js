@@ -21,6 +21,39 @@ async function get(url) {
   } finally { clearTimeout(t); }
 }
 
+// The Browser tool: read the pages a ticket names. Server-side fetch, no
+// scripts run, one megabyte and eight seconds per page, three pages at most,
+// and never a private address unless a test says so. Each page becomes a
+// source like any other: title, address, date read, extract, word count.
+const PAGE_LIMIT = 3, PAGE_BYTES = 1024 * 1024, PAGE_MS = 8000;
+export function urlsIn(text) {
+  return [...new Set((String(text || '').match(/https?:\/\/[^\s<>"')\]]+/g) || []).map((u) => u.replace(/[.,;:!?]+$/, '')))].slice(0, PAGE_LIMIT);
+}
+function privateHost(h) {
+  h = h.toLowerCase().replace(/^\[|\]$/g, '');
+  return h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '::1' || /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h) || /^0\./.test(h) || /^fc|^fd|^fe80/i.test(h);
+}
+const strip = (html) => String(html).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, ' ').replace(/<\/(p|div|li|h[1-6]|tr|br|section|article)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+export async function readPage(url, { allowLocal = process.env.PRAJNA_ALLOW_LOCAL_PAGES === '1' } = {}) {
+  let u; try { u = new URL(url); } catch { return { url, error: 'not a valid address' }; }
+  if (!/^https?:$/.test(u.protocol)) return { url, error: 'only http and https are read' };
+  if (!allowLocal && privateHost(u.hostname)) return { url, error: 'private addresses are never read' };
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), PAGE_MS);
+  try {
+    const r = await fetch(u, { headers: { 'user-agent': UA, accept: 'text/html,text/plain;q=0.9,*/*;q=0.1' }, signal: ctl.signal, redirect: 'follow' });
+    if (!r.ok) return { url, error: `HTTP ${r.status}` };
+    const type = String(r.headers.get('content-type') || '');
+    if (!/text\/html|text\/plain|application\/xhtml/.test(type)) return { url, error: `not a text page (${type.split(';')[0] || 'unknown type'})` };
+    const raw = (await r.text()).slice(0, PAGE_BYTES);
+    const title = (raw.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1]?.replace(/\s+/g, ' ').trim() || u.hostname;
+    const text = /text\/plain/.test(type) ? raw.trim() : strip(raw);
+    const words = text.split(/\s+/).filter(Boolean).length;
+    return { title, url: u.href, kind: 'page', engine: 'page', retrieved: new Date().toISOString().slice(0, 10), extract: text.replace(/\s+/g, ' ').slice(0, 700), text: text.slice(0, 20000), words };
+  } catch (e) { return { url, error: e.name === 'AbortError' ? 'took longer than eight seconds' : String(e.message || e).slice(0, 80) }; }
+  finally { clearTimeout(t); }
+}
+export async function readPages(urls) { return Promise.all(urlsIn(urls.join(' ')).map((u) => readPage(u))); }
+
 // Strip question framing so the search engine sees the subject.
 export function queryFor(goal) {
   return String(goal).replace(/^(should we|can we|is it|what is|what are|state of|analy[sz]e|research|brief on|write a brief on)\s+/i, '').replace(/^(enter|build|launch|start)\s+(the\s+)?/i, '').replace(/[?.!]+$/, '').slice(0, 120);

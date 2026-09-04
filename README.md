@@ -997,3 +997,14 @@ alt text, the document a language, focus is visible and reduced motion
 is honoured; that was already so. Two gaps closed: a skip link is now the
 first thing a keyboard reaches and jumps to the main landmark, and the
 run page's ticket goal is its top-level heading.
+
+## v0.82: The Browser tool reads pages (2026-09-04)
+
+The Browser switch under Tools said "not wired yet". Now it is wired the
+honest way: with it on, any web address named in a ticket is read
+server-side at the research step, no scripts run, one megabyte and eight
+seconds per page, three pages at most, never a private address, and each
+page goes on the table as a source with its title, address, date read and
+word count, for the author to cite like any other. The read is on the
+tape, including any page that could not be read and why. A test names a
+page in a ticket and finds it among the sources after delivery.
