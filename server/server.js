@@ -14,6 +14,7 @@ import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, ren
 import { callModel, streamModel, generateImage } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
+import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
@@ -567,7 +568,7 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok). If — and only if — the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread — when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If — and only if — the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
         if (mm) {
@@ -580,6 +581,12 @@ async function handle(req, res) {
         }
       } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
+      const fromRecord = answerFromRecord(text, missionsOfChat(c));
+      if (fromRecord) {
+        const m = addMessage(c.id, { role: 'assistant', text: fromRecord, kind: 'record', model: 'the house' });
+        emit('done', { message: m, chat: getChat(c.id) });
+        return res.end();
+      }
       const mode = inferMode(text);
       if (mode) {
         const started = startMissionFromChat(c, mode, text.slice(0, 400), seatId);
@@ -625,11 +632,12 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).\n\n${history}\nAssistant:`, maxTokens: 900 });
+        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread — when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''}\n\n${history}\nAssistant:`, maxTokens: 900 });
         kind = 'live';
       } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
-      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+      reply = answerFromRecord(text, missionsOfChat(c)) || `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+      if (reply.startsWith('From the record:')) kind = 'record';
     }
     const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
     return json(res, 200, { chat: getChat(c.id), message: m });

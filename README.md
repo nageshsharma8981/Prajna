@@ -453,3 +453,14 @@ approval decisions, the terminal review, settlement against the estimate, and
 what was delivered. Deterministic and ledger-backed; no model is asked to
 summarise. It lands in the chat thread as a message, sits at the end of the
 tape on the run page, and travels in the audit bundle.
+
+## v0.27 — Ask the record (2026-09-04)
+
+A thread that started missions can be asked about them. A live seat receives
+the mission record in its prompt — narrative, credits, plan, gate rounds and
+findings, owner decisions with justifications, authoring mode, critiques,
+sources, review, artifact — with the instruction to answer only from it and
+to say when it does not say. Without a live seat the house answers
+deterministically from the narrative and ledger ("why did this cost more than
+the estimate?", "what did the gate refuse?", "which sources?") and labels the
+reply "answered from the record".
