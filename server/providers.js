@@ -137,6 +137,10 @@ async function readSse(r, onEvent) {
   }
 }
 
+// What the provider itself said the last call used. Never estimated: when a
+// provider reports nothing, the house records nothing rather than guessing.
+let lastUsage = null;
+
 const STREAMERS = {
   async anthropic({ key, modelId, prompt, maxTokens, onDelta, signal }) {
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal,
@@ -144,17 +148,25 @@ const STREAMERS = {
       body: JSON.stringify({ model: modelId, max_tokens: maxTokens, stream: true, messages: [{ role: 'user', content: prompt }] }) });
     if (!r.ok) throw new Error((await readJson(r))?.error?.message || `Anthropic ${r.status}`);
     let text = '';
-    await readSse(r, (e) => { const d = e.type === 'content_block_delta' ? e.delta?.text : ''; if (d) { text += d; onDelta(d); } });
+    let usePrompt = null, useOut = null;
+    await readSse(r, (e) => {
+      const d = e.type === 'content_block_delta' ? e.delta?.text : ''; if (d) { text += d; onDelta(d); }
+      if (e.type === 'message_start' && e.message?.usage) usePrompt = e.message.usage.input_tokens ?? usePrompt;
+      if (e.usage?.output_tokens != null) useOut = e.usage.output_tokens;
+    });
+    lastUsage = { prompt: usePrompt, completion: useOut };
     return text;
   },
   async openai({ key, modelId, prompt, baseUrl, maxTokens, onDelta, signal }) {
     const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
     const r = await fetch(`${base}/chat/completions`, { method: 'POST', signal,
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: modelId, max_tokens: maxTokens, stream: true, messages: [{ role: 'user', content: prompt }] }) });
+      body: JSON.stringify({ model: modelId, max_tokens: maxTokens, stream: true, stream_options: { include_usage: true }, messages: [{ role: 'user', content: prompt }] }) });
     if (!r.ok) throw new Error((await readJson(r))?.error?.message || `HTTP ${r.status}`);
     let text = '';
-    await readSse(r, (e) => { const d = e.choices?.[0]?.delta?.content; if (d) { text += d; onDelta(d); } });
+    let use = null;
+    await readSse(r, (e) => { const d = e.choices?.[0]?.delta?.content; if (d) { text += d; onDelta(d); } if (e.usage) use = e.usage; });
+    lastUsage = { prompt: use?.prompt_tokens ?? null, completion: use?.completion_tokens ?? null };
     return text;
   },
   async google({ key, modelId, prompt, maxTokens, onDelta, signal }) {
@@ -163,7 +175,9 @@ const STREAMERS = {
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens } }) });
     if (!r.ok) throw new Error((await readJson(r))?.error?.message || `Gemini ${r.status}`);
     let text = '';
-    await readSse(r, (e) => { const d = (e.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join(''); if (d) { text += d; onDelta(d); } });
+    let use = null;
+    await readSse(r, (e) => { const d = (e.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join(''); if (d) { text += d; onDelta(d); } if (e.usageMetadata) use = e.usageMetadata; });
+    lastUsage = { prompt: use?.promptTokenCount ?? null, completion: use?.candidatesTokenCount ?? null };
     return text;
   },
 };
@@ -174,6 +188,7 @@ export async function streamModel({ provider, key, baseUrl, modelId, prompt, max
   if (!key) throw new Error(`No key on file for ${p.label}.`);
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 90000);
+  lastUsage = null;
   try {
     const text = await STREAMERS[provider]({ key, baseUrl, modelId, prompt, maxTokens, onDelta, signal: ctl.signal });
     if (!text) throw new Error(`${p.label} returned an empty reply.`);
@@ -181,9 +196,6 @@ export async function streamModel({ provider, key, baseUrl, modelId, prompt, max
   } finally { clearTimeout(t); }
 }
 
-// What the provider itself said the last call used. Never estimated: when a
-// provider reports nothing, the house records nothing rather than guessing.
-let lastUsage = null;
 export function takeUsage() { const u = lastUsage; lastUsage = null; return u && (u.prompt !== null || u.completion !== null) ? u : null; }
 
 export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTokens }) {

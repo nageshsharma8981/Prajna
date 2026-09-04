@@ -756,7 +756,22 @@ async function applyEvent(m, ev, notify, runner) {
         const refused = [];
         for (const seat of bench) {
           try {
-            m.authored = await authorContent(m, seat);
+            // The tape carries the writing as it happens: ephemeral, never
+            // persisted, so the ledger stays a record and not a transcript.
+            let sent = 0, written = '', lastAt = 0, lastSent = 0;
+            const showWriting = (done) => {
+              try { notify(m.id, { type: 'author.writing', model: seat.model.name, chars: sent, tail: written.replace(/\s+/g, ' ').slice(-180), ...(done ? { done: true } : {}) }); } catch { /* nobody is watching */ }
+            };
+            m.authored = await authorContent(m, seat, { onDelta: (d) => {
+              written += d; sent += d.length;
+              const now = Date.now();
+              // Print on time or on length: a fast model must not arrive in
+              // one silent burst, and a slow one must not print every letter.
+              if (now - lastAt < 250 && sent - lastSent < 400) return;
+              lastAt = now; lastSent = sent;
+              showWriting(false);
+            } });
+            showWriting(true);
             { const hb = String(ws().houseBrief || '').trim(); if (hb) m.houseBrief = { at: Date.now(), chars: hb.length }; }
             if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[seat.model.name] = m.keyUse.models[seat.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else if (m.authored.live) { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
             if (refused.length) { m.authored.steppedIn = { after: refused.map((r) => r.name), lead: modelById(m.lead).name }; }

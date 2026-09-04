@@ -1395,3 +1395,20 @@ names an owner, you must sign in under exactly that name, and the
 refusal now says so: who the house is held for, who you are signed in
 as, and where to fix it. Being locked out of your own settings by a
 spelling is not a lesson anyone should have to learn twice.
+
+## v1.15: The substance is written in the open (2026-09-05)
+
+A run showed every step, every cost and every position, and then went
+quiet for the longest step of all while the model wrote. That step is
+now watched: the words appear on the run page as they are written, with
+a running character count, and the prints are paced by time or by length
+so a fast model does not arrive in one silent burst nor a slow one print
+every letter. None of it is kept: the tape is a record, not a
+transcript, so the ledger is unchanged.
+
+Streaming also had to keep what streaming usually loses. The provider's
+own token counts are now read from the stream, so watching the writing
+costs no honesty about what your key was used for. An endpoint that
+cannot stream is asked plainly instead, which four of my own tests
+proved was necessary by breaking the moment I claimed a fallback I had
+not written.

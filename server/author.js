@@ -3,7 +3,7 @@
 // JSON at the compose/build/design step. The house generators lay it out, the
 // provenance block records who wrote what, and the validator lanes gate it
 // exactly as they gate scripted output. No key → scripted substance, labeled.
-import { callModel, takeUsage } from './providers.js';
+import { callModel, streamModel, takeUsage } from './providers.js';
 import { ws } from './workspace.js';
 
 // Standing instructions from the owner: in force for every delivery, quoted
@@ -49,10 +49,20 @@ export function parseAuthored(text) {
   return JSON.parse(s.slice(start, end + 1));
 }
 
-export async function authorContent(mission, live, { revise } = {}) {
+export async function authorContent(mission, live, { revise, onDelta } = {}) {
   const started = Date.now();
   const prompt = revise ? `${authorPrompt(mission)}\n\nREVISION REQUIRED. Your previous draft failed the house gate: ${revise}. Rewrite the whole object so it passes: drop or re-source every offending figure; never replace one invented number with another.` : authorPrompt(mission);
-  const text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt, maxTokens: 2600 });
+  // Written in the open: the house streams the substance as the model writes
+  // it, so the longest step of a run is watched rather than waited out. If a
+  // provider cannot stream, it is asked plainly instead and nothing is lost.
+  const ask = { provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt, maxTokens: 2600 };
+  let text = '';
+  if (onDelta) {
+    // Not every endpoint speaks the streaming protocol, and an endpoint that
+    // does not must not cost the run its substance: ask again, plainly.
+    try { text = await streamModel({ ...ask, onDelta }); } catch { text = ''; }
+  }
+  if (!text) text = await callModel(ask);
   const content = parseAuthored(text);
   const ok = MIN[shapeFor(mission)];
   if (!ok || !ok(content)) throw new Error('the reply did not match the required shape');

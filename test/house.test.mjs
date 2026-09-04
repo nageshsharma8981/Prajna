@@ -1075,3 +1075,70 @@ test('every desk delivers with a live model, not just the research desk', async 
     }
   } finally { child5.kill(); model.close(); fs.rmSync(DIR5, { recursive: true, force: true }); }
 });
+
+test('the substance is written in the open, and the count survives the streaming', async () => {
+  // A model that streams its answer in pieces, the way a real one does.
+  const draft = { stand: 'Written in the open.', verdict: 'Proceed narrowly. The recommendation is stated before the evidence, in two sentences.',
+    claims: [1, 2, 3].map((n) => ({ text: `Streamed claim ${n} about the ferry programme.`, grade: 'B', detail: `Support ${n}.`, src: 0, source: { title: `Source class ${n}`, kind: 'analysis' } })),
+    refuted: [], moves: [], tripwires: 'Stop if the signal does not appear.', dissent: { seat: 'an adviser', text: 'The pace is optimistic.' } };
+  const model = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      const text = JSON.stringify(draft);
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      for (let i = 0; i < text.length; i += 40) res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text.slice(i, i + 40) } }] })}\n\n`);
+      res.write(`data: ${JSON.stringify({ choices: [{ delta: {} }], usage: { prompt_tokens: 700, completion_tokens: 250 } })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    });
+  });
+  await new Promise((r) => model.listen(0, '127.0.0.1', r));
+  const DIR6 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-write-'));
+  const P6 = PORT + 5;
+  const B6 = `http://localhost:${P6}`;
+  const child6 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P6), PRAJNA_DATA_DIR: DIR6 }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B6 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B6}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Writer Test' });
+    assert.equal((await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${model.address().port}/v1` }, 'PUT')).status, 200);
+    const lead = (await call('/api/models', { name: 'Streaming Model', provider: 'openai', modelId: 'stream-1', baseUrl: `http://127.0.0.1:${model.address().port}/v1` })).j;
+    const w = await call('/api/missions', { goal: 'Streaming test: a brief for a Kochi ferry startup', deskId: 'brief', depth: 'fast', lead: lead.id, advisers: [] });
+    // Watch the tape while it runs: the writing must appear as it happens.
+    const seen = [];
+    const es = await fetch(`${B6}/api/missions/${w.j.id}/stream`);
+    const reader = es.body.getReader();
+    const readAll = (async () => {
+      const dec = new TextDecoder(); let buf = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        for (const block of buf.split('\n\n')) { const line = block.split('\n').find((l) => l.startsWith('data: ')); if (line) { try { seen.push(JSON.parse(line.slice(6))); } catch { /* partial */ } } }
+        buf = buf.slice(buf.lastIndexOf('\n\n') + 2);
+      }
+    })();
+    assert.equal((await call(`/api/missions/${w.j.id}/launch`)).status, 200);
+    let m; const started = Date.now();
+    while (Date.now() - started < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'accept-risk', 'continue'].find((o) => a.options.includes(o)) || a.options[0]; await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `streaming test, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    reader.cancel().catch(() => {}); await readAll.catch(() => {});
+    assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+    assert.equal(m.authored.live, true);
+    const writing = seen.filter((e) => e.type === 'author.writing');
+    assert.ok(writing.length >= 2, `the writing was watched: ${writing.length} print(s)`);
+    assert.ok(writing.some((e) => e.tail && /Streamed claim/.test(e.tail)), 'the tail shows what is being written');
+    assert.ok(writing.some((e) => e.done), 'and says when it is finished');
+    assert.ok(writing.at(-1).chars > 200, 'the count grows to the length of the draft');
+    // The tape is a record, not a transcript: none of it is persisted.
+    assert.ok(!(m.events || []).some((e) => e.type === 'author.writing'), 'the writing is not kept on the ledger');
+    // And the provider's own count survived the streaming path.
+    assert.deepEqual({ prompt: m.keyUse.prompt, completion: m.keyUse.completion }, { prompt: 700, completion: 250 }, JSON.stringify(m.keyUse));
+  } finally { child6.kill(); model.close(); fs.rmSync(DIR6, { recursive: true, force: true }); }
+});

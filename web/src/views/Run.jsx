@@ -176,6 +176,8 @@ export default function Run({ id }) {
       es = new EventSource(`/api/missions/${id}/stream`);
       es.onmessage = (e) => {
         const ev = JSON.parse(e.data);
+        // The substance being written: shown as it arrives, never kept on the tape.
+        if (ev.type === 'author.writing') { setWriting(ev.done ? null : ev); return; }
         if (ev.type === 'snapshot') {
           setMission(ev.mission);
           setEvents(ev.mission.events || []);
@@ -250,6 +252,7 @@ export default function Run({ id }) {
   const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
   const [cadence, setCadence] = useState('weekly');
   const [delta, setDelta] = useState(null);
+  const [writing, setWriting] = useState(null);
   useEffect(() => {
     if (!mission?.lineage?.parentId) { setDelta(null); return; }
     let on = true;
@@ -712,6 +715,12 @@ export default function Run({ id }) {
                   <button className="btn-stamp" onClick={stampAndRun} disabled={busy}>Stamp & run</button>
                   <button className="btn-quiet" onClick={voidTicket} disabled={busy}>Void ticket</button>
                 </span>
+              </div>
+            )}
+            {writing && (
+              <div className="narrative delta" role="status" aria-live="polite">
+                <span className="k">{writing.model} is writing the substance · {writing.chars.toLocaleString()} characters so far</span>
+                <p className="writing-tail">…{writing.tail}</p>
               </div>
             )}
             {live && visibleEvents.length < 2 && <div className="board-empty" role="status">Waiting for the first print…</div>}
