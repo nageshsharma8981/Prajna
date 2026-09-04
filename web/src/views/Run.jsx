@@ -635,9 +635,26 @@ export default function Run({ id }) {
                 <ul>
                   {mission.artifactId && <li><b>Delivery</b> <Link to={`/artifact/${mission.artifactId}`}>open the artifact</Link>{(store.artifacts || []).find((a) => a.id === mission.artifactId)?.shareToken ? <> · <a href={`/s/${(store.artifacts || []).find((a) => a.id === mission.artifactId).shareToken}`} target="_blank" rel="noreferrer">public link</a></> : <> · no public link yet (share from the artifact bar)</>}</li>}
                   <li><b>Record</b> <a href={`/api/missions/${mission.id}/bundle?download=1`}>audit bundle</a>{mission.shareToken ? <> · <a href={`/r/${mission.shareToken}`} target="_blank" rel="noreferrer">public record link</a></> : <> · not shared</>}</li>
-                  {(mission.deliveries || []).map((d) => <li key={d.stepId}><b>{d.connector}</b> {d.ok ? <>{d.where}{d.id ? ` (${d.id})` : ''}{d.url ? <> · <a href={d.url} target="_blank" rel="noreferrer">open</a></> : null}{d.link ? <> · points at <a href={d.link} target="_blank" rel="noreferrer">the public artifact</a>{d.linkRevokedAt ? <span className="live-error"> (revoked {new Date(d.linkRevokedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}; the recipient's link is dead)</span> : d.linkOk === true ? ' (checked)' : d.linkOk === false ? <span className="live-error"> (did not resolve)</span> : ' (not checked, no public host set)'}</> : null}</> : <span className="live-error">failed: {d.error}</span>}</li>)}
+                  {(mission.deliveries || []).map((d, i) => <li key={`${d.stepId || 'again'}-${i}`}><b>{d.connector}{d.redelivery ? ' again' : ''}</b> {d.ok ? <>{d.where}{d.id ? ` (${d.id})` : ''}{d.url ? <> · <a href={d.url} target="_blank" rel="noreferrer">open</a></> : null}{d.link ? <> · points at <a href={d.link} target="_blank" rel="noreferrer">the public artifact</a>{d.linkRevokedAt ? <span className="live-error"> (revoked {new Date(d.linkRevokedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}; the recipient's link is dead)</span> : d.linkOk === true ? ' (checked)' : d.linkOk === false ? <span className="live-error"> (did not resolve)</span> : ' (not checked, no public host set)'}</> : null}</> : <span className="live-error">failed: {d.error}</span>}</li>)}
                   {(mission.deliveries || []).length === 0 && <li className="quiet">No connected app delivered this run. Connect one under Connectors and its delivery step appears on the next ticket.</li>}
                 </ul>
+                {filled && mission.artifactId && (
+                  <div className="hk-actions">
+                    <button className="btn-quiet" disabled={busy} onClick={async () => {
+                      const who = [...new Set((mission.deliveries || []).map((d) => d.connector))];
+                      if (!window.confirm(`Deliver again${who.length ? ` to ${who.join(', ')}` : ''}? A fresh public link to the artifact is made (revocable) and each app receives it now.`)) return;
+                      setBusy(true); setActionError(null);
+                      try {
+                        const r = await fetch(`/api/missions/${mission.id}/redeliver`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+                        const j = await r.json().catch(() => ({}));
+                        if (!r.ok) throw new Error(j.error || 'Refused.');
+                        setAnnounce(`Delivered again to ${j.results.filter((x) => x.ok).length} of ${j.results.length} app(s).`);
+                        const m2 = await fetch(`/api/missions/${mission.id}`).then((x) => x.json()); setMission(m2); store.refresh();
+                      } catch (e) { setActionError(e.message); } finally { setBusy(false); }
+                    }}>Deliver again</button>
+                    <span className="conn-hint">Sends a fresh public link to the apps that delivered before (or any connected app if none did).</span>
+                  </div>
+                )}
               </div>
             )}
             {mission.narrative && (

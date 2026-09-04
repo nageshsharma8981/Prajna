@@ -758,3 +758,12 @@ every such delivery on the mission with the time of revocation, records the
 revocation on the mission, carries it in provenance, and the handover block
 says the recipient's link is dead. Sharing again mints a new token; the old
 link stays dead.
+
+## v0.61: Deliver again (2026-09-04)
+
+A delivered mission can be delivered again from its handover block: a fresh
+public link to the artifact is made (revocable), checked when a public host
+is set, and sent to the apps that delivered before, or to any connected app
+if none did. Each re-delivery is recorded on the mission, marked "again" in
+the handover, and carried into provenance. `POST /api/missions/:id/redeliver`
+accepts an optional list of connectors.

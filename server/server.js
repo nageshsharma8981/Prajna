@@ -18,7 +18,7 @@ import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
-import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS } from './connect.js';
+import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
@@ -612,6 +612,36 @@ async function handle(req, res) {
     m.sharedAt = m.shareToken ? (m.sharedAt || Date.now()) : null;
     store.flushMissions();
     return json(res, 200, { ok: true, shareToken: m.shareToken, path: m.shareToken ? `/r/${m.shareToken}` : null });
+  }
+
+  // Deliver again: send a fresh public link to the connectors that delivered
+  // before (or the ones named), recorded as re-deliveries on the mission.
+  const redeliver = p.match(/^\/api\/missions\/([\w]+)\/redeliver$/);
+  if (redeliver && req.method === 'POST') {
+    const m = store.mission(redeliver[1]);
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    if (m.status !== 'FILLED' || !m.artifactId) return json(res, 400, { error: 'Only a delivered mission can be delivered again.' });
+    const body = await readBody(req);
+    const wanted = Array.isArray(body.connectors) && body.connectors.length ? body.connectors.map(String) : [...new Set((m.deliveries || []).map((d) => d.connector))];
+    const targets = wanted.filter((c) => DELIVERABLE_CONNECTORS.includes(c) && connectedConnectors().includes(c));
+    if (!targets.length) return json(res, 400, { error: 'No connected app to deliver to. Connect one under Connectors, or name one that is connected.' });
+    const a = store.artifact(m.artifactId);
+    if (!a.shareToken) store.refreshArtifact(a.id, { shareToken: crypto.randomBytes(16).toString('hex'), sharedAt: Date.now(), sharedBy: 'redelivery' }, store.artifactHtml(a.id));
+    const origin = (process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '');
+    const link = `${origin}/s/${store.artifact(m.artifactId).shareToken}`;
+    let linkOk = null;
+    if (origin) { try { linkOk = (await fetch(link)).ok; } catch { linkOk = false; } }
+    const full = store.missionFull(m.id);
+    const results = [];
+    for (const cid of targets) {
+      try { const r = await deliverTo(cid, full, link); results.push({ stepId: null, connector: cid, ok: true, id: r.id, url: r.url, where: r.where, link, linkOk, redelivery: true, at: Date.now() }); }
+      catch (e) { results.push({ stepId: null, connector: cid, ok: false, error: String(e.message || e).slice(0, 200), link, redelivery: true, at: Date.now() }); }
+    }
+    m.deliveries = [...(m.deliveries || []), ...results];
+    m.redeliveries = [...(m.redeliveries || []), { at: Date.now(), connectors: targets, ok: results.filter((r) => r.ok).length, by: ws().profile?.name || null }];
+    store.flushMissions();
+    try { store.refreshArtifact(a.id, {}, GENERATORS[m.desk](store.missionFull(m.id)).html); } catch { /* provenance refresh is best effort */ }
+    return json(res, 200, { ok: true, link, linkOk, results });
   }
 
   const planMatch = p.match(/^\/api\/missions\/([\w]+)\/plan$/);
