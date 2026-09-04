@@ -205,3 +205,20 @@ test('the Browser tool reads the pages a ticket names and puts them on the table
   assert.match(page.title, /Terms and Conditions/); assert.ok(page.words > 500);
   const read = (m.events || []).find((e) => e.type === 'log' && e.label === 'read'); assert.ok(read && /1 page\(s\) read/.test(read.detail), read?.detail);
 });
+
+test('the companion reads a pasted address and quotes it, even without a model key', async () => {
+  const t = await api('/api/bootstrap'); if (!t.j.tools?.browser) await post('/api/tools/browser/toggle');
+  const c = await post('/api/chats', { title: 'Page test' }); assert.equal(c.status, 200);
+  const r = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `What do the rules at ${BASE}/legal/ai say?` }) });
+  assert.equal(r.status, 200);
+  const raw = await r.text();
+  const done = raw.split('\n\n').map((b) => b.trim()).filter((b) => b.startsWith('event: done')).map((b) => JSON.parse(b.split('\ndata: ')[1]))[0];
+  assert.ok(done, 'a done event');
+  assert.match(done.message.text, /I read .*AI Disclaimer/i, done.message.text.slice(0, 200));
+  assert.ok(raw.includes('event: read'), 'a read event before the reply');
+  const user = done.chat.messages.find((m) => m.role === 'user' && m.pages);
+  assert.ok(user && user.pages[0].words > 100, JSON.stringify(user?.pages));
+  const off = await post('/api/tools/browser/toggle'); assert.equal(off.j.enabled, false);
+  const r2 = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `And ${BASE}/legal/terms?` }) });
+  const raw2 = await r2.text(); assert.ok(!raw2.includes('event: read'), 'nothing read with the tool off');
+});

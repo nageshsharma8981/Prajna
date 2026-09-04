@@ -19,6 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
+import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
@@ -942,16 +943,25 @@ async function handle(req, res) {
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) return json(res, 400, { error: 'Say something first.' });
-    addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))) });
+    // The Browser tool in conversation: addresses in the message are read first,
+    // recorded on the message, and handed to the model as pages it may quote.
+    let pages = [], unread = [];
+    if (ws().tools?.browser && urlsIn(text).length) {
+      const results = await readPages(urlsIn(text));
+      pages = results.filter((r) => !r.error); unread = results.filter((r) => r.error);
+    }
+    const userMsg = addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))), ...(pages.length || unread.length ? { pages: [...pages.map((p) => ({ title: p.title, url: p.url, words: p.words })), ...unread.map((u) => ({ url: u.url, error: u.error }))] } : {}) });
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (pages.length || unread.length) emit('read', { pages: userMsg.pages });
+    const pagesPrompt = pages.length ? `\n\nPages the user named, read by the house just now (quote from them and cite them by title; say plainly when they do not answer the question):\n${pages.map((p, i) => `[${i + 1}] ${p.title} (${p.url}, ${p.words} words)\n${p.text.slice(0, 6000)}`).join('\n\n')}${unread.length ? `\n\nNot read: ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}` : ''}` : unread.length ? `\n\nThe user named pages the house could not read: ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}. Say so.` : '';
     const seatId = body.lead || ws().personalization.defaultModel;
     const live = liveSeat(seatId);
     let reply, kind = 'text';
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${pagesPrompt}${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
         if (mm && !ws().tools?.['task-agent']) reply = reply.replace(mm[0], '').trim() + '\n\n(The Task Agent tool is switched off under Tools, so I did not start a mission for this. Switch it on, or pick a mode in the composer.)';
@@ -978,7 +988,11 @@ async function handle(req, res) {
         emit('done', { message: m, chat: getChat(c.id) });
         return res.end();
       }
-      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, ask me to build a website, an app, a deck, a brief or an analysis and I will run it as a mission with a visible contract.`;
+      reply = pages.length
+        ? `I read ${pages.map((p) => `${p.title} (${p.words} words)`).join(' and ')}. From the first: "${pages[0].extract.slice(0, 280)}". Without a model key I can only quote, not discuss; load one under Your keys, or ask for a brief on it and the house will run a mission that cites the page.`
+        : unread.length
+          ? `I could not read ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}. ${modelById(seatId).name} is not live either; load a key under Your keys.`
+          : `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, ask me to build a website, an app, a deck, a brief or an analysis and I will run it as a mission with a visible contract.`;
     }
     const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
     emit('done', { message: m, chat: getChat(c.id) });

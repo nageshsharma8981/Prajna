@@ -1008,3 +1008,14 @@ page goes on the table as a source with its title, address, date read and
 word count, for the author to cite like any other. The read is on the
 tape, including any page that could not be read and why. A test names a
 page in a ticket and finds it among the sources after delivery.
+
+## v0.83: The companion reads what you paste (2026-09-04)
+
+With the Browser tool on, an address pasted into a conversation is read
+the same way a ticket's is: the page is fetched server-side under the
+same limits, recorded on your message as "Read: title · words" with a
+link, and handed to the live model as material it may quote and must cite
+by title. Without a model key the house still reads the page and quotes
+its opening, and says plainly that it can quote but not discuss. A page
+that cannot be read is named with the reason. The tool's descriptions no
+longer speak of a browser session the house never had.

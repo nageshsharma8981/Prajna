@@ -19,7 +19,7 @@ export const PLUGINS = [
   { id: 'codex-delegate', name: 'Codex delegate', by: 'OpenAI', what: 'Delegate build steps to a coding agent and keep control of the contract.', effect: 'Not wired yet: toggling records the intent; build steps still run in the house.' },
   { id: 'code-interpreter', name: 'Code interpreter', by: 'House', what: 'Run computations over attached data during analysis.', effect: 'Wired: the analyze step computes change, peak, trough, mean, spread and top segment over an attached CSV, on the tape and in the artifact.' },
   { id: 'web-search', name: 'Web search', by: 'House', what: 'Search the open web for research missions.', effect: 'Wired: with a Brave Search key loaded, the research sweep reads the live web; off, only the open encyclopedia.' },
-  { id: 'browser', name: 'Browser', by: 'House', what: 'Drive a real browser to read pages and verify surfaces.', effect: 'Wired: on, any web address in a ticket is read server-side (no scripts run, one megabyte, eight seconds, three pages, never a private address) and put on the table as a source the author may cite; off, addresses are left alone.' },
+  { id: 'browser', name: 'Browser', by: 'House', what: 'Read the pages a ticket or a chat names, and put them on the table.', effect: 'Wired: on, any web address in a ticket is read server-side (no scripts run, one megabyte, eight seconds, three pages, never a private address) and put on the table as a source the author may cite; off, addresses are left alone.' },
   { id: 'documents', name: 'Documents', by: 'House', what: 'Read and write PDF, Word, Excel and PowerPoint files.', effect: 'Wired: attached Word, PowerPoint and Excel files are read as evidence (text only). Export to .pptx is not wired yet.' },
   { id: 'claude-code', name: 'Claude Code coordination', by: 'Anthropic', what: 'Coordinate long engineering work from a terminal session.', effect: 'Not wired yet: the prajna CLI already attaches a workspace; this toggle records the intent to coordinate a coding session.' },
 ];
@@ -27,7 +27,7 @@ export const PLUGINS = [
 export const TOOLS = [
   { id: 'task-agent', name: 'Task Agent', what: 'Enable task delegation to a sub-agent for complex operations.' },
   { id: 'media', name: 'Media Generation', what: 'Generate images and videos.' },
-  { id: 'browser', name: 'Browser', what: 'Use a real browser session for browser automation.' },
+  { id: 'browser', name: 'Browser', what: 'Read the web pages you name, server-side, as sources.' },
 ];
 
 export const CONNECTOR_CATALOG = [
