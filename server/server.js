@@ -16,6 +16,21 @@ import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
 import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
+const STARTED_AT = Date.now();
+let VERSION = '0.0.0';
+try { VERSION = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json'), 'utf8')).version || VERSION; } catch { /* keep default */ }
+function health() {
+  const ms = store.missions();
+  const last = ms.filter((m) => m.status === 'FILLED').sort((a, b) => (b.filledAt || 0) - (a.filledAt || 0))[0];
+  let dataWritable = true;
+  try { fs.accessSync(DATA_DIR, fs.constants.W_OK); } catch { dataWritable = false; }
+  return {
+    ok: true, house: 'open', version: VERSION, locked: !!ACCESS_CODE, startedAt: STARTED_AT, uptimeSeconds: Math.round((Date.now() - STARTED_AT) / 1000),
+    node: process.version, dataWritable, memoryMb: Math.round(process.memoryUsage().rss / 1048576),
+    missions: { live: ms.filter((m) => m.status === 'LIVE').length, paused: ms.filter((m) => m.status.startsWith('PAUSED')).length, delivered: ms.filter((m) => m.status === 'FILLED').length, total: ms.length },
+    lastDeliveryAt: last?.filledAt || null,
+  };
+}
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 bindCustomModels(() => store.customModels());
@@ -212,6 +227,31 @@ async function handle(req, res) {
   res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
   res.setHeader('permissions-policy', 'camera=(), geolocation=(), payment=()');
   if (!p.startsWith('/s/') && !p.startsWith('/api/artifacts/')) res.setHeader('x-frame-options', 'SAMEORIGIN');
+
+  // ---- Health and the public status page (always reachable, never secret) ----
+  if (p === '/api/health') {
+    if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });
+    return json(res, 200, health());
+  }
+  if (p === '/status') {
+    if (limited(ipOf(req), 'health', 120, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests.'); }
+    const h = health();
+    const up = (sec) => `${Math.floor(sec / 86400)}d ${Math.floor((sec % 86400) / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prajñā status</title>
+<style>body{margin:0;background:#0f120f;color:#ece7d9;font:16px/1.6 -apple-system,'Segoe UI',system-ui,sans-serif}.wrap{max-width:38rem;margin:0 auto;padding:4rem 1.5rem}h1{font-size:1.4rem;margin:0 0 .3rem}.ok{color:#8fd19e;font-weight:700}.k{display:block;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:#9a9583}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem 1.4rem;margin:1.6rem 0}.grid div{border:1px solid #2a2f2a;border-radius:6px;padding:.6rem .8rem}.grid b{font-size:1.1rem}a{color:#ffb300}.note{font-size:.8rem;color:#9a9583}</style></head><body><div class="wrap">
+<h1>Prajñā · <span class="ok">the house is open</span></h1><p class="note">Version ${h.version} · ${h.locked ? 'access code required' : 'open house'} · refreshed ${new Date().toISOString().replace('T', ' ').slice(0, 19)} UTC</p>
+<div class="grid">
+<div><span class="k">Uptime</span><b>${up(h.uptimeSeconds)}</b></div>
+<div><span class="k">Runs live / paused</span><b>${h.missions.live} / ${h.missions.paused}</b></div>
+<div><span class="k">Delivered</span><b>${h.missions.delivered} of ${h.missions.total}</b></div>
+<div><span class="k">Last delivery</span><b>${h.lastDeliveryAt ? new Date(h.lastDeliveryAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—'}</b></div>
+<div><span class="k">Data directory</span><b>${h.dataWritable ? 'writable' : 'READ-ONLY'}</b></div>
+<div><span class="k">Memory</span><b>${h.memoryMb} MB</b></div>
+</div>
+<p class="note">Machine-readable: <a href="/api/health">/api/health</a>. Nothing here is secret; keys and tokens never leave memory. <a href="/">Open the workspace</a>.</p>
+</div></body></html>`;
+    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, page);
+  }
 
   // ---- Session (always reachable) ----
   if (p === '/api/session') {

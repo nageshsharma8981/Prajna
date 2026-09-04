@@ -515,3 +515,11 @@ A first-visit walk through the live site at desktop width. One flaw found and
 fixed: the promo cards overlapped the welcome card's corner; with the welcome
 showing they now sit in a row above it. Home, missions, artifacts and the
 console were otherwise clean.
+
+## v0.35 — Status page and health (2026-09-04)
+
+`/status` is a public, never-secret page: version, uptime, runs live and
+paused, deliveries, last delivery time, data-directory health and memory.
+`/api/health` is the machine-readable form. Both stay reachable when the
+house is locked, and are rate-limited like the other public routes. Linked
+from Settings.
