@@ -232,6 +232,24 @@ function ownerGate(req, res) {
   json(res, 403, { error: `Only ${who} can do that: it changes the house itself, not the work in it.`, owner: true });
   return true;
 }
+// What a guest may do. The default is the house as it has always been:
+// anyone inside may work. An owner who runs an open house can narrow it to
+// asking without stamping, or to reading, without locking the door itself.
+const GUEST_MODES = { work: 'may write tickets, stamp them and talk to the companion', ask: 'may write tickets and talk, but only the house\'s own may stamp a ticket and spend', read: 'may read the record, and nothing else' };
+function guestMode() { const m = ws().guests; return GUEST_MODES[m] ? m : 'work'; }
+// Returns false when the act is allowed; otherwise answers and returns true.
+function guestGate(req, res, act) {
+  if (isOwner(req)) return false;
+  const mode = guestMode();
+  if (mode === 'work') return false;
+  if (mode === 'ask' && act !== 'spend') return false;
+  const w = ws();
+  const who = (w.visitors || {})[w.ownerId]?.name || ownerName() || "the house's own";
+  json(res, 403, { error: mode === 'read'
+    ? `This house is open to read. Only ${who} can ${act === 'spend' ? 'stamp a ticket' : 'write or talk here'}.`
+    : `Only ${who} can stamp a ticket and spend the house's credits. Write the ticket and it will wait for them.`, guests: mode });
+  return true;
+}
 function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
 function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
 
@@ -620,6 +638,16 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // ---- Backups: run now, list, download, restore ----
+  if (p === '/api/guests' && req.method === 'PUT') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
+    const body = await readBody(req);
+    const mode = String(body.mode || '');
+    if (!GUEST_MODES[mode]) return json(res, 400, { error: `Choose one of: ${Object.keys(GUEST_MODES).join(', ')}.` });
+    ws().guests = mode; flushWs();
+    console.log(`prajna: guests ${mode} (${GUEST_MODES[mode]})`);
+    return json(res, 200, { guests: mode, means: GUEST_MODES[mode] });
+  }
   if (p === '/api/housebrief' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
     if (ownerGate(req, res)) return;
@@ -746,6 +774,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
       me: meOf(req),
+      guests: guestMode(),
       owner: { name: (ws().visitors || {})[ws().ownerId]?.name || ownerName() || null, mine: isOwner(req) },
       people: Object.keys(ws().visitors || {}).length,
       consentLog: (ws().consentLog || []).slice(0, 12),
@@ -774,6 +803,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   if (p === '/api/missions' && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400);
@@ -826,6 +856,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   const launchMatch = p.match(/^\/api\/missions\/([\w]+)\/launch$/);
   if (launchMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const pending = store.mission(launchMatch[1]);
     if (!pending || pending.status !== 'OPEN') return json(res, 404, { error: 'Mission not found or not open.' });
     // The house never runs what it cannot fund: the ceiling must be covered.
@@ -1154,6 +1185,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   // ---- Chats (Zenith parity): a message in a mode becomes a mission that runs at once ----
   if (p === '/api/chats' && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
     const body = await readBody(req);
     return json(res, 200, createChat({ title: body.title, mode: body.mode, projectId: body.projectId, owner: whoId(req) }));
   }
@@ -1193,6 +1225,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // message. Without a live model the house answers honestly in one event.
   const chatStreamMatch = p.match(/^\/api\/chats\/([\w]+)\/stream$/);
   if (chatStreamMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
     const c = chatFor(chatStreamMatch[1], whoId(req));
     if (!c) return json(res, 404, { error: 'Chat not found.' });
     const body = await readBody(req);
@@ -1266,6 +1299,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const msgMatch = p.match(/^\/api\/chats\/([\w]+)\/messages$/);
   if (msgMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'spend')) return;
     const c = chatFor(msgMatch[1], whoId(req));
     if (!c) return json(res, 404, { error: 'Chat not found.' });
     const body = await readBody(req);

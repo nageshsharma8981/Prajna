@@ -229,7 +229,18 @@ export default function Account({ page }) {
                   </span></div>
                 );
               })()}
-              {(() => {
+                            {s.owner?.mine && (
+                <div className="board-row" style={{ cursor: 'default', alignItems: 'flex-start' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>GST</span><span className="what"><b>What a guest may do</b><span>Anyone who enters this house who is not you. The door itself is the access code; this is what someone who is already inside may do. Settings, keys, limits and erasing are yours whichever you choose.</span>
+                  <span style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.72rem' }}>
+                    {[['work', 'Work freely: write tickets, stamp them, talk'], ['ask', 'Ask only: write tickets and talk, you stamp them'], ['read', 'Read only: the record, nothing else']].map(([m, label]) => (
+                      <label key={m} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+                        <input type="radio" name="guests" checked={(s.guests || 'work') === m} onChange={async () => { setErr(null); const r = await fetch('/api/guests', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: m }) }); const j = await r.json().catch(() => ({})); if (!r.ok) { setErr(j.error || 'Refused.'); return; } setMsg(`Guests: ${j.means}.`); s.refresh(); }} />{label}
+                      </label>
+                    ))}
+                  </span>
+                </span></div>
+              )}
+{(() => {
                 const l = lim || s.limits || {}; const u = s.limitUsage || {};
                 const field = (k, label, hint) => <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.68rem', color: 'var(--bone-dim)' }}>{label}<input className="key-input" type="number" min="0" inputMode="numeric" style={{ width: '7rem', padding: '0.35rem 0.5rem' }} value={l[k] ?? ''} placeholder="no limit" title={hint} onChange={(e) => setLim({ ...l, [k]: e.target.value === '' ? null : e.target.value })} /></label>;
                 return (

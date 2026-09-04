@@ -955,3 +955,52 @@ test('the house itself belongs to its own: a visitor can work, not dismantle', a
   assert.equal(w.j.writtenBy.name, 'A Passing Guest');
   assert.equal((await call('/api/housecheck', guest)).status, 200, 'and may still look at the house');
 });
+
+test('an owner can say what a guest may do, without locking the door', async () => {
+  // Its own house, with the owner named by the environment, so both parts can
+  // be played: the one who sets the policy and the one it binds.
+  const DIR4 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-guests-'));
+  const P4 = PORT + 3;
+  const B4 = `http://localhost:${P4}`;
+  const child4 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P4), PRAJNA_DATA_DIR: DIR4, PRAJNA_OWNER: 'Boss' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(B4 + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), r }; };
+  const signIn = async (name) => jar((await call('/api/me', null, { name })).r);
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B4}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, null, 'GET')).j;
+    await call('/api/consent', null, { accept: true, version: legal.version, name: 'Boss' });
+    const boss = await signIn('Boss');
+    const guest = await signIn('Sam');
+    assert.equal((await call('/api/bootstrap', boss, null, 'GET')).j.owner.mine, true, 'the environment names the owner');
+    assert.equal((await call('/api/bootstrap', guest, null, 'GET')).j.owner.mine, false);
+    assert.equal((await call('/api/guests', guest, { mode: 'read' }, 'PUT')).status, 403, 'a guest cannot set the policy');
+
+    // Work freely, the default.
+    const free = await call('/api/missions', guest, { goal: 'Guests test: a brief', deskId: 'brief', depth: 'fast' });
+    assert.equal(free.status, 200);
+    assert.equal((await call(`/api/missions/${free.j.id}/launch`, guest)).status, 200, 'a guest may stamp while the house works freely');
+
+    // Ask only: the guest may write and talk, but not spend.
+    assert.equal((await call('/api/guests', boss, { mode: 'ask' }, 'PUT')).status, 200);
+    const asked = await call('/api/missions', guest, { goal: 'Guests test: a ticket that waits', deskId: 'brief', depth: 'fast' });
+    assert.equal(asked.status, 200, 'still allowed to ask');
+    const refused = await call(`/api/missions/${asked.j.id}/launch`, guest);
+    assert.equal(refused.status, 403);
+    assert.match(refused.j.error, /Only Boss can stamp a ticket and spend/);
+    assert.equal((await call(`/api/missions/${asked.j.id}`, guest, null, 'GET')).j.status, 'OPEN', 'the ticket waits, unstamped');
+    assert.equal((await call(`/api/missions/${asked.j.id}/launch`, boss)).status, 200, 'and the owner can stamp it');
+    assert.equal((await call('/api/chats', guest, { title: 'A guest may still talk' })).status, 200);
+
+    // Read only: the record is open, nothing else.
+    assert.equal((await call('/api/guests', boss, { mode: 'read' }, 'PUT')).status, 200);
+    const shut = await call('/api/missions', guest, { goal: 'Guests test: refused', deskId: 'brief' });
+    assert.equal(shut.status, 403);
+    assert.match(shut.j.error, /open to read/);
+    assert.equal((await call('/api/chats', guest, { title: 'nor talk' })).status, 403);
+    assert.equal((await call('/api/bootstrap', guest, null, 'GET')).status, 200, 'but the record is still readable');
+    assert.equal((await call('/api/missions', boss, { goal: 'Guests test: the owner is unbound', deskId: 'brief', depth: 'fast' })).status, 200);
+    assert.equal((await call('/api/guests', boss, { mode: 'nonsense' }, 'PUT')).status, 400);
+  } finally { child4.kill(); fs.rmSync(DIR4, { recursive: true, force: true }); }
+});

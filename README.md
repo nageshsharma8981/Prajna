@@ -1369,3 +1369,14 @@ Everyone else can still do the work: write tickets, watch runs, take
 deliveries, answer decisions and look at the house check. A guest is
 told plainly whose house it is, and a refusal says what it protects
 rather than simply failing.
+
+## v1.13: What a guest may do (2026-09-05)
+
+The door is the access code; this is what someone already inside may do,
+and only the house's own may set it. Three choices. Work freely, as the
+house has always been, and the default. Ask only: a guest writes tickets
+and talks, but stamping and spending are yours, so their ticket waits
+unstamped until you stamp it. Read only: the record is open and nothing
+else. A refusal says which it is and who can act, rather than failing
+blankly. Proved in a house of its own with a real owner and a real
+guest, through all three settings.
