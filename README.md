@@ -702,3 +702,10 @@ the host so delivered links point at the public address.
 Figures that trace to evidence a connected app put on the table now pass
 the honesty lane in full, the first-run welcome adds "Bring your apps", and
 a leftover import is gone.
+
+## v0.54: An honest catalogue (2026-09-04)
+
+Connector cards now say what they are: "Connected", "Connect" when the
+provider's OAuth app is registered, "Set up app" when sign-in is wired but
+the app is not yet registered, and "Not wired yet" for catalogue entries
+with no sign-in behind them. Nothing pretends to connect.

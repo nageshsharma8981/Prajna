@@ -33,8 +33,8 @@ export default function Connectors() {
     : c.supported && c.appConfigured
       ? <a className={`btn-stamp attn-btn${small ? ' sm' : ''}`} href={`/api/oauth/${c.provider}/start`}>Connect</a>
       : c.supported
-        ? <Link to="/keys" className={`toggle-btn${small ? ' sm' : ''}`} title="Add the provider's OAuth app under Your keys">Connect</Link>
-        : <button className={`toggle-btn${small ? ' sm' : ''}`} onClick={() => setErr(`${c.name}: no sign-in provider is wired for this connector yet, it is listed, not pretended.`)}>Connect</button>;
+        ? <Link to="/keys" className={`toggle-btn${small ? ' sm' : ''}`} title="Sign-in is wired; register the provider's OAuth app under Your keys first">Set up app</Link>
+        : <span className={`toggle-btn muted${small ? ' sm' : ''}`} title="Listed in the catalogue; no sign-in is wired for it yet, so nothing here pretends to connect">Not wired yet</span>;
 
   return (
     <div className="page">

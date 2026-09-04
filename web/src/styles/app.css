@@ -1495,3 +1495,5 @@ abbr.cite { cursor: help; }
 .target-row span { grid-column: 2; color: var(--bone-faint); font-size: 0.74rem; }
 .target-row .key-input { grid-column: 2; max-width: 24rem; }
 .plugin-card .effect .badge { margin-right: 0.3rem; }
+
+.toggle-btn.muted { opacity: 0.55; cursor: default; border-style: dashed; }
