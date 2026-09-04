@@ -66,6 +66,11 @@ export default function ArtifactView({ id }) {
             <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/docx`} title="A Word document built from this artifact, with its provenance">
               Word (.docx)
             </a>
+            {artifact?.hasData ? (
+              <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/xlsx`} title="A workbook: the series, the segments and their arithmetic, with the provenance on its own sheet">
+                Excel (.xlsx)
+              </a>
+            ) : null}
             {/^deck$/i.test(artifact?.kind || '') || /deck/i.test(artifact?.title || '') ? (
               <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/pptx`} title="A PowerPoint deck built from these slides, with the recorded dissent and provenance">
                 PowerPoint (.pptx)

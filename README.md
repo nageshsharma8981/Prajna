@@ -1183,3 +1183,14 @@ independent parser confirms every part is valid XML with no dangling
 relationship and every slide declared, the house reads its own file
 back, and macOS renders the first slide. A delivery with no slides is
 refused rather than shipped as an empty deck.
+
+## v0.99: An analysis can leave as a workbook (2026-09-04)
+
+A delivery whose mission holds your attached data now offers an .xlsx:
+a Series sheet with every point and the arithmetic beneath it, count,
+sum, mean, minimum, maximum, first and last; a Segments sheet with each
+segment, its value and its share; and a Provenance sheet naming the
+delivery, the mission, the file it read, what wrote the substance, what
+it settled and the record link. Numbers are stored as numbers, so the
+workbook can be worked in rather than retyped. Checked by an independent
+parser, by the house reading its own file, and by macOS rendering it.

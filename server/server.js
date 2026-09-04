@@ -20,7 +20,7 @@ import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { search } from './search.js';
-import { docxFromArtifact, pptxFromArtifact } from './office.js';
+import { docxFromArtifact, pptxFromArtifact, xlsxFromMission } from './office.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
 import { checkMission as checkEvidence, sweep as sweepEvidence, evidenceHealth } from './evidence.js';
 import { hooks, hookState, setHooks, fire as fireHook, fromMissionEvent, HOOK_EVENTS } from './hooks.js';
@@ -633,7 +633,8 @@ async function handle(req, res) {
       ...publicWs(),
       oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(lean),
-      artifacts: store.artifacts(),
+      // A delivery whose mission has a data table can leave as a workbook.
+      artifacts: store.artifacts().map((a) => (a.missionId && store.mission(a.missionId)?.data?.series ? { ...a, hasData: true } : a)),
     });
   }
 
@@ -966,6 +967,18 @@ async function handle(req, res) {
     return json(res, 200, { ok: true, shareToken: token, path: token ? `/s/${token}` : null, revokedDeliveries: revoked });
   }
 
+  const artifactXlsx = p.match(/^\/api\/artifacts\/([\w]+)\/xlsx$/);
+  if (artifactXlsx && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const a = store.artifact(artifactXlsx[1]);
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    const buf = m && xlsxFromMission({ artifact: a, mission: m, publicUrl: m.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null });
+    if (!buf) return json(res, 400, { error: 'This delivery has no data table: attach a file to an analysis mission and the workbook follows.' });
+    const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'analysis'}.xlsx`;
+    res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
+    return res.end(buf);
+  }
   const artifactPptx = p.match(/^\/api\/artifacts\/([\w]+)\/pptx$/);
   if (artifactPptx && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });

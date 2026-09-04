@@ -547,3 +547,40 @@ test('a deck can leave as PowerPoint, with every slide and the dissent intact', 
   const brief = b.artifacts.find((x) => /brief/i.test(x.kind) || /brief/i.test(x.title));
   if (brief) { const bad = await fetch(`${BASE}/api/artifacts/${brief.id}/pptx`); assert.equal(bad.status, 400); assert.match((await bad.json()).error, /no slides/); }
 });
+
+test('an analysis can leave as a workbook: the series, the segments and the arithmetic', async () => {
+  const { extractText } = await import('../server/docs.js');
+  const csv = 'quarter,subscribers,city\nQ1,410,Mysore\nQ2,455,Mysore\nQ3,520,Bengaluru\nQ4,610,Bengaluru\nQ5,640,Mysore\nQ6,700,Bengaluru';
+  const c = await post('/api/chats', { title: 'Workbook test' });
+  const r = await post(`/api/chats/${c.j.id}/messages`, { text: 'Where are subscribers heading?', mode: 'analysis', attachments: [{ name: 'subs.csv', text: csv }] });
+  const id = r.j.mission.id;
+  const started = Date.now(); let m;
+  while (Date.now() - started < 120000) {
+    m = (await api(`/api/missions/${id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+    await new Promise((x) => setTimeout(x, 400));
+  }
+  assert.equal(m.status, 'FILLED');
+  const w = await fetch(`${BASE}/api/artifacts/${m.artifactId}/xlsx`);
+  assert.equal(w.status, 200);
+  assert.match(w.headers.get('content-type'), /spreadsheetml\.sheet/);
+  const buf = Buffer.from(await w.arrayBuffer());
+  assert.equal(buf.readUInt32LE(0), 0x04034b50, 'a real zip');
+  const names = buf.toString('latin1');
+  for (const part of ['xl/workbook.xml', 'xl/worksheets/sheet1.xml', 'xl/sharedStrings.xml']) assert.ok(names.includes(part), part);
+  assert.ok(names.includes('name="Series"') && names.includes('name="Segments"') && names.includes('name="Provenance"'), 'three sheets');
+  const text = extractText('book.xlsx', buf);
+  for (const label of ['quarter', 'subscribers', 'Q6', 'Count', 'Sum', 'Mean', 'city', 'Bengaluru', 'Provenance', 'Mission']) assert.ok(text.includes(label), `${label} is in the workbook`);
+  // Numbers are numbers, not text: no figure is stored as a shared string,
+  // though the read's prose may of course mention one.
+  const shared = names.slice(names.indexOf('<sst'), names.indexOf('</sst>'));
+  assert.ok(!/<t[^>]*>\s*555\.83\s*<\/t>/.test(shared), 'the mean is a number cell, not a string');
+  assert.ok(!/<t[^>]*>\s*3335\s*<\/t>/.test(shared), 'the sum is a number cell, not a string');
+  assert.match(names, /<v>555.83<\/v>/);
+  assert.match(names, /<v>3335<\/v>/);
+  const b = (await api('/api/bootstrap')).j;
+  const noData = b.artifacts.find((x) => !x.hasData);
+  if (noData) { const bad = await fetch(`${BASE}/api/artifacts/${noData.id}/xlsx`); assert.equal(bad.status, 400); assert.match((await bad.json()).error, /no data table/); }
+  assert.equal(b.artifacts.find((x) => x.id === m.artifactId)?.hasData, true, 'the delivery is flagged as having data');
+});

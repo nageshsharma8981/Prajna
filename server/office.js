@@ -136,3 +136,77 @@ export function pptxFromArtifact({ artifact, mission, html, publicUrl }) {
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Prajñā"><a:themeElements><a:clrScheme name="Prajñā"><a:dk1><a:srgbClr val="121614"/></a:dk1><a:lt1><a:srgbClr val="F5F1E6"/></a:lt1><a:dk2><a:srgbClr val="1B201C"/></a:dk2><a:lt2><a:srgbClr val="EFE7D6"/></a:lt2><a:accent1><a:srgbClr val="FFB300"/></a:accent1><a:accent2><a:srgbClr val="7FBF9A"/></a:accent2><a:accent3><a:srgbClr val="E05A4E"/></a:accent3><a:accent4><a:srgbClr val="9A9583"/></a:accent4><a:accent5><a:srgbClr val="8FD19E"/></a:accent5><a:accent6><a:srgbClr val="235C40"/></a:accent6><a:hlink><a:srgbClr val="FFB300"/></a:hlink><a:folHlink><a:srgbClr val="9A9583"/></a:folHlink></a:clrScheme><a:fontScheme name="Prajñā"><a:majorFont><a:latin typeface="Helvetica Neue"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Helvetica Neue"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Prajñā"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>` });
   return zipStore(files, new Date(artifact.createdAt || Date.now()));
 }
+
+// Excel out of the house. An analysis computes a series, segments and their
+// arithmetic from the owner's own file; this hands that work back as a
+// workbook they can carry on with, with the provenance on its own sheet so
+// the numbers never travel without their origin.
+const colName = (n) => { let s = ''; n += 1; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; };
+
+function sheetXml(rows, strings) {
+  const body = rows.map((cells, r) => {
+    const cs = cells.map((v, c) => {
+      const ref = `${colName(c)}${r + 1}`;
+      if (v === null || v === undefined || v === '') return '';
+      if (typeof v === 'number' && Number.isFinite(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+      const text = String(v);
+      let i = strings.indexOf(text);
+      if (i < 0) { strings.push(text); i = strings.length - 1; }
+      return `<c r="${ref}" t="s"><v>${i}</v></c>`;
+    }).join('');
+    return `<row r="${r + 1}">${cs}</row>`;
+  }).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
+}
+
+export function xlsxFromMission({ artifact, mission, publicUrl }) {
+  const d = mission?.data;
+  if (!d || !d.series || !Array.isArray(d.series.points)) return null;
+  const strings = [];
+  const sheets = [];
+  const st = d.stats || {};
+  sheets.push({ name: 'Series', rows: [
+    [d.series.labelColumn || 'Row', d.series.column],
+    ...d.series.points.map((p) => [p.label ?? '', p.value]),
+    [], ['Count', d.series.points.length], ['Sum', st.sum ?? null], ['Mean', st.mean ?? null], ['Minimum', st.min ?? null], ['Maximum', st.max ?? null], ['First', st.first ?? null], ['Last', st.last ?? null],
+  ] });
+  if (d.segments?.items?.length) {
+    const total = d.segments.items.reduce((a, x) => a + x.value, 0) || 1;
+    sheets.push({ name: 'Segments', rows: [
+      [d.segments.column, d.series.column, 'Share'],
+      ...d.segments.items.map((x) => [x.name, x.value, Math.round((x.value / total) * 1000) / 10]),
+      [], ['Total', Math.round(total * 100) / 100, 100],
+    ] });
+  }
+  const A = mission.authored?.content;
+  sheets.push({ name: 'Provenance', rows: [
+    ['Provenance', 'where these numbers came from'],
+    ['Delivery', artifact.title],
+    ['Mission', artifact.serial], ['Desk', artifact.desk], ['Version', artifact.version],
+    ['Delivered', new Date(artifact.createdAt).toISOString().slice(0, 10)],
+    ['Data', `${d.name}, ${d.rows} rows × ${d.columns.length} columns, attached by the owner`],
+    ['Substance', mission.authored?.live ? `Written by ${mission.authored.model} on the owner's own key` : mission.authored?.composed ? 'No model was loaded: every figure is arithmetic over the attached file, nothing estimated' : 'No model was loaded: house-scripted sample material, labelled as such'],
+    ['Settled', mission.settlement ? `${mission.settlement.settled} of a ${mission.contract?.ceiling} credit ceiling` : ''],
+    ...(publicUrl ? [['Record', publicUrl]] : []),
+    ...(A?.read ? [[], ['The read', A.read]] : []),
+    ...(A?.caveat ? [[], ['Caveat', A.caveat]] : []),
+  ] });
+
+  const files = [];
+  const sheetXmls = sheets.map((s) => sheetXml(s.rows, strings));
+  files.push({ name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>` });
+  files.push({ name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>` });
+  files.push({ name: 'docProps/core.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${esc(artifact.title)}</dc:title><dc:creator>Prajñā · ${esc(artifact.serial)}</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date(artifact.createdAt).toISOString()}</dcterms:created></cp:coreProperties>` });
+  files.push({ name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${esc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>` });
+  files.push({ name: 'xl/_rels/workbook.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>` });
+  sheetXmls.forEach((xml, i) => files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: xml }));
+  files.push({ name: 'xl/sharedStrings.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${strings.length}" uniqueCount="${strings.length}">${strings.map((s) => `<si><t xml:space="preserve">${esc(s)}</t></si>`).join('')}</sst>` });
+  return zipStore(files, new Date(artifact.createdAt || Date.now()));
+}
