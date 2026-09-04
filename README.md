@@ -881,3 +881,16 @@ digest names it against each delivered version ("v2 of PJ-4483: 22.9 cr
 more; 2 new sources"), and asking the record "what changed since last
 time?" answers from the same figures. A first version says plainly that
 it has nothing earlier to compare with.
+
+## v0.74: The house tests itself (2026-09-04)
+
+`npm test` boots a fresh instance on a scratch directory and drives it
+through the API the way the owner and the CLI do: the shell and marks,
+the consent gate, the seeded house, the house check and repair, a ticket
+written, launched, run to delivery and settled within its ceiling with
+provenance in the artifact, share links opened and revoked, standing
+orders with cap, pause, orphan and stop, the delta of an amendment, the
+digest and the status page. Nine tests, zero dependencies, about half a
+minute. The deploy runs them first and refuses a red build. Writing the
+suite found that the house check and repair routes sat above the consent
+gate; they now sit below it.

@@ -342,8 +342,6 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
-  if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseRepair()); }
-  if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });
     return json(res, 200, health());
@@ -433,6 +431,10 @@ async function handle(req, res) {
     const c = ws().consent;
     if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
   }
+
+  // ---- The house check and its repair (after the gate: both change the workspace) ----
+  if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseRepair()); }
+  if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
 
   if (p.startsWith('/api/') && !authed(req)) {
     if (limited(ipOf(req), 'locked', 60, 60000)) return json(res, 429, { locked: true, error: 'Too many requests. Try again in a minute.' });
