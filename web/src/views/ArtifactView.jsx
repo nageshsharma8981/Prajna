@@ -7,6 +7,7 @@ import { BackIcon, OpenIcon, DownloadIcon } from '../components/icons.jsx';
 export default function ArtifactView({ id }) {
   const s = useStore();
   const [retried, setRetried] = useState(false);
+  const artifact = (s.artifacts || []).find((a) => a.id === id);
   const [shareMsg, setShareMsg] = useState(null);
   const [note, setNote] = useState('');
   const [notesOpen, setNotesOpen] = useState(false);
@@ -29,7 +30,6 @@ export default function ArtifactView({ id }) {
     if (j.path) { const link = `${location.origin}${j.path}`; try { await navigator.clipboard.writeText(link); setShareMsg(`Share link copied: ${link}`); } catch { setShareMsg(`Share link: ${link}`); } } else setShareMsg('Share link revoked.');
     s.refresh();
   };
-  const artifact = (s.artifacts || []).find((a) => a.id === id);
 
   // A just-delivered artifact may not be in the bootstrap snapshot yet:
   // refresh once, then show an honest not-found state.
