@@ -48,7 +48,7 @@ export default function Home() {
   };
 
   return (
-    <div className="home">
+    <div className={`home${showWelcome ? ' with-welcome' : ''}`}>
       <aside className="promos" aria-label="Featured">
         <Link to="/media" className="promo"><span className="promo-ic"><MediaIcon /></span><span>Create videos<br />and photos</span><ArrowIcon /></Link>
         <Link to="/?mode=chat" className="promo"><span className="promo-ic"><SparkIcon /></span><span>Try the companion —<br />a mind by your side</span><ArrowIcon /></Link>

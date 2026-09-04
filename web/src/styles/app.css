@@ -1415,3 +1415,10 @@ abbr.cite { cursor: help; }
 .seat-pill { font-family: var(--mono); font-size: 0.66rem; border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.15rem 0.55rem; }
 .seat-pill.live { border-color: color-mix(in srgb, var(--green) 55%, var(--line-strong)); color: var(--green); }
 .seat-health p { margin: 0.2rem 0 0; line-height: 1.45; }
+
+/* With the welcome card showing, the promos step out of the corner so the
+   two never overlap; the greeting moves up to keep the fold useful. */
+.home.with-welcome .promos { position: static; width: auto; flex-direction: row; margin-bottom: 1.2rem; max-width: 56rem; margin-left: auto; margin-right: auto; }
+.home.with-welcome .promos .promo { flex: 1; }
+.home.with-welcome .home-center { margin-top: 0.5rem; }
+@media (max-width: 700px) { .home.with-welcome .promos { flex-direction: column; } }

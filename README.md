@@ -508,3 +508,10 @@ The panel step records the house price per seat; a live seat is priced at 0.
 The ticket tally shows "Saved by your keys" for any run with live seats, and
 the dashboard totals it across the board — the value of bringing your own
 keys, in house credits, from the ledger.
+
+## v0.34 — Fresh-eyes pass (2026-09-04)
+
+A first-visit walk through the live site at desktop width. One flaw found and
+fixed: the promo cards overlapped the welcome card's corner; with the welcome
+showing they now sit in a row above it. Home, missions, artifacts and the
+console were otherwise clean.
