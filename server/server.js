@@ -20,6 +20,7 @@ import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { search } from './search.js';
+import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
@@ -61,6 +62,7 @@ async function houseCheck() {
   const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
+  const lh = limitHealth(); add('limits', lh.ok, lh.detail);
   if (process.uptime() > 600 || listBackups().length) { const bh = backupHealth(); add('backups', bh.ok, bh.detail); }
   const sh = standingHealth();
   if (sh.total) add('standing', !sh.orphaned.length && !sh.overdue.length, `${sh.total} standing order(s)${sh.orphaned.length ? `, ${sh.orphaned.length} orphaned (ticket gone): ${sh.orphaned.map((o) => o.serial).join(', ')}` : ''}${sh.overdue.length ? `, ${sh.overdue.length} overdue by more than one interval: ${sh.overdue.map((o) => o.serial).join(', ')}` : ''}`);
@@ -386,6 +388,7 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/limits' && req.method === 'GET') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, { limits: limits(), usage: limitUsage() }); }
   if (p === '/api/search' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
     if (limited(ipOf(req), 'search', 120, 60000)) return json(res, 429, { error: 'Too many searches. Wait a minute.' });
@@ -496,6 +499,14 @@ async function handle(req, res) {
   }
 
   // ---- Backups: run now, list, download, restore ----
+  if (p === '/api/limits' && req.method === 'PUT') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    const r = setLimits(body || {});
+    if (r.error) return json(res, 400, { error: r.error });
+    console.log(`prajna: house limits set to ${JSON.stringify(r.limits)}`);
+    return json(res, 200, { limits: r.limits, usage: limitUsage() });
+  }
   if (p === '/api/backup' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); try { return json(res, 200, writeBackup({ version: VERSION })); } catch (e) { return json(res, 500, { error: `Backup failed: ${e.message}` }); } }
   const backupOne = p.match(/^\/api\/backups\/([\w.-]+)\/restore$/);
   if (backupOne && req.method === 'POST') {
@@ -568,6 +579,8 @@ async function handle(req, res) {
       houseCheck: ws().lastHouseCheck || null,
       standing: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })),
       backups: listBackups().slice(0, 5),
+      limits: limits(),
+      limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
@@ -648,6 +661,8 @@ async function handle(req, res) {
     if (credits < pending.contract.ceiling) {
       return json(res, 402, { error: `House credits (${credits.toFixed(0)}) are below this ticket's ceiling (${pending.contract.ceiling}). Top up or void the ticket, nothing was spent.` });
     }
+    const refused = limitRefusal(pending);
+    if (refused) return json(res, 403, { error: refused, limit: true });
     const m = launchMission(launchMatch[1], notify);
     if (!m) return json(res, 404, { error: 'Mission not found or not open.' });
     return json(res, 200, { ok: true });

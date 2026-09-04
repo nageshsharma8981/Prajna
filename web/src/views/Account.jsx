@@ -17,6 +17,7 @@ async function patch(url, body) {
 export default function Account({ page }) {
   const s = useStore();
   const [msg, setMsg] = useState(null);
+  const [lim, setLim] = useState(null);
   const [restoreFile, setRestoreFile] = useState(null);
   const [err, setErr] = useState(null);
   const [form, setForm] = useState({});
@@ -190,6 +191,20 @@ export default function Account({ page }) {
               </span></div>
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>CHK</span><span className="what"><b>House check</b><span>Real tests of the house: disk, tapes, artifact files, the reserve, the house rules, connected tokens, the last delivered link. Repair puts right what it can and names the rest.</span></span><span style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}><button className="toggle-btn" onClick={async () => { setErr(null); setMsg('Checking…'); const r = await fetch('/api/housecheck', { method: 'POST' }); const j = await r.json().catch(() => ({})); if (!r.ok) { setErr(j.error || 'Refused.'); return; } setMsg(`${j.ok} of ${j.total} ok\n` + j.rows.map((x) => `${x.ok ? 'ok  ' : 'FAIL'} ${x.id}: ${x.detail}`).join('\n')); s.refresh(); }}>Run</button><button className="toggle-btn" onClick={async () => { setErr(null); setMsg('Repairing…'); const r = await fetch('/api/housecheck/repair', { method: 'POST' }); const j = await r.json().catch(() => ({})); if (!r.ok) { setErr(j.error || 'Refused.'); return; } setMsg((j.actions.length ? j.actions.map((x) => `${x.ok ? 'done' : 'left'} ${x.id}: ${x.detail}`).join('\n') : 'Nothing to repair.') + `\n\nChecked again: ${j.check.ok} of ${j.check.total} ok\n` + j.check.rows.map((x) => `${x.ok ? 'ok  ' : 'FAIL'} ${x.id}: ${x.detail}`).join('\n')); s.refresh(); }}>Repair</button></span></div>
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>ZIP</span><span className="what"><b>Take your data</b><span>The whole workspace as one zip: every mission with its tape, every artifact with its provenance, chats, notes, the credit ledger, media, standing orders and your consent record. Plain JSON and HTML. Keys and tokens are never in it; they live only in memory.</span></span><a className="toggle-btn" href="/api/export" download>Download</a></div>
+              {(() => {
+                const l = lim || s.limits || {}; const u = s.limitUsage || {};
+                const field = (k, label, hint) => <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.68rem', color: 'var(--bone-dim)' }}>{label}<input className="key-input" type="number" min="0" inputMode="numeric" style={{ width: '7rem', padding: '0.35rem 0.5rem' }} value={l[k] ?? ''} placeholder="no limit" title={hint} onChange={(e) => setLim({ ...l, [k]: e.target.value === '' ? null : e.target.value })} /></label>;
+                return (
+                  <div className="board-row" style={{ cursor: 'default', alignItems: 'flex-start' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>LIM</span><span className="what"><b>House limits</b><span>Standing guardrails the house keeps on its own. A ticket that would break one is refused before anything is reserved, and a standing order run is skipped and says why. Leave a field empty for no limit.</span>
+                    <span style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                      {field('ticketCeiling', 'Ceiling per ticket (cr)', 'No single ticket may reserve more than this.')}
+                      {field('monthlySpend', 'Settled in 30 days (cr)', 'The house refuses a ticket whose ceiling would take the last 30 days past this.')}
+                      {field('dailyRuns', 'Runs in 24 hours', 'How many runs may start in any 24 hours.')}
+                    </span>
+                    <span style={{ display: 'block', marginTop: '0.4rem', fontSize: '0.7rem' }}>Now: {u.monthSpend ?? 0} cr settled in 30 days, {u.runsToday ?? 0} run{(u.runsToday ?? 0) === 1 ? '' : 's'} started today.</span>
+                  </span><button className="toggle-btn" onClick={async () => { setErr(null); const r = await fetch('/api/limits', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(l) }); const j = await r.json().catch(() => ({})); if (!r.ok) { setErr(j.error || 'Refused.'); return; } setLim(null); setMsg('House limits saved.'); s.refresh(); }}>Save</button></div>
+                );
+              })()}
               <div className="board-row" style={{ cursor: 'default', alignItems: 'flex-start' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>BAK</span><span className="what"><b>Backups</b><span>The house writes its own export once a day and keeps the last seven, in the data directory. The house check fails when the latest is missing, older than 36 hours or unreadable. Restore any of them here; take your data first if you want a copy elsewhere.</span>
                 {(s.backups || []).length === 0 && <span style={{ display: 'block', marginTop: '0.4rem' }}>None yet; the first is written five minutes after the house starts.</span>}
                 {(s.backups || []).map((b) => <span key={b.name} style={{ display: 'block', marginTop: '0.4rem' }}>{new Date(b.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {(b.bytes / 1024).toFixed(0)} KB

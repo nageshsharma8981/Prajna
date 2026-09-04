@@ -690,6 +690,14 @@ export default function Run({ id }) {
             {mission.status === 'OPEN' && (
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <span>This ticket is written but not stamped. Nothing has run, nothing is reserved, nothing is spent.</span>
+                {(() => {
+                  const l = store.limits || {}; const u = store.limitUsage || {}; const c = mission.contract.ceiling;
+                  const says = l.ticketCeiling != null && c > l.ticketCeiling ? `A house limit stops this: no ticket may reserve more than ${l.ticketCeiling} cr, and this one's ceiling is ${c}.`
+                    : l.monthlySpend != null && (u.monthSpend || 0) + c > l.monthlySpend ? `A house limit stops this: ${l.monthlySpend} cr in any 30 days, ${u.monthSpend || 0} already settled, this ticket reserves ${c}.`
+                    : l.dailyRuns != null && (u.runsToday || 0) >= l.dailyRuns ? `A house limit stops this: ${l.dailyRuns} run${l.dailyRuns === 1 ? '' : 's'} in any 24 hours, ${u.runsToday || 0} already started.`
+                    : null;
+                  return says ? <span className="house-warn" role="status">{says} Raise it under Settings, or void this ticket.</span> : null;
+                })()}
                 <span style={{ display: 'flex', gap: '0.8rem' }}>
                   <button className="btn-stamp" onClick={stampAndRun} disabled={busy}>Stamp & run</button>
                   <button className="btn-quiet" onClick={voidTicket} disabled={busy}>Void ticket</button>

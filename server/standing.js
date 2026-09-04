@@ -5,6 +5,7 @@
 import { store } from './store.js';
 import { ws, flushWs } from './workspace.js';
 import { forkMission, launchMission, voidTicket } from './engine.js';
+import { refusal as limitRefusal } from './limits.js';
 
 export const CADENCES = { daily: 24 * 60 * 60 * 1000, weekly: 7 * 24 * 60 * 60 * 1000 };
 const id = () => `so_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -52,8 +53,12 @@ export function runOrder(o, { installedSkills, queuedConnectors, notify }) {
     else {
       next.standingOrderId = o.id; store.flushMissions();
       const credits = store.workspace().credits;
+      const limitSays = limitRefusal(next, at);
       const used = o.cap ? spentThisMonth(o, at) : 0;
-      if (o.cap && used + next.contract.ceiling > o.cap) {
+      if (limitSays) {
+        run = { at, skipped: limitSays.replace(/^House limit: /, 'house limit, ').replace(/ Nothing was spent\..*$/, ''), missionId: next.id, serial: next.serial };
+        try { voidTicket(next.id, notify); } catch { /* stays open for the owner */ }
+      } else if (o.cap && used + next.contract.ceiling > o.cap) {
         run = { at, skipped: `monthly cap ${o.cap} cr: ${used} cr settled in the last 30 days, this run's ceiling is ${next.contract.ceiling} cr`, missionId: next.id, serial: next.serial };
         try { voidTicket(next.id, notify); } catch { /* stays open for the owner */ }
       } else if (credits < next.contract.ceiling || !launchMission(next.id, notify)) {

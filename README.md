@@ -1078,3 +1078,14 @@ conversation. Each hit says where it was found, "a decision", "the tape",
 the run where someone raised a ceiling and read the reason they gave.
 Every term must match, artifact text is cached against the file, and a
 full house answers in about ten milliseconds. `GET /api/search?q=`.
+
+## v0.90: House limits (2026-09-04)
+
+Standing guardrails the house keeps on its own, set once under Settings:
+a ceiling no single ticket may exceed, a cap on credits settled in any
+30 days, and how many runs may start in any 24 hours. A ticket that
+would break one is refused before anything is reserved, in plain words,
+with nothing spent; the run page says so before you reach the stamp; a
+standing order run is skipped and records the limit as the reason. The
+house check carries a limits row showing where each stands. Leave a
+field empty for no limit. `GET`/`PUT /api/limits`.

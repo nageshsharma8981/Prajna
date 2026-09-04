@@ -288,3 +288,23 @@ test('search finds the words themselves, in tapes, artifacts, decisions and chat
   assert.equal(two.j.hits.length, 0, 'every term must match');
   assert.equal((await api('/api/search?q=a')).j.hits.length, 0, 'a single letter is not a search');
 });
+
+test('house limits refuse a ticket before anything is reserved, and let it through when raised', async () => {
+  const before = (await api('/api/bootstrap')).j.workspace;
+  const w = await post('/api/missions', { goal: 'Limits test: a brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
+  const ceiling = w.j.contract.ceiling; assert.ok(ceiling > 2);
+  const bad = await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: -3 }) }); assert.equal(bad.status, 400);
+  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: ceiling - 1 }) })).status, 200);
+  const refused = await post(`/api/missions/${w.j.id}/launch`);
+  assert.equal(refused.status, 403); assert.equal(refused.j.limit, true); assert.match(refused.j.error, /no single ticket may reserve more than/);
+  const still = (await api(`/api/missions/${w.j.id}`)).j; assert.equal(still.status, 'OPEN', 'the ticket is untouched');
+  assert.equal((await api('/api/bootstrap')).j.workspace.reserved, before.reserved, 'nothing was reserved');
+  const check = await post('/api/housecheck'); const row = check.j.rows.find((r) => r.id === 'limits'); assert.ok(row && /ticket ceiling/.test(row.detail), JSON.stringify(row));
+  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null, dailyRuns: 0 }) })).status, 200);
+  const byRuns = await post(`/api/missions/${w.j.id}/launch`);
+  assert.equal(byRuns.status, 403); assert.match(byRuns.j.error, /run(s)? in any 24 hours/);
+  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ dailyRuns: null }) })).status, 200);
+  assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200, 'with no limit it runs');
+  const l = (await api('/api/limits')).j; assert.deepEqual(l.limits, { ticketCeiling: null, monthlySpend: null, dailyRuns: null });
+  assert.ok(l.usage.runsToday >= 1);
+});
