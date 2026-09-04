@@ -1028,9 +1028,17 @@ h1.pg-title {
 .menu-btn { display: none; align-items: center; gap: 0.5rem; color: var(--bone-dim); }
 @media (max-width: 620px) {
   .desk-row { grid-template-columns: 1fr; }
-  .board-row { grid-template-columns: 3.6rem 1fr auto; gap: 0.8rem; align-items: start; }
+  /* On a phone a row wraps: the sym and the text on one line, the actions on the next, under the text. */
+  .board-row { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; align-items: flex-start; padding: 0.7rem 0.9rem; }
+  .board-row .sym { flex: 0 0 auto; margin-top: 0.1rem; }
+  .board-row .what { flex: 1 1 12rem; min-width: 0; }
   .board-row .what b { white-space: normal; }
-  .board-row .sym { margin-top: 0.1rem; }
+  .board-row > :not(.sym):not(.what) { flex: 0 0 auto; }
+  .board-row .what + * { margin-left: 4.4rem; }
+  .board-row > span:not(.sym):not(.what) { flex-wrap: wrap; max-width: calc(100% - 4.4rem); }
+  .board-row .num { text-align: left; }
+  .account > * { min-width: 0; }
+  .gate-table { display: block; overflow-x: auto; }
   .toggle-btn { padding: 0.3rem 0.5rem; letter-spacing: 0.08em; }
   .ticket-tally { flex-wrap: wrap; gap: 1rem 1.6rem; }
   .masthead .flapline { font-size: 0.8rem; }

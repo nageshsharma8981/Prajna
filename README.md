@@ -967,3 +967,13 @@ guarantees, how it stands against Zenith in one table, and how to run,
 test and ship it; the stale sections on running, architecture and rollback
 are gone. The last traces of "outcome exchange" left the stylesheet, the
 author prompt, the retrieval user agent and the CLI header.
+
+## v0.79: The house on a phone (2026-09-04)
+
+A mobile pass over Home, a delivered run and Settings. Settings was the
+casualty: the account body ran wider than the screen and the digest row
+squeezed its text to one word per line. On narrow screens a board row now
+wraps, the sym and the text on one line, the actions on the next, under
+the text, and action groups wrap too; the gate table scrolls inside its
+own box instead of pushing the page. Checked at 375 pixels wide with no
+horizontal overflow.
