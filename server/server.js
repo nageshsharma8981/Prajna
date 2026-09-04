@@ -172,7 +172,7 @@ async function handle(req, res) {
       workspace: store.workspace(),
       desks: DESKS,
       models: allModels().map((m) => ({ ...m, live: !!store.keyFor(m.provider), custom: String(m.id).startsWith('c_') })),
-      providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint }])),
+      providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTOR_CATALOG.map((c) => {
@@ -546,6 +546,7 @@ async function handle(req, res) {
     const baseUrl = String(body.baseUrl || '').trim() || null;
     if (!name || !modelId) return json(res, 400, { error: 'Name and model id are required.' });
     if (!PROVIDERS[provider]) return json(res, 400, { error: 'Unknown provider.' });
+    if (PROVIDERS[provider].kind === 'search') return json(res, 400, { error: `${PROVIDERS[provider].label} is a search key, not a model provider.` });
     if (baseUrl && !/^https?:\/\//.test(baseUrl)) return json(res, 400, { error: 'Base URL must start with http:// or https://.' });
     if (allModels().length >= 24) return json(res, 400, { error: 'Seat limit reached (24 models).' });
     const symbol = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');

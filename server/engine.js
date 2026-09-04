@@ -26,7 +26,8 @@ export function liveSeat(modelIdOrRef) {
 }
 
 function positionPrompt(mission, model) {
-  return `You are ${model.name}, one seat on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\nIn 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
+  const sources = (mission.sources || []).slice(0, 6).map((s, i) => `[${i + 1}] ${s.title} — ${s.extract.slice(0, 220)}`).join('\n');
+  return `You are ${model.name}, one seat on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources on the table (refer to them by number where they bear on your position):\n${sources}\n` : ''}In 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
 }
 
 // Serial counter continues from the persisted ledger so restarts never mint
@@ -498,10 +499,10 @@ async function applyEvent(m, ev, notify, runner) {
       pushEvent(m, record, notify);
       try {
         const started = Date.now();
-        const { query, sources } = await retrieve(m.goal);
-        m.retrieval = { ok: true, query, count: sources.length, ms: Date.now() - started, at: Date.now() };
+        const { query, sources, engines } = await retrieve(m.goal);
+        m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
         m.sources = sources;
-        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}” — the brief will say so` }, notify);
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}” — the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
         m.sources = [];

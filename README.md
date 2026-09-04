@@ -263,3 +263,15 @@ Validators now scan the deliverable body only.
 
 `server/retrieve.js` holds the retriever; `streamModel` in `server/providers.js`
 holds the streaming adapters.
+
+## v0.11 — Search key, sources on the panel's table, quality analytics (2026-09-04)
+
+- **Brave Search key (BYOK).** A web-search key on the Your keys page widens
+  the research desk's sweep to the live web; the open encyclopedia still runs
+  alongside. Memory-only like every key. The tape and the provenance block
+  record which engines served each sweep and how many sources each returned.
+- **Panel reads the sources.** Live panel seats receive the retrieved sources
+  and refer to them by number when they state positions.
+- **Quality from the ledger.** The dashboard now computes gate-cleared-first-
+  time rate, patched-before-delivery rate, accepted risks, live-authored share,
+  estimate variance and per-desk delivery from the mission ledger.

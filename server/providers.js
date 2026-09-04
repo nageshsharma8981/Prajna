@@ -17,6 +17,18 @@ async function readJson(r) {
   try { return JSON.parse(text); } catch { return { raw: text.slice(0, 300) }; }
 }
 
+// Brave Search: a BYOK web-search key widens the research desk's retrieval
+// beyond the open encyclopedia. Same rule as model keys: memory only.
+export async function braveSearch({ key, baseUrl, q, count = 5 }) {
+  const base = (baseUrl || 'https://api.search.brave.com').replace(/\/$/, '');
+  const r = await withTimeout(fetch(`${base}/res/v1/web/search?q=${encodeURIComponent(q)}&count=${count}&text_decorations=0`, {
+    headers: { accept: 'application/json', 'x-subscription-token': key },
+  }), TIMEOUT_MS, 'Brave Search');
+  const j = await readJson(r);
+  if (!r.ok) throw new Error(j?.message || j?.error?.detail || `Brave ${r.status}`);
+  return (j.web?.results || []).map((x) => ({ title: x.title, url: x.url, description: String(x.description || '').replace(/<[^>]+>/g, ''), age: x.age || x.page_age || null }));
+}
+
 export const PROVIDERS = {
   anthropic: {
     label: 'Anthropic',
@@ -60,6 +72,12 @@ export const PROVIDERS = {
       if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
       return (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
     },
+  },
+  brave: {
+    label: 'Brave Search',
+    kind: 'search',
+    hint: 'Web-search key (api.search.brave.com). Not a model seat: it widens the research desk\'s retrieval beyond the open encyclopedia.',
+    async call() { throw new Error('Brave Search is a search key, not a model seat.'); },
   },
 };
 
@@ -131,6 +149,7 @@ export async function streamModel({ provider, key, baseUrl, modelId, prompt, max
 export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTokens }) {
   const p = PROVIDERS[provider];
   if (!p) throw new Error(`Unknown provider "${provider}".`);
+  if (p.kind === 'search') throw new Error(`${p.label} is a search key, not a model seat.`);
   if (!key) throw new Error(`No key on file for ${p.label}.`);
   const text = await p.call({ key, baseUrl, modelId, prompt, maxTokens });
   if (!text) throw new Error(`${p.label} returned an empty reply.`);
@@ -140,6 +159,10 @@ export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTo
 // A cheap round-trip that proves the key + model id actually work.
 export async function testKey({ provider, key, baseUrl, modelId }) {
   const started = Date.now();
+  if (PROVIDERS[provider]?.kind === 'search') {
+    const hits = await braveSearch({ key, baseUrl, q: 'outcome exchange', count: 1 });
+    return { ok: true, ms: Date.now() - started, sample: hits[0] ? hits[0].title.slice(0, 40) : 'no results', modelId: 'web search' };
+  }
   const text = await callModel({ provider, key, baseUrl, modelId, prompt: 'Reply with the single word: ready', maxTokens: 8 });
   return { ok: true, ms: Date.now() - started, sample: text.slice(0, 40) };
 }

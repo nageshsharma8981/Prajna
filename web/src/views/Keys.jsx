@@ -21,17 +21,17 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
 
   const save = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(`Loaded as ${r.masked} for this session (not saved to disk). Seats on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
+    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(meta.kind === 'search' ? `Loaded as ${r.masked} for this session (not saved to disk). The research desk now sweeps the live web through ${meta.label} until the server restarts.` : `Loaded as ${r.masked} for this session (not saved to disk). Seats on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const test = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { const r = await send(`/api/keys/${id}/test`, 'POST', { key: key || undefined, baseUrl: baseUrl || undefined }); setMsg(`Live: ${r.modelId} answered in ${r.ms}ms (“${r.sample}”).`); }
+    try { const r = await send(`/api/keys/${id}/test`, 'POST', { key: key || undefined, baseUrl: baseUrl || undefined }); setMsg(meta.kind === 'search' ? `Live: ${meta.label} answered in ${r.ms}ms (first hit “${r.sample}”).` : `Live: ${r.modelId} answered in ${r.ms}ms (“${r.sample}”).`); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const remove = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { await send(`/api/keys/${id}`, 'DELETE'); setMsg('Key removed. Seats on this provider are scripted again.'); await onChange(); }
+    try { await send(`/api/keys/${id}`, 'DELETE'); setMsg(meta.kind === 'search' ? 'Key removed. Retrieval falls back to the open encyclopedia.' : 'Key removed. Seats on this provider are scripted again.'); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -39,7 +39,7 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
     <div className="key-card" role="group" aria-label={`${meta.label} key`}>
       <div className="key-head">
         <b>{meta.label}</b>
-        <span className={`sflap ${saved ? 'LIVE' : 'QUEUED'}`}>{saved ? 'LIVE' : 'NO KEY'}</span>
+        <span className={`sflap ${saved ? 'LIVE' : 'QUEUED'}`}>{saved ? 'LIVE' : 'NO KEY'}</span>{meta.kind === 'search' && <span className="beta">search</span>}
       </div>
       <p className="key-hint">{meta.hint}</p>
       {saved && <p className="key-saved">In memory this session: <code>{saved.masked}</code>{saved.baseUrl ? <> · base URL <code>{saved.baseUrl}</code></> : null}</p>}
@@ -163,7 +163,7 @@ export default function Keys() {
           <div className="key-add">
             <input className="key-input" placeholder="Display name (e.g. Qwen 3 235B)" value={name} onChange={(e) => setName(e.target.value)} aria-label="Model display name" />
             <select className="key-input" value={provider} onChange={(e) => setProvider(e.target.value)} aria-label="Provider">
-              {Object.entries(s.providers || {}).map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
+              {Object.entries(s.providers || {}).filter(([, meta]) => meta.kind !== 'search').map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
             </select>
             <input className="key-input" placeholder="Model id (exactly as the API expects)" value={modelId} onChange={(e) => setModelId(e.target.value)} aria-label="Model id" />
             {provider === 'openai' && <input className="key-input" placeholder="Base URL (optional)" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} aria-label="Base URL" />}

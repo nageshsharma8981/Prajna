@@ -25,6 +25,17 @@ export default function Account({ page }) {
   const save = async (url, body, ok) => { setErr(null); setMsg(null); try { await patch(url, body); setMsg(ok); setForm({}); s.refresh(); } catch (e) { setErr(e.message); } };
   const w = s.workspace;
   const done = s.missions.filter((m) => m.status === 'FILLED').length;
+  // Quality analytics — computed from the ledger, not asserted.
+  const filled = s.missions.filter((m) => m.status === 'FILLED');
+  const gated = filled.filter((m) => (m.validations || []).length);
+  const firstTime = gated.filter((m) => m.validations.length === 1 && m.validations[0].gate?.cleared).length;
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
+  const patched = filled.filter((m) => (m.patches || []).length).length;
+  const risks = filled.reduce((a, m) => a + (m.acceptedRisks || []).length, 0);
+  const liveAuthored = filled.filter((m) => m.authored?.live).length;
+  const estAcc = filled.filter((m) => m.settlement && m.contract?.estimate);
+  const variance = estAcc.length ? estAcc.reduce((a, m) => a + (m.settlement.settled - m.contract.estimate) / m.contract.estimate, 0) / estAcc.length : null;
+  const byDesk = Object.values(s.missions.reduce((acc, m) => { const k = m.deskName; acc[k] ||= { desk: k, n: 0, done: 0, spent: 0 }; acc[k].n++; if (m.status === 'FILLED') acc[k].done++; acc[k].spent += m.spent || 0; return acc; }, {}));
 
   return (
     <div className="page account">
@@ -56,6 +67,16 @@ export default function Account({ page }) {
                 <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>
               ))}
             </div>
+            <h2 className="h2 section-gap">Quality — from the ledger</h2>
+            <div className="stat-grid">
+              {[['Gate cleared first time', pct(firstTime, gated.length)], ['Patched before delivery', pct(patched, filled.length)], ['Accepted risks on record', risks], ['Live-authored', pct(liveAuthored, filled.length)], ['Estimate variance', variance == null ? '—' : `${variance >= 0 ? '+' : ''}${Math.round(variance * 100)}%`], ['Delivered', `${done}/${s.missions.length}`]].map(([k, v]) => (
+                <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>
+              ))}
+            </div>
+            <div className="board section-gap"><div className="board-title"><span className="brd-sm">By desk</span></div><div className="board-rows">
+              {byDesk.map((d) => <div key={d.desk} className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>{d.n}</span><span className="what"><b>{d.desk}</b><span>{d.done} delivered</span></span><span className="num">{d.spent.toFixed(1)} cr</span></div>)}
+              {byDesk.length === 0 && <div className="board-empty">No missions yet.</div>}
+            </div></div>
             <div className="board section-gap"><div className="board-title"><span className="brd-sm">Recent missions</span></div><div className="board-rows">
               {s.missions.slice(0, 6).map((m) => <Link key={m.id} to={`/run/${m.id}`} className="board-row"><span className={`sym tint-${m.tint}`}>{m.serial}</span><span className="what"><b>{m.subject}</b><span>{m.deskName} · {m.status}</span></span><span className="num">{m.spent.toFixed(1)} cr</span></Link>)}
             </div></div>
