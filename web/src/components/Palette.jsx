@@ -21,12 +21,18 @@ export default function Palette({ onClose }) {
 
   const items = useMemo(() => {
     const base = [
-      { k: 'GO', t: 'Missions — open a new mission', to: '/' },
+      { k: 'GO', t: 'New chat', to: '/' },
+      { k: 'GO', t: 'Missions — tickets & runs', to: '/missions' },
+      { k: 'GO', t: 'Boards', to: '/boards' },
+      { k: 'GO', t: 'Plugins', to: '/plugins' },
+      { k: 'GO', t: 'Factory', to: '/factory/cli' },
+      { k: 'GO', t: 'Tools', to: '/tools' },
+      { k: 'GO', t: 'Media studio', to: '/media' },
       { k: 'GO', t: 'Artifacts — everything delivered', to: '/artifacts' },
       { k: 'GO', t: 'Skills — the house playbook', to: '/skills' },
       { k: 'GO', t: 'Connectors — evidence sources', to: '/connectors' },
       { k: 'GO', t: 'Your keys — bring your own models', to: '/keys' },
-      ...(s.desks || []).map((d) => ({ k: d.code, t: `Open a ${d.name.toLowerCase()} mission`, to: `/?desk=${d.id}` })),
+      ...(s.chats || []).slice(0, 8).map((c) => ({ k: 'CHAT', t: c.title, to: `/c/${c.id}` })),
       ...(s.missions || []).slice(0, 8).map((m) => ({ k: m.serial, t: m.subject, to: `/run/${m.id}` })),
       ...(s.artifacts || []).slice(0, 8).map((a) => ({ k: 'ART', t: a.title, to: `/artifact/${a.id}` })),
     ];

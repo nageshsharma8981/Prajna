@@ -9,6 +9,8 @@ import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomMode
 import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
+import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
+import { callModel } from './providers.js';
 
 bindCustomModels(() => store.customModels());
 import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, forkMission, DIMENSIONS } from './engine.js';
@@ -138,7 +140,7 @@ const MIME = {
 
 // Connectors that are genuinely connected (a live OAuth token in memory).
 function connectedConnectors() {
-  return CONNECTORS.filter((c) => c.provider && store.token(c.provider)).map((c) => c.id);
+  return CONNECTOR_CATALOG.filter((c) => c.provider && store.token(c.provider)).map((c) => c.id);
 }
 
 function connectorState() {
@@ -173,11 +175,16 @@ async function handle(req, res) {
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint }])),
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
-      connectors: CONNECTORS.map((c) => {
+      connectors: CONNECTOR_CATALOG.map((c) => {
         const prov = c.provider || null;
         const tok = prov ? store.token(prov) : null;
-        return { ...c, provider: prov, supported: !!prov, appConfigured: !!(prov && store.oauthApp(prov)), connected: !!tok, account: tok ? tok.account : null };
+        return { ...c, supported: !!prov, appConfigured: !!(prov && store.oauthApp(prov)), connected: !!tok, account: tok ? tok.account : null };
       }),
+      templates: DECK_TEMPLATES,
+      pluginCatalog: PLUGINS,
+      toolCatalog: TOOLS,
+      planTiers: PLAN_TIERS,
+      ...publicWs(),
       oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(lean),
       artifacts: store.artifacts(),
@@ -197,7 +204,7 @@ async function handle(req, res) {
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null });
     return json(res, 200, pub(mission));
   }
 
@@ -305,6 +312,132 @@ async function handle(req, res) {
     }
     return sendCompressed(req, res, 200, headers, html);
   }
+
+  // ---- Chats (Zenith parity): a message in a mode becomes a mission that runs at once ----
+  if (p === '/api/chats' && req.method === 'POST') {
+    const body = await readBody(req);
+    return json(res, 200, createChat({ title: body.title, mode: body.mode, projectId: body.projectId }));
+  }
+  const chatMatch = p.match(/^\/api\/chats\/([\w]+)$/);
+  if (chatMatch) {
+    const c = getChat(chatMatch[1]);
+    if (!c) return json(res, 404, { error: 'Chat not found.' });
+    if (req.method === 'DELETE') { deleteChat(c.id); return json(res, 200, { ok: true }); }
+    if (req.method === 'PATCH') { const body = await readBody(req); return json(res, 200, renameChat(c.id, body.title || c.title)); }
+    return json(res, 200, c);
+  }
+  const msgMatch = p.match(/^\/api\/chats\/([\w]+)\/messages$/);
+  if (msgMatch && req.method === 'POST') {
+    const c = getChat(msgMatch[1]);
+    if (!c) return json(res, 404, { error: 'Chat not found.' });
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const text = String(body.text || '').trim().slice(0, 4000);
+    if (!text) return json(res, 400, { error: 'Say something first.' });
+    const mode = String(body.mode || c.mode || 'chat');
+    addMessage(c.id, { role: 'user', text, mode, attachments: Array.isArray(body.attachments) ? body.attachments.slice(0, 8) : [] });
+    const MODE_DESK = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
+    if (MODE_DESK[mode]) {
+      const lead = modelById(body.lead || ws().personalization.defaultModel).id;
+      const advisers = (Array.isArray(body.advisers) ? body.advisers : ws().personalization.defaultAdvisers).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
+      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id });
+      const credits = store.workspace().credits;
+      if (credits < mission.contract.ceiling) {
+        const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits — top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });
+        return json(res, 200, { chat: getChat(c.id), mission: pub(mission), message: m });
+      }
+      const launched = launchMission(mission.id, notify);
+      const m = addMessage(c.id, { role: 'assistant', text: `On it — ${mission.deskName.replace(' desk', '')} mission ${mission.serial} is running: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}). Watch the tape or wait for the delivery here.`, missionId: mission.id, kind: 'run' });
+      return json(res, 200, { chat: getChat(c.id), mission: pub(launched || mission), message: m });
+    }
+    // Plain chat: a live seat answers if a key is loaded; otherwise the house replies honestly.
+    const seatId = body.lead || ws().personalization.defaultModel;
+    const live = liveSeat(seatId);
+    let reply, kind = 'text';
+    if (live) {
+      try {
+        const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
+        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).\n\n${history}\nAssistant:`, maxTokens: 900 });
+        kind = 'live';
+      } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
+    } else {
+      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+    }
+    const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
+    return json(res, 200, { chat: getChat(c.id), message: m });
+  }
+
+  // ---- Projects / plugins / tools / MCP / profile / plan / boards ----
+  if (p === '/api/projects' && req.method === 'POST') {
+    const body = await readBody(req); const w = ws();
+    const proj = { id: `p_${Math.random().toString(36).slice(2, 8)}`, name: String(body.name || 'New project').slice(0, 60), createdAt: Date.now(), chatIds: [] };
+    w.projects.push(proj); flushWs(); return json(res, 200, proj);
+  }
+  const projMatch = p.match(/^\/api\/projects\/([\w]+)$/);
+  if (projMatch && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    const w = ws(); const proj = w.projects.find((x) => x.id === projMatch[1]);
+    if (!proj) return json(res, 404, { error: 'Project not found.' });
+    if (req.method === 'DELETE') { if (proj.id === 'p_default') return json(res, 400, { error: 'The default project cannot be deleted.' }); w.projects = w.projects.filter((x) => x.id !== proj.id); flushWs(); return json(res, 200, { ok: true }); }
+    const body = await readBody(req); proj.name = String(body.name || proj.name).slice(0, 60); flushWs(); return json(res, 200, proj);
+  }
+  const pluginMatch = p.match(/^\/api\/plugins\/([\w-]+)\/toggle$/);
+  if (pluginMatch && req.method === 'POST') {
+    if (!PLUGINS.some((x) => x.id === pluginMatch[1])) return json(res, 404, { error: 'Unknown plugin.' });
+    const w = ws(); w.plugins = w.plugins.includes(pluginMatch[1]) ? w.plugins.filter((x) => x !== pluginMatch[1]) : [...w.plugins, pluginMatch[1]]; flushWs();
+    return json(res, 200, { enabled: w.plugins.includes(pluginMatch[1]) });
+  }
+  const toolMatch = p.match(/^\/api\/tools\/([\w-]+)\/toggle$/);
+  if (toolMatch && req.method === 'POST') {
+    if (!TOOLS.some((x) => x.id === toolMatch[1])) return json(res, 404, { error: 'Unknown tool.' });
+    const w = ws(); w.tools[toolMatch[1]] = !w.tools[toolMatch[1]]; flushWs(); return json(res, 200, { enabled: w.tools[toolMatch[1]] });
+  }
+  if (p === '/api/mcp' && req.method === 'POST') {
+    const body = await readBody(req); const w = ws();
+    const name = String(body.name || '').trim().slice(0, 40); const url = String(body.url || '').trim().slice(0, 200);
+    if (!name || !/^https?:\/\//.test(url)) return json(res, 400, { error: 'A name and an http(s) URL are required.' });
+    const entry = { id: `mcp_${Math.random().toString(36).slice(2, 8)}`, name, url, addedAt: Date.now(), status: 'registered — not yet probed' };
+    w.mcp.push(entry); flushWs(); return json(res, 200, entry);
+  }
+  const mcpDel = p.match(/^\/api\/mcp\/(mcp_[\w]+)$/);
+  if (mcpDel && req.method === 'DELETE') { const w = ws(); w.mcp = w.mcp.filter((x) => x.id !== mcpDel[1]); flushWs(); return json(res, 200, { ok: true }); }
+  if (p === '/api/profile' && req.method === 'PATCH') {
+    const body = await readBody(req); const w = ws();
+    for (const k of ['name', 'handle', 'bio']) if (body[k] != null) w.profile[k] = String(body[k]).slice(0, k === 'bio' ? 300 : 60);
+    if (w.profile.name) { w.profile.avatar = w.profile.name.trim()[0].toUpperCase(); store.workspace().name = w.profile.name; store.flushWorkspace(); }
+    flushWs(); return json(res, 200, w.profile);
+  }
+  if (p === '/api/personalization' && req.method === 'PATCH') {
+    const body = await readBody(req); const w = ws();
+    if (body.tone != null) w.personalization.tone = String(body.tone).slice(0, 120);
+    if (body.defaultModel && allModels().some((m) => m.id === body.defaultModel)) w.personalization.defaultModel = body.defaultModel;
+    if (Array.isArray(body.defaultAdvisers)) w.personalization.defaultAdvisers = body.defaultAdvisers.filter((a) => allModels().some((m) => m.id === a)).slice(0, 5);
+    if (body.theme === 'day' || body.theme === 'night') w.personalization.theme = body.theme;
+    flushWs(); return json(res, 200, w.personalization);
+  }
+  if (p === '/api/language' && req.method === 'PATCH') {
+    const body = await readBody(req); const w = ws();
+    if (/^[a-z]{2}(-[A-Z]{2})?$/.test(String(body.language || ''))) w.language = body.language; flushWs(); return json(res, 200, { language: w.language });
+  }
+  if (p === '/api/plan' && req.method === 'PATCH') {
+    const body = await readBody(req); const w = ws();
+    const tier = PLAN_TIERS.find((t) => t.id === body.plan);
+    if (!tier) return json(res, 400, { error: 'Unknown plan.' });
+    if (tier.id !== w.plan) {
+      w.plan = tier.id;
+      if (tier.price > 0) {
+        w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: tier.price, currency: 'USD', plan: tier.name, status: 'demo — no payment collected' });
+        store.workspace().credits = Math.round((store.workspace().credits + tier.credits) * 10) / 10; store.flushWorkspace();
+      }
+      flushWs();
+    }
+    return json(res, 200, { plan: w.plan, invoices: w.invoices, credits: store.workspace().credits });
+  }
+  if (p === '/api/boards' && req.method === 'POST') {
+    const body = await readBody(req); const w = ws();
+    const b = { id: `b_${Math.random().toString(36).slice(2, 8)}`, name: String(body.name || 'Board').slice(0, 60), mode: String(body.mode || 'website'), createdAt: Date.now(), missionIds: [] };
+    w.boards.push(b); flushWs(); return json(res, 200, b);
+  }
+  if (p === '/api/logout' && req.method === 'POST') return json(res, 200, { ok: true, note: 'Single-workspace build: nothing to sign out of yet. Local preferences cleared client-side.' });
 
   // ---- OAuth connectors (apps + tokens memory-only) ----
   const appMatch = p.match(/^\/api\/oauth\/([\w]+)\/app$/);

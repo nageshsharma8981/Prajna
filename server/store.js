@@ -34,6 +34,8 @@ function writeJson(file, value) {
 }
 
 export const store = {
+  _read(file, fallback) { return readJson(file, fallback); },
+  _write(file, value) { writeJson(file, value); },
   state: {
     missions: readJson('missions.json', []),
     artifacts: readJson('artifacts.json', []),

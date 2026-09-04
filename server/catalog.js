@@ -52,6 +52,18 @@ export const DESKS = [
     ],
   },
   {
+    id: 'mobile', code: 'MOB', name: 'Mobile desk', deliverable: 'Mobile app prototype',
+    tint: 'rose',
+    blurb: 'Tappable phone prototypes — screens, flows, and a tab bar that works.',
+    placeholder: 'Describe the mobile app you want to create…',
+    samples: [
+      'Build a mobile app for a restaurant',
+      'Build a mobile app for a fitness tracker',
+      'Build a mobile app for a weather forecast',
+      'Build a mobile app for a news reader',
+    ],
+  },
+  {
     id: 'analysis', code: 'ANL', name: 'Analysis desk', deliverable: 'Metrics dashboard',
     tint: 'green',
     blurb: 'Numbers interrogated, not decorated — with the caveats attached.',

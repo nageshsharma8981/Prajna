@@ -26,6 +26,8 @@ export function StoreProvider({ children }) {
       const r = await fetch('/api/bootstrap');
       if (!r.ok) throw new Error(`bootstrap ${r.status}`);
       const next = await r.json();
+      const PRO = new Set(['opus', 'gpt', 'deepseek']);
+      next.models = (next.models || []).map((m) => ({ ...m, pro: PRO.has(m.id) }));
       dataRef.current = next;
       setData(next);
       setError(null);

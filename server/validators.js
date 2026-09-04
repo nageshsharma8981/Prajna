@@ -51,6 +51,22 @@ export const ASSERTIONS = {
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
   ],
+  mobile: [
+    { id: 'VAL-FOUR-SCREENS', title: 'Four screens are present and navigable from the tab bar', owner: 'build',
+      scrutiny: (h) => count(h, /class="screen"/g) >= 4 && count(h, /class="tab"/g) >= 4, surface: (h) => has(h, /data-screen=/) && has(h, /addEventListener\('click'/) },
+    { id: 'VAL-TOUCH-TARGETS', title: 'Tap targets are at least 44px', owner: 'a11y-audit',
+      scrutiny: (h) => has(h, /min-height:44px/), surface: (h) => has(h, /min-width:44px/) },
+    { id: 'VAL-PHONE-FRAME', title: 'The prototype renders inside a phone frame', owner: 'build',
+      scrutiny: (h) => has(h, /class="phone"/), surface: (h) => has(h, /aspect-ratio/) },
+    { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
+      scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+  ],
+  design: [
+    { id: 'VAL-REGIONS', title: 'Every major region is drawn and labeled with its intent', owner: 'design',
+      scrutiny: (h) => count(h, /class="region"/g) >= 5, surface: (h) => has(h, /Design draft/) },
+    { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'design',
+      scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+  ],
   analysis: [
     { id: 'VAL-TWO-VIEWS', title: 'The trend and the segment breakdown are both charted', owner: 'chart-smith',
       scrutiny: (h) => count(h, /<svg/g) >= 2, surface: (h) => has(h, /<polyline/) && count(h, /<rect/g) >= 5 },

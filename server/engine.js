@@ -67,6 +67,13 @@ const PLANS = {
     { id: 's4', title: 'Build the page — semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Access audit — contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
   ],
+  mobile: (s) => [
+    { id: 's1', title: `Map the app — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's2', title: 'Panel deliberation on the core flow', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Screen inventory & navigation', tool: 'storyboard', cost: 8, access: 'read', dependsOn: ['s1'] },
+    { id: 's4', title: 'Build the tappable prototype — 4 screens, tab bar', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Access audit — touch targets, contrast', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
+  ],
   analysis: (s) => [
     { id: 's1', title: `Define the question — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8, access: 'read', dependsOn: ['s1'] },
@@ -87,6 +94,7 @@ const CONNECTOR_STEPS = {
 
 // Acceptance dimensions per desk — the panel gate votes on these.
 export const DIMENSIONS = {
+  mobile: ['Core flow works', 'Touch targets', 'Consistent navigation'],
   brief: ['Attribution', 'Completeness', 'Freshness'],
   deck: ['One idea per slide', 'Evidence under assertion', 'Narrative arc'],
   site: ['Promise → proof → action', 'Accessibility AA', 'Responsive'],
@@ -98,13 +106,17 @@ export const DIMENSIONS = {
 // installing a skill genuinely changes every future ticket.
 const SKILL_TOOLS = new Set(SKILLS.map((s) => s.id));
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
   const seatsAll = [lead, ...advisers.filter((a) => a !== lead)];
 
   let raw = PLANS[desk.id](subject.length > 52 ? subject.slice(0, 49) + '…' : subject);
+  // Fast research keeps only scope → sweep → compose; deep keeps the full plan.
+  if (desk.id === 'brief' && depth === 'fast') raw = raw.filter((p) => ['scope', 'search', 'compose'].includes(p.tool)).map((p) => (p.tool === 'compose' ? { ...p, dependsOn: ['s2'], title: 'Compose the fast brief' } : p));
+  // Design mode produces a design draft instead of a build.
+  if (variant === 'design' && ['site', 'mobile'].includes(desk.id)) raw = raw.map((p) => (p.tool === 'build' ? { ...p, title: p.title.replace(/^Build the page.*$|^Build the tappable prototype.*$/, 'Draft the design — layout, hierarchy, states'), tool: 'design' } : p)).filter((p) => p.tool !== 'a11y-audit');
   // Skill steps only exist when the skill is on the desk; dependents re-point
   // to the removed step's own dependencies so the graph stays connected.
   const removed = new Set(raw.filter((p) => installed && SKILL_TOOLS.has(p.tool) && !installed.has(p.tool)).map((p) => p.id));
@@ -132,7 +144,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   // Definition of done: atomic, testable assertions about the deliverable.
   // Each is owned by exactly one plan step (the step whose tool produces it);
   // if that step's skill is off the desk, ownership falls to the compose/build step.
-  const catalog = ASSERTIONS[desk.id] || [];
+  const catalog = ASSERTIONS[variant === 'design' ? 'design' : desk.id] || [];
   const fallbackOwner = raw.find((p) => ['compose', 'build'].includes(p.tool)) || raw[raw.length - 1];
   const assertions = catalog.map((a) => {
     const owner = raw.find((p) => p.tool === a.owner) || fallbackOwner;
@@ -161,6 +173,10 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
     lineage: lineage || null, // { parentId, parentSerial, version }
+    variant: variant || 'build',
+    template: template || null,
+    depth: depth || 'deep',
+    chatId: chatId || null,
     connected: [...(queuedConnectors || [])],
     patches: [],
     acceptedRisks: [],
@@ -275,6 +291,7 @@ const TOOL_LINES = {
   analyze: [['decompose', 'topline split by segment and cohort'], ['test', 'mix-shift hypothesis vs performance: mix shift wins'], ['residual', 'one segment moves opposite — isolated']],
   'chart-smith': [['form', 'line + segment bars chosen · dual axis refused'], ['annotate', 'the finding is drawn on the chart, not beside it']],
   'connector-post': [['compose', 'delivery summary drafted with artifact link'], ['post', 'simulated post — connector is queued intent, live OAuth wiring pending']],
+  design: [['layout', 'grid, hierarchy and spacing decided before any pixel'], ['states', 'empty, loading, error and success states drawn'], ['annotate', 'every region labeled with its intent']],
 };
 
 // The amnesiac terminal review: by construction sees only (goal, artifact).
@@ -547,7 +564,7 @@ async function applyEvent(m, ev, notify, runner) {
 function runValidation(m, notify, runner) {
   const html = m.artifactId ? store.artifactHtml(m.artifactId) : '';
   const ids = (m.contract.assertions || []).map((a) => a.id);
-  const rows = validateArtifact(m.desk, html || '', ids);
+  const rows = validateArtifact(m.variant === 'design' ? 'design' : m.desk, html || '', ids);
   const round = (m.validations?.length || 0) + 1;
   for (const lane of ['scrutiny', 'surface']) {
     const laneRows = rows.filter((r) => r.lane === lane);

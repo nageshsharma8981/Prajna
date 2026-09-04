@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 
-export default function Skills() {
+export default function Skills({ embedded } = {}) {
   const s = useStore();
   const [err, setErr] = useState(null);
   if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>The playbook is unreachable: {s.error}.</p></div>;

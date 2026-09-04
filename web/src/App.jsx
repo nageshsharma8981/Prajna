@@ -2,98 +2,96 @@ import { useEffect, useRef, useState } from 'react';
 import { useRoute, Link, navigate } from './lib/router.jsx';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
-import SplitFlap from './components/SplitFlap.jsx';
-import { FloorIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon } from './components/icons.jsx';
+import { EditIcon, PluginIcon, FactoryIcon, ChevronIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, FloorIcon, ToolIcon, BoardIcon } from './components/icons.jsx';
+import Home from './views/Home.jsx';
+import Chat from './views/Chat.jsx';
+import Plugins from './views/Plugins.jsx';
+import Factory from './views/Factory.jsx';
+import Boards from './views/Boards.jsx';
+import Tools from './views/Tools.jsx';
+import Connectors from './views/Connectors.jsx';
+import Account from './views/Account.jsx';
+import Media from './views/Media.jsx';
 import Floor from './views/Floor.jsx';
 import Run from './views/Run.jsx';
 import Ledger from './views/Ledger.jsx';
 import ArtifactView from './views/ArtifactView.jsx';
 import Skills from './views/Skills.jsx';
-import Connectors from './views/Instruments.jsx';
 import Keys from './views/Keys.jsx';
 
-const TITLES = [
-  ['/run/', 'Mission'],
-  ['/artifact/', 'Artifact'],
-  ['/artifacts', 'Artifacts'],
-  ['/ledger', 'Artifacts'],
-  ['/skills', 'Skills'],
-  ['/connectors', 'Connectors'],
-  ['/instruments', 'Connectors'],
-  ['/keys', 'Your keys'],
-];
+const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact']];
 
-function Clock() {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  return <div className="clock" aria-hidden="true">{hh}:{mm}:{ss}</div>;
-}
-
-function Rail({ open, onClose, theme, setTheme, menuRef }) {
+function Sidebar({ open, onClose, menuRef }) {
   const s = useStore();
   const path = useRoute();
-  const firstRef = useRef(null);
-  const items = [
-    { to: '/', label: 'Missions', icon: FloorIcon, kbd: 'M' },
-    { to: '/artifacts', label: 'Artifacts', icon: LedgerIcon, kbd: 'A' },
-    { to: '/skills', label: 'Skills', icon: SkillIcon, kbd: 'S' },
-    { to: '/connectors', label: 'Connectors', icon: SeatIcon, kbd: 'C' },
-    { to: '/keys', label: 'Your keys', icon: KeyIcon, kbd: 'K' },
-  ];
-  const active = (to) => (to === '/' ? path === '/' || path.startsWith('/run') : path.startsWith(to) || (to === '/connectors' && path.startsWith('/instruments')) || (to === '/artifacts' && (path.startsWith('/ledger') || path.startsWith('/artifact/'))));
+  const [chatsOpen, setChatsOpen] = useState(true);
+  const [boardsOpen, setBoardsOpen] = useState(false);
+  const [menu, setMenu] = useState(false);
   const mobile = typeof matchMedia === 'function' && matchMedia('(max-width: 900px)').matches;
-
-  // Drawer a11y: focus moves in on open, Escape closes, focus returns to the
-  // menu button; while closed on mobile the rail is inert to the Tab order.
   useEffect(() => {
     if (!open) return;
-    firstRef.current?.focus();
     const onKey = (e) => { if (e.key === 'Escape') { onClose(); menuRef.current?.focus(); } };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [open, onClose, menuRef]);
-
+  const active = (to) => path === to || (to !== '/' && path.startsWith(to));
   const w = s.ready ? s.workspace : null;
+  const tier = s.ready ? (s.planTiers || []).find((t) => t.id === s.plan) : null;
+  const chats = s.ready ? s.chats || [] : [];
+  const MENU = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My Assets'], ['personalization', 'Personalization'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices']];
+  const delChat = async (e, id) => { e.preventDefault(); e.stopPropagation(); await fetch(`/api/chats/${id}`, { method: 'DELETE' }); s.refresh(); if (path === `/c/${id}`) navigate('/'); };
 
   return (
     <>
       {open && <div className="rail-veil" onClick={onClose} />}
-      <nav className={`rail${open ? ' open' : ''}`} aria-label="Primary" inert={mobile && !open}>
-        <div className="rail-logo">
-          <span className="mark">PRAJÑĀ</span>
-          <span className="sub">Outcome Exchange</span>
+      <nav className={`side${open ? ' open' : ''}`} aria-label="Primary" inert={mobile && !open}>
+        <Link to="/" className="side-logo" onClick={onClose}><span className="mark">PRAJÑĀ</span><span className="sub">Outcome exchange</span></Link>
+        <div className="side-nav">
+          <Link to="/" className={`side-item${path === '/' ? ' on' : ''}`} onClick={onClose}><EditIcon /> New chat</Link>
+          <Link to="/plugins" className={`side-item${active('/plugins') ? ' on' : ''}`} onClick={onClose}><PluginIcon /> Plugins</Link>
+          <Link to="/factory/cli" className={`side-item${active('/factory') ? ' on' : ''}`} onClick={onClose}><FactoryIcon /> Factory</Link>
+          <button className={`side-group${boardsOpen ? ' open' : ''}`} onClick={() => setBoardsOpen((v) => !v)} aria-expanded={boardsOpen}><BoardIcon /> Boards <span className="beta">beta</span><ChevronIcon /></button>
+          {boardsOpen && <div className="side-sub"><Link to="/boards" className={`side-item sm${active('/boards') ? ' on' : ''}`} onClick={onClose}>Mission board</Link><Link to="/missions" className={`side-item sm${active('/missions') ? ' on' : ''}`} onClick={onClose}>Tickets &amp; runs</Link></div>}
+          <button className={`side-group${chatsOpen ? ' open' : ''}`} onClick={() => setChatsOpen((v) => !v)} aria-expanded={chatsOpen}>Chats <ChevronIcon /></button>
+          {chatsOpen && (
+            <div className="side-sub chats">
+              {chats.length === 0 && <span className="side-empty">Empty</span>}
+              {chats.slice(0, 30).map((c) => (
+                <Link key={c.id} to={`/c/${c.id}`} className={`side-item sm chat${path === `/c/${c.id}` ? ' on' : ''}`} onClick={onClose} title={c.title}>
+                  <span className="t">{c.title}</span>
+                  <button className="del" onClick={(e) => delChat(e, c.id)} aria-label={`Delete chat ${c.title}`}>×</button>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="rail-nav">
-          {items.map(({ to, label, icon: Icon, kbd }, i) => (
-            <Link key={to} to={to} className={`rail-item${active(to) ? ' on' : ''}`} onClick={onClose} ref={i === 0 ? firstRef : undefined} aria-current={active(to) ? 'page' : undefined}>
-              <Icon className="rail-glyph" />
-              <span className="brd-sm">{label}</span>
-              <span className="rail-kbd" aria-hidden="true">{kbd}</span>
-            </Link>
-          ))}
-        </div>
-        <div className="rail-foot">
-          <div className="credit-meter" aria-label={w ? `House credits ${w.credits.toFixed(0)} available, ${w.reserved.toFixed(0)} reserved, ${w.spent.toFixed(0)} spent to date` : 'House credits'}>
-            <div className="lbl">House credits</div>
-            <div className="val">{w ? w.credits.toFixed(0) : '····'}</div>
-            <div className="unit">{w ? `${w.reserved > 0 ? `${w.reserved.toFixed(0)} reserved · ` : ''}${w.spent.toFixed(0)} spent to date` : ''}</div>
+        <div className="side-foot">
+          <div className="side-tools">
+            <Link to="/connectors" className={`side-item sm${active('/connectors') ? ' on' : ''}`} onClick={onClose}><SeatIcon /> Connectors</Link>
+            <Link to="/skills" className={`side-item sm${active('/skills') ? ' on' : ''}`} onClick={onClose}><SkillIcon /> Skills</Link>
+            <Link to="/tools" className={`side-item sm${active('/tools') ? ' on' : ''}`} onClick={onClose}><ToolIcon /> Tools</Link>
+            <Link to="/keys" className={`side-item sm${active('/keys') ? ' on' : ''}`} onClick={onClose}><KeyIcon /> Your keys</Link>
           </div>
-          <button className="theme-btn" onClick={() => setTheme(theme === 'day' ? 'night' : 'day')}>
-            {theme === 'day' ? <MoonIcon /> : <SunIcon />}
-            {theme === 'day' ? 'Night hall' : 'Day desk'}
-          </button>
-          <div className="rail-user">
-            <span className="seat" aria-hidden="true">N</span>
-            <span className="who">
-              <b>{w ? w.name : '—'}</b>
-              <span>{w ? w.seat : ''}</span>
-            </span>
+          <Link to="/account/subscription" className="plan-pill" onClick={onClose}>
+            <span className="plan-k">{tier ? `${tier.name} plan` : 'Plan'}</span>
+            <span className="plan-v">{w ? `${w.credits.toFixed(0)} credits` : '…'}</span>
+          </Link>
+          <div className="rel">
+            <button className="side-user" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>
+              <span className="seat">{s.ready ? s.profile.avatar : 'N'}</span>
+              <span className="who"><b>{s.ready ? s.profile.name : '—'}</b><span>{s.ready ? s.profile.email : ''}</span></span>
+            </button>
+            {menu && (
+              <div className="user-menu" role="menu">
+                <div className="um-head"><span className="seat">{s.profile.avatar}</span><span className="who"><b>{s.profile.name}</b><span>{s.profile.email}</span></span></div>
+                {MENU.map(([id, label]) => <Link key={id} to={`/account/${id}`} role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>{label}</Link>)}
+                <div className="um-sep" />
+                <Link to="/account/settings" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Settings</Link>
+                <Link to="/account/help" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Get Help</Link>
+                <div className="um-sep" />
+                <button role="menuitem" className="um-item danger" onClick={async () => { await fetch('/api/logout', { method: 'POST' }); localStorage.removeItem('prajna-theme'); setMenu(false); navigate('/'); }}>Log out</button>
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -101,129 +99,70 @@ function Rail({ open, onClose, theme, setTheme, menuRef }) {
   );
 }
 
-function Masthead({ onMenu, onPalette, menuRef }) {
-  return (
-    <>
-      <header className="masthead">
-        <button className="menu-btn" onClick={onMenu} aria-label="Open navigation" ref={menuRef}>
-          <MenuIcon />
-        </button>
-        <div className="title">
-          <SplitFlap text="PRAJÑĀ" size="1.05rem" />
-          <span className="hall-line">The outcome exchange · every run in the open</span>
-        </div>
-        <div className="mast-right">
-          <button className="palette-hint" onClick={onPalette}>
-            <SearchIcon /> Jump <kbd>⌘K</kbd>
-          </button>
-          <Clock />
-        </div>
-      </header>
-    </>
-  );
-}
-
 function Router() {
   const path = useRoute();
+  if (path.startsWith('/c/')) return <Chat id={path.split('/')[2]} />;
+  if (path.startsWith('/plugins')) return <Plugins />;
+  if (path.startsWith('/factory')) return <Factory tab={path.split('/')[2] || 'cli'} />;
+  if (path.startsWith('/boards')) return <Boards />;
+  if (path.startsWith('/tools')) return <Tools />;
+  if (path.startsWith('/connectors') || path.startsWith('/instruments')) return <Connectors />;
+  if (path.startsWith('/skills')) return <Skills />;
+  if (path.startsWith('/keys')) return <Keys />;
+  if (path.startsWith('/media')) return <Media />;
+  if (path.startsWith('/account')) return <Account page={path.split('/')[2] || 'profile'} />;
+  if (path.startsWith('/missions')) return <Floor />;
   if (path.startsWith('/run/')) return <Run id={path.split('/')[2]} />;
   if (path.startsWith('/artifact/')) return <ArtifactView id={path.split('/')[2]} />;
   if (path.startsWith('/artifacts') || path.startsWith('/ledger')) return <Ledger />;
-  if (path.startsWith('/skills')) return <Skills />;
-  if (path.startsWith('/connectors') || path.startsWith('/instruments')) return <Connectors />;
-  if (path.startsWith('/keys')) return <Keys />;
-  return <Floor />;
+  return <Home />;
 }
 
 function readTheme() {
   const q = new URLSearchParams(location.search).get('theme');
-  if (q === 'day' || q === 'night') {
-    // View-only override: honored for this load, never persisted, and stripped
-    // from the URL so a reload returns to the saved preference.
-    const url = new URL(location.href);
-    url.searchParams.delete('theme');
-    history.replaceState(null, '', url.pathname + url.search);
-    return q;
-  }
-  const saved = localStorage.getItem('prajna-theme');
-  return saved === 'day' ? 'day' : 'night';
+  if (q === 'day' || q === 'night') { const url = new URL(location.href); url.searchParams.delete('theme'); history.replaceState(null, '', url.pathname + url.search); return q; }
+  return localStorage.getItem('prajna-theme') === 'day' ? 'day' : 'night';
 }
 
 function Shell() {
   const [theme, setThemeState] = useState(readTheme);
-  const [railOpen, setRailOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   const path = useRoute();
   const menuRef = useRef(null);
   const mainRef = useRef(null);
-
-  const setTheme = (t) => {
-    setThemeState(t);
-    localStorage.setItem('prajna-theme', t);
-  };
-
-  useEffect(() => {
-    if (theme === 'day') document.documentElement.setAttribute('data-theme', 'day');
-    else document.documentElement.removeAttribute('data-theme');
-  }, [theme]);
-
-  // Route change: title, scroll to top, and focus lands on the main region so
-  // keyboard and screen-reader users start at the new content.
+  const setTheme = (t) => { setThemeState(t); localStorage.setItem('prajna-theme', t); };
+  useEffect(() => { if (theme === 'day') document.documentElement.setAttribute('data-theme', 'day'); else document.documentElement.removeAttribute('data-theme'); }, [theme]);
   useEffect(() => {
     const t = TITLES.find(([prefix]) => path.startsWith(prefix));
-    document.title = `${t ? `${t[1]} · ` : ''}Prajñā — The Outcome Exchange`;
+    document.title = `${t ? `${t[1]} · ` : ''}Prajñā`;
     const scroller = mainRef.current?.querySelector('.scroll');
     if (scroller) scroller.scrollTop = 0;
     mainRef.current?.focus({ preventScroll: true });
   }, [path]);
-
   useEffect(() => {
-    const NAV_KEYS = { m: '/', a: '/artifacts', s: '/skills', c: '/connectors', k: '/keys' };
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setPalette((v) => !v);
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Single-key navigation only fires when nothing interactive has focus —
-      // never from inside a form, a chip, or a decision card.
-      const t = e.target;
-      const interactive = t !== document.body && t !== mainRef.current && !t.classList?.contains('scroll');
-      if (interactive) return;
-      const to = NAV_KEYS[e.key.toLowerCase()];
-      if (to) {
-        e.preventDefault();
-        navigate(to);
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((v) => !v); }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, []);
-
-  const artifactFull = path.startsWith('/artifact/');
-
+  const full = path.startsWith('/artifact/');
   return (
     <div className="shell">
-      <Rail open={railOpen} onClose={() => setRailOpen(false)} theme={theme} setTheme={setTheme} menuRef={menuRef} />
+      <Sidebar open={sideOpen} onClose={() => setSideOpen(false)} menuRef={menuRef} />
       <div className="main" ref={mainRef} tabIndex={-1} id="main">
-        {!artifactFull && <Masthead onMenu={() => setRailOpen(true)} onPalette={() => setPalette(true)} menuRef={menuRef} />}
-        {artifactFull ? (
-          <Router />
-        ) : (
-          <div className="scroll">
-            <Router />
-          </div>
-        )}
+        <div className="topbar">
+          <button className="menu-btn" onClick={() => setSideOpen(true)} aria-label="Open navigation" ref={menuRef}><MenuIcon /></button>
+          <span className="grow" />
+          <button className="palette-hint" onClick={() => setPalette(true)}><SearchIcon /> Jump <kbd>⌘K</kbd></button>
+          <button className="ic round" onClick={() => setTheme(theme === 'day' ? 'night' : 'day')} aria-label={theme === 'day' ? 'Switch to night hall' : 'Switch to day desk'} title="Theme">{theme === 'day' ? <MoonIcon /> : <SunIcon />}</button>
+        </div>
+        {full ? <Router /> : <div className="scroll"><Router /></div>}
       </div>
       {palette && <Palette onClose={() => setPalette(false)} />}
     </div>
   );
 }
 
-export default function App() {
-  return (
-    <StoreProvider>
-      <Shell />
-    </StoreProvider>
-  );
-}
+export default function App() { return <StoreProvider><Shell /></StoreProvider>; }

@@ -195,3 +195,36 @@ railway up --service prajna --detach
 Custom domain: `railway domain yourdomain.com` prints the CNAME target; add that
 record at your DNS host and Railway issues the certificate automatically.
 Single process, port from `PORT`, no external services.
+
+## v0.8 — Zenith-parity workspace (2026-09-04)
+
+The front end now mirrors the surfaces of agent.ii.inc so every feature has a
+home before we make each one better:
+
+- **Chat-first home** — greeting, one composer, mode chips (Website, Mobile App,
+  Slide Deck, Research, Analysis), model picker with LIVE / YOURS / PRO badges,
+  Model Council (lead + advisers), deck template picker, Fast/Deep research,
+  Build/Design variant, attachments and mic.
+- **Chats** — every prompt lives in a thread (`/c/:id`); mode prompts turn into
+  missions and render a live run card in the thread (steps, cost, Decision
+  needed / Open delivery / Watch the tape). Plain chat answers with a live
+  seat when a key is loaded and says so honestly when not.
+- **Sidebar** — New chat, Plugins, Factory (CLI / Community / Skills / Assets /
+  Projects), Boards (beta: Mission board + Tickets & runs), Chats, and the
+  footer tools (Connectors, Skills, Tools, Your keys), plan pill and user menu.
+- **Boards** — Kanban of every mission plus a task map of each plan by
+  dependency depth. **Tools** — Task agent, Media, Browser switches + MCP
+  servers. **Connectors** — 50-app catalog with search, categories, Popular
+  grid and Connected accounts (Google/Slack/Notion/GitHub run real OAuth).
+- **Account** — profile, dashboard, assets, personalization, language,
+  subscription tiers (demo billing), invoices, settings, help. **Media** —
+  local procedural image/motion studio; hosted models route once a key is
+  loaded.
+- New desk: **Mobile** (phone-framed artifact) and a **Design** variant for
+  website missions.
+
+Server additions live in `server/workspace.js` (chats, projects, plugins,
+tools, MCP registry, profile, plan tiers, boards, deck templates, connector
+catalog) and the `/api/chats*`, `/api/projects*`, `/api/plugins`, `/api/tools`,
+`/api/mcp`, `/api/profile|personalization|language|plan`, `/api/boards`
+routes. Keys and OAuth tokens remain memory-only.

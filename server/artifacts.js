@@ -197,9 +197,13 @@ ${provenance(mission)}
 
 /* ----------------------------------- DECK --------------------------------- */
 
+import { DECK_TEMPLATES } from './workspace.js';
+
 export function deckArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
+  const tpl = DECK_TEMPLATES.find((x) => x.id === mission.template)?.theme || null;
+  const paper = tpl ? tpl.paper : '#f4f1e8', ink = tpl ? tpl.ink : '#14140f', acc = tpl ? tpl.acc : '#b0472f', font = tpl ? tpl.font : "'Helvetica Neue',Helvetica,Arial,sans-serif";
   const slides = [
     { k: 'title', h: t, s: 'The argument in nine slides — one idea per slide, evidence beneath assertion.' },
     { k: 'claim', n: 'The problem', h: 'The status quo has a cost, and it compounds.', s: 'Name the pain precisely: who bleeds, how much, how often. A problem the room already feels needs one slide, not three.' },
@@ -222,9 +226,9 @@ export function deckArtifact(mission) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t} — Deck</title>
 <style>
-:root{--ink:#14140f;--paper:#f4f1e8;--acc:#b0472f}
+:root{--ink:${ink};--paper:${paper};--acc:${acc}}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
-body{background:var(--ink);font:16px/1.5 'Helvetica Neue',Helvetica,Arial,sans-serif;overflow:hidden}
+body{background:var(--ink);font:16px/1.5 ${font};overflow:hidden}
 .deck{height:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth}
 .slide{min-width:100%;height:100%;scroll-snap-align:start;background:var(--paper);color:var(--ink);
 display:flex;flex-direction:column;justify-content:center;padding:6vh 8vw;position:relative;border-right:2px solid var(--ink)}
@@ -375,4 +379,96 @@ ${provenance(mission)}
   return { title: `${subject} — Analysis`, kind: 'analysis', html };
 }
 
-export const GENERATORS = { brief: briefArtifact, deck: deckArtifact, site: siteArtifact, analysis: analysisArtifact };
+/* ---------------------------------- MOBILE -------------------------------- */
+
+export function mobileArtifact(mission) {
+  const subject = subjectOf(mission.goal);
+  const t = esc(subject);
+  const short = t.replace(/^Build a mobile app for (a |an )?/i, '').replace(/^\w/, (c) => c.toUpperCase());
+  const screens = [
+    { id: 'home', tab: 'Home', title: short, body: 'The one thing this app is for, reachable in one tap. Everything else is a tab away.' },
+    { id: 'browse', tab: 'Browse', title: 'Browse', body: 'A scannable list with real hierarchy: title, one line of context, one action.' },
+    { id: 'detail', tab: 'Activity', title: 'Activity', body: 'What happened, when, and what to do next. Empty state written first.' },
+    { id: 'me', tab: 'You', title: 'You', body: 'Account, preferences, and the door out. No dark patterns.' },
+  ];
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${t} — Mobile prototype</title>
+<style>
+:root{--ink:#131a17;--paper:#f7f6f1;--acc:#1d5c3a;--muted:#6b756f}
+*{box-sizing:border-box}body{margin:0;background:#dfe3dd;font:15px/1.45 -apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 3rem;gap:1rem}
+h1{font-size:1.05rem;margin:0;color:#3e4842;font-weight:600}
+.phone{width:min(390px,94vw);aspect-ratio:390/780;background:#000;border-radius:44px;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35);position:relative}
+.glass{background:var(--paper);border-radius:34px;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#000;border-radius:20px}
+.status{display:flex;justify-content:space-between;padding:1rem 1.4rem 0;font-size:.8rem;font-weight:600}
+.screen{display:none;flex:1;padding:1.4rem 1.3rem;overflow:auto}
+.screen.on{display:block}
+.screen h2{font-size:1.7rem;letter-spacing:-.02em;margin:1.2rem 0 .4rem}
+.screen p{color:var(--muted);margin:0 0 1rem}
+.card{background:#fff;border:1px solid #e3e6e1;border-radius:14px;padding:.9rem 1rem;margin:.6rem 0;display:flex;align-items:center;gap:.8rem;min-height:44px}
+.card .dot{width:34px;height:34px;border-radius:10px;background:var(--acc);opacity:.85;flex:none}
+.card b{display:block;font-size:.95rem}.card span{font-size:.8rem;color:var(--muted)}
+.cta{display:block;width:100%;background:var(--acc);color:#fff;border:none;border-radius:14px;padding:.95rem;font:600 1rem inherit;min-height:44px;margin-top:1rem}
+.tabs{display:flex;border-top:1px solid #e3e6e1;background:#fff;padding:.5rem .4rem 1.4rem}
+.tab{flex:1;background:none;border:none;font:600 .7rem inherit;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:.3rem;min-height:44px;min-width:44px;padding:.3rem;border-radius:10px;cursor:pointer}
+.tab .ico{width:22px;height:22px;border-radius:7px;background:currentColor;opacity:.35}
+.tab.on{color:var(--acc)}.tab.on .ico{opacity:1}
+.hint{font-size:.8rem;color:#5a655f}
+${PROV_CSS}
+.prov{max-width:min(390px,94vw)}
+</style></head><body>${partialBanner(mission)}
+<h1>${t} — tappable prototype</h1>
+<div class="phone"><div class="glass"><div class="notch"></div>
+<div class="status"><span>9:41</span><span>●●●</span></div>
+${screens.map((s, i) => `<section class="screen${i === 0 ? ' on' : ''}" data-screen="${s.id}"><h2>${esc(s.title)}</h2><p>${esc(s.body)}</p>
+<div class="card"><span class="dot"></span><div><b>Primary item</b><span>One line of context</span></div></div>
+<div class="card"><span class="dot" style="opacity:.55"></span><div><b>Second item</b><span>Real content goes here</span></div></div>
+<div class="card"><span class="dot" style="opacity:.3"></span><div><b>Third item</b><span>Empty state written first</span></div></div>
+<button class="cta">${i === 0 ? 'Do the one thing' : 'Take the action'}</button></section>`).join('')}
+<nav class="tabs">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
+</div></div>
+<p class="hint">Tap the tab bar — the prototype navigates. Built by Prajñā · placeholder content marked for replacement.</p>
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===b.dataset.go));}));
+</script>
+${provenance(mission)}
+</body></html>`;
+  return { title: `${subject} — Mobile prototype`, kind: 'mobile', html };
+}
+
+/* ------------------------------- DESIGN DRAFT ----------------------------- */
+
+export function designArtifact(mission, base) {
+  // A design draft wraps the built deliverable's structure in an annotated
+  // wireframe: regions labeled with intent, no final styling promised.
+  const subject = subjectOf(mission.goal);
+  const t = esc(subject);
+  const regions = mission.desk === 'mobile'
+    ? ['Status bar', 'Screen title', 'Primary content list', 'Primary action', 'Tab bar (4)']
+    : ['Nav + primary CTA', 'Hero: promise + action', 'Proof strip', 'Why now / proof / practice', 'Closing CTA', 'Footer + provenance'];
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${t} — Design draft</title>
+<style>
+body{margin:0;background:#f2f2ef;color:#222;font:15px/1.5 'Helvetica Neue',Arial,sans-serif}
+.wrap{max-width:60rem;margin:0 auto;padding:3rem 1.5rem 5rem}
+h1{font-size:1.6rem;margin:0 0 .3rem}.sub{color:#666;margin:0 0 2rem}
+.frame{border:2px dashed #9aa;border-radius:8px;padding:1rem;background:#fff;display:grid;gap:.8rem}
+.region{border:1px dashed #6a8;background:repeating-linear-gradient(45deg,#f6faf7 0 8px,#eef5f0 8px 16px);padding:1rem;display:flex;justify-content:space-between;align-items:center;min-height:64px}
+.region b{font:700 .78rem/1 monospace;letter-spacing:.1em;text-transform:uppercase;color:#2a5}
+.region span{font-size:.8rem;color:#667}
+${PROV_CSS}
+</style></head><body>${partialBanner(mission)}<div class="wrap">
+<h1>${t}</h1><p class="sub">Design draft — layout, hierarchy and states decided; no final styling promised. Switch to Build to produce the working deliverable.</p>
+<div class="frame">${regions.map((r, i) => `<div class="region"><b>${String(i + 1).padStart(2, '0')} · ${esc(r)}</b><span>intent, content and state notes live here</span></div>`).join('')}</div>
+${provenance(mission)}
+</div></body></html>`;
+  return { title: `${subject} — Design draft`, kind: 'design', html };
+}
+
+export const GENERATORS = {
+  brief: briefArtifact, deck: deckArtifact,
+  site: (m) => (m.variant === 'design' ? designArtifact(m) : siteArtifact(m)),
+  mobile: (m) => (m.variant === 'design' ? designArtifact(m) : mobileArtifact(m)),
+  analysis: analysisArtifact,
+};
