@@ -1136,3 +1136,14 @@ mean and the sum, and the largest and smallest segment with its share.
 The last line says plainly that no model weighed any of it. The tape and
 the provenance name what the house actually did, counting rows here and
 quoting sources on a brief.
+
+## v0.95: The panel stands in (2026-09-04)
+
+A run no longer collapses to scripted prose because one provider had a
+bad minute. If the lead model refuses, each adviser holding a key of its
+own is asked in turn; the first that answers writes the substance, the
+refusal and the substitution go on the tape, and the artifact's
+provenance says which model stood in and for whom. Only when every key
+on the panel refuses does the house fall back, and even then it prefers
+quoting real sources to inventing prose. Proved by a test that runs two
+model endpoints, one that always fails and one that answers.

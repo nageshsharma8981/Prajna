@@ -706,19 +706,30 @@ async function applyEvent(m, ev, notify, runner) {
   if (ev.type === 'step.status' && ev.status === 'LIVE') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
     if (step && ['compose', 'build', 'design'].includes(step.tool) && !m.authored) {
-      const live = liveSeat(m.lead);
-      if (live) {
+      // The lead writes. If its provider refuses, the panel stands in: each
+      // adviser with a key of its own is asked in turn, and the substitution
+      // goes on the tape and into the provenance rather than a silent fall
+      // back to scripted prose.
+      const bench = [m.lead, ...(m.advisers || [])].map((id) => liveSeat(id)).filter(Boolean)
+        .filter((s, i, all) => all.findIndex((x) => x.model.id === s.model.id) === i);
+      if (bench.length) {
         pushEvent(m, record, notify);
-        let log;
-        try {
-          m.authored = await authorContent(m, live);
-          log = { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it` };
-        } catch (e) {
-          m.authored = { live: false, model: live.model.name, modelId: live.model.modelId, error: String(e.message || e).slice(0, 200), at: Date.now() };
-          log = { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${live.model.name} could not author (${m.authored.error}), house-scripted substance used and recorded as such` };
+        const refused = [];
+        for (const seat of bench) {
+          try {
+            m.authored = await authorContent(m, seat);
+            if (refused.length) { m.authored.steppedIn = { after: refused.map((r) => r.name), lead: modelById(m.lead).name }; }
+            pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it${refused.length ? ` · stepped in after ${refused.map((r) => `${r.name} refused (${r.error})`).join('; ')}` : ''}` }, notify);
+            return 'ok';
+          } catch (e) {
+            refused.push({ name: seat.model.name, error: String(e.message || e).slice(0, 120) });
+            if (bench.length > 1) pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${seat.model.name} could not author (${refused.at(-1).error}); asking the next model on the panel` }, notify);
+          }
         }
-        pushEvent(m, log, notify);
-        return 'ok';
+        m.authored = { live: false, model: refused[0].name, error: refused.map((r) => `${r.name}: ${r.error}`).join('; ').slice(0, 300), refusedBy: refused.map((r) => r.name), at: Date.now() };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: false, detail: `No model on the panel could author (${refused.map((r) => `${r.name}: ${r.error}`).join('; ')}); the house composes or scripts the substance and records it as such` }, notify);
+        // Every key refused: the house still prefers quoting real sources to
+        // inventing prose, so fall through to composition below.
       }
       // No model loaded. If real sources are on the table, the house composes
       // the brief out of them: every claim a quotation, nothing invented,

@@ -445,3 +445,53 @@ test('without a model, an analysis reads the numbers you attached, not a sample 
   assert.ok(html.includes('subs.csv'), 'the artifact names the file it read');
   assert.ok(!/the trend is real, it is concentrated in a single segment/.test(html), 'no scripted sample read');
 });
+
+test('when the lead model refuses, the panel stands in and the artifact says so', async () => {
+  // Two model endpoints of our own: the first refuses every call, the second
+  // answers with a valid brief. The house must reach the second by itself.
+  let asked = [];
+  const good = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      asked.push('good');
+      const brief = { stand: 'A stand-in model wrote this brief.', verdict: 'The recommendation is to proceed carefully, stated before the evidence, in two sentences. The panel stood in for the lead.',
+        claims: [1, 2, 3].map((n) => ({ text: `Claim number ${n} written by the stand-in model.`, grade: 'B', detail: `Support for claim ${n}, one sentence long.`, src: 0, source: { title: `A source class described honestly for claim ${n}`, kind: 'analysis' } })),
+        refuted: [], moves: [], tripwires: 'Commit further only if the first move clears.', dissent: { seat: 'an adviser', text: 'The adviser held that the pace is optimistic.' } };
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(brief) } }] }));
+    });
+  });
+  const bad = http.createServer((req, res) => { asked.push('bad'); res.writeHead(500, { 'content-type': 'application/json' }); res.end('{"error":"the provider is down"}'); });
+  await new Promise((r) => good.listen(0, '127.0.0.1', r));
+  await new Promise((r) => bad.listen(0, '127.0.0.1', r));
+  try {
+    assert.equal((await api('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` }) })).status, 200);
+    const leadModel = await post('/api/models', { name: 'Flaky Lead', provider: 'openai', modelId: 'flaky-1', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` });
+    const standIn = await post('/api/models', { name: 'Steady Adviser', provider: 'openai', modelId: 'steady-1', baseUrl: `http://127.0.0.1:${good.address().port}/v1` });
+    assert.equal(leadModel.status, 200); assert.equal(standIn.status, 200);
+    const w = await post('/api/missions', { goal: 'Fallback test: should we open a second roastery in Mysore?', deskId: 'brief', depth: 'fast', lead: leadModel.j.id, advisers: [standIn.j.id] });
+    assert.equal(w.status, 200, JSON.stringify(w.j));
+    assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+    const started = Date.now(); let m;
+    while (Date.now() - started < 120000) {
+      m = (await api(`/api/missions/${w.j.id}`)).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+    assert.equal(m.authored.live, true, JSON.stringify(m.authored).slice(0, 200));
+    assert.equal(m.authored.model, 'Steady Adviser');
+    assert.deepEqual(m.authored.steppedIn?.after, ['Flaky Lead']);
+    assert.ok(asked.includes('bad') && asked.includes('good'), asked.join(','));
+    const tape = (m.events || []).filter((e) => e.label === 'author').map((e) => e.detail);
+    assert.ok(tape.some((d) => /Flaky Lead could not author/.test(d)), tape.join(' | '));
+    assert.ok(tape.some((d) => /stepped in after Flaky Lead refused/.test(d)), tape.join(' | '));
+    const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
+    assert.match(html, /standing in after Flaky Lead refused/);
+    assert.match(html, /A stand-in model wrote this brief/);
+  } finally {
+    await api('/api/keys/openai', { method: 'DELETE' });
+    good.close(); bad.close();
+  }
+});
