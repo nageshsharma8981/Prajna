@@ -397,3 +397,11 @@ them. `POST/DELETE /api/artifacts/:id/notes`, `POST /api/missions/:id/fork
   citable in the brief, listed in provenance (`attachments`), and their figures
   count as sourced for the honesty lane. Non-text files are recorded by name
   only and the chip says so.
+
+## v0.21 — Sources on the table (2026-09-04)
+
+The ticket now lists every source on the table — owner attachments, Brave web
+hits, encyclopedia entries — with engine, link and retrieval date, updating
+live as the sweep lands. Numbered references in panel positions and adviser
+critiques resolve to those sources on the tape: `[3]` links to source 3, or
+names the owner attachment it points to.

@@ -126,6 +126,23 @@ function GateGrid({ ev }) {
   );
 }
 
+
+// Numbered references in panel speech and critiques resolve to the sources on
+// the table: [3] becomes a link to source 3 (or a titled marker for an owner
+// attachment, which has no URL).
+function Cite({ text, sources }) {
+  const parts = String(text || '').split(/(\[\d+\])/);
+  return parts.map((part, i) => {
+    const m = part.match(/^\[(\d+)\]$/);
+    if (!m) return part;
+    const src = (sources || [])[Number(m[1]) - 1];
+    if (!src) return part;
+    return src.url
+      ? <a key={i} className="cite" href={src.url} target="_blank" rel="noreferrer" title={src.title}>{part}</a>
+      : <abbr key={i} className="cite" title={`${src.title} — owner attachment`}>{part}</abbr>;
+  });
+}
+
 export default function Run({ id }) {
   const store = useStore();
   const [mission, setMission] = useState(null);
@@ -168,6 +185,7 @@ export default function Run({ id }) {
         }
         setEvents((prev) => [...prev, ev]);
         if (ev.type === 'run.launched') setMission((m) => (m ? { ...m, status: 'LIVE', launchedAt: ev.at } : m));
+        if (ev.type === 'log' && ev.label === 'retrieve') fetch(`/api/missions/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) setMission((m) => (m ? { ...m, sources: j.sources || [], retrieval: j.retrieval || null } : m)); });
         if (ev.type === 'step.status') {
           setMission((m) => {
             if (!m) return m;
@@ -376,6 +394,15 @@ export default function Run({ id }) {
                 <ol>{mission.contract.plan.map((p) => <li key={p.id}><b>{p.tool}</b> — {p.rationale}</li>)}</ol>
               </details>
             )}
+            {(mission.sources || []).length > 0 && (
+              <details className="plan-why sources-panel" open>
+                <summary>Sources on the table · {mission.sources.length}</summary>
+                <ol>{mission.sources.map((src, i) => (
+                  <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}</em></li>
+                ))}</ol>
+                {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}) — recorded, not hidden.</p>}
+              </details>
+            )}
             {mission.contract.edited && <p className="ticket-deliv" style={{ marginTop: '0.4rem' }}>plan edited before stamping · {mission.contract.edited.steps} steps{mission.contract.edited.added ? ` · ${mission.contract.edited.added} added` : ''}{mission.contract.edited.removed ? ` · ${mission.contract.edited.removed} removed` : ''}</p>}
             {mission.status === 'OPEN' && !editing && <button className="btn-quiet" style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem' }} onClick={openEditor} disabled={busy}>Edit plan</button>}
             {editing && (
@@ -444,7 +471,7 @@ export default function Run({ id }) {
                       <b>{ev.model}</b>
                       <span className="role">{role}</span>
                     </div>
-                    <p>{ev.text}</p>
+                    <p><Cite text={ev.text} sources={mission.sources} /></p>
                     {ev.liveError && <p className="live-error">Live call failed ({ev.liveError}) — the scripted voice stood in. Recorded, not hidden.</p>}
                     {ev.dissent && (
                       <div className="dissent"><b>Recorded dissent — {ev.dissent.model}</b><br />{ev.dissent.text}</div>

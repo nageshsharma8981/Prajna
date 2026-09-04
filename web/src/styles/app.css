@@ -1345,3 +1345,13 @@ h1.pg-title {
 
 .side-item.chat { min-width: 0; }
 .side-item.chat .t { flex: 1; min-width: 0; }
+
+.cite { font-family: var(--mono); font-size: 0.72em; font-weight: 700; color: var(--led); text-decoration: none; border-bottom: 1px dotted currentColor; margin: 0 0.1em; }
+abbr.cite { cursor: help; }
+.sources-panel ol { counter-reset: none; }
+.sources-panel li { font-size: 0.78rem; display: flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; }
+.sources-panel li a { color: var(--bone); }
+.sources-panel li em { font-style: normal; color: var(--bone-faint); font-size: 0.68rem; }
+.src-engine { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--line-strong); border-radius: 3px; padding: 0.05rem 0.35rem; color: var(--bone-dim); }
+.src-engine.attachment { border-color: color-mix(in srgb, var(--green) 50%, var(--line-strong)); color: var(--green); }
+.src-engine.brave { border-color: color-mix(in srgb, var(--blue) 50%, var(--line-strong)); color: var(--blue); }
