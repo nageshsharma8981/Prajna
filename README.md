@@ -799,3 +799,11 @@ The deploy ignore file excluded every PNG, a rule older than the logo, so
 the live site fell back to the app shell for /logo.png and the acceptance
 screen showed a broken image on phones. Fixed; the mark, the square mark and
 the favicon now ship.
+
+## v0.65: The deploy checks itself (2026-09-04)
+
+`npm run check -- https://www.prajñā.com` (scripts/postdeploy-check.mjs)
+fetches every path the app depends on, the shell, logo, marks, favicon,
+fonts, health, session, legal pages and status, plus the hashed bundle the
+shell references, and fails on any wrong status or content type. Run after
+every deploy; it would have caught the missing logo the moment it happened.
