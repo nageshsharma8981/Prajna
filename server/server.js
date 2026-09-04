@@ -19,6 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
+import { exportWorkspace, eraseFiles } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -342,6 +343,12 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/export' && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const { zip, count } = exportWorkspace({ version: VERSION });
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': zip.length, 'content-disposition': `attachment; filename="prajna-export-${new Date().toISOString().slice(0, 10)}.zip"`, 'cache-control': 'no-store', 'x-entries': String(count) });
+    return res.end(zip);
+  }
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });
     return json(res, 200, health());
@@ -430,6 +437,25 @@ async function handle(req, res) {
   if (p.startsWith('/api/') && req.method !== 'GET' && !['/api/session', '/api/consent', '/api/logout'].includes(p)) {
     const c = ws().consent;
     if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
+  }
+
+  // ---- Erase: the owner's own workspace, by typed confirmation, then a fresh house ----
+  if (p === '/api/erase' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    if (body.confirm !== 'ERASE') return json(res, 400, { error: 'Type ERASE to confirm. Nothing was removed.' });
+    const before = { missions: store.missions().length, artifacts: store.artifacts().length, chats: (ws().chats || []).length, media: (ws().media || []).length };
+    for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
+    const kept = ws().consent ? { version: ws().consent.version, acceptedAt: ws().consent.acceptedAt } : null;
+    const removed = eraseFiles();
+    store.state.missions = []; store.state.artifacts = []; store.state.workspace = null; store.state.connectors = null; store.state.customModels = [];
+    store.state.keys = {}; store.state.oauthApps = {}; store.state.tokens = {};
+    store.state.ws = null;
+    if (kept) { ws().consent = kept; flushWs(); }
+    seed();
+    store.flushMissions(); store.flushArtifacts(); store.flushWorkspace();
+    console.log(`prajna: workspace erased by the owner (${before.missions} missions, ${before.artifacts} artifacts, ${before.chats} chats, ${before.media} media); fresh house seeded`);
+    return json(res, 200, { ok: true, removed: before, files: removed.files, consentKept: !!kept });
   }
 
   // ---- The house check and its repair (after the gate: both change the workspace) ----

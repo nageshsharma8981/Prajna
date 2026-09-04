@@ -2,7 +2,7 @@
 // AI Disclaimer. Served as public pages, shown on the acceptance screen, and
 // versioned: a new version asks every workspace to accept again. Plain HTML
 // authored here; nothing user-supplied is ever rendered into these pages.
-export const LEGAL_VERSION = '2026-09-04';
+export const LEGAL_VERSION = '2026-09-04.2';
 const OPERATOR = 'the operator of Prajñā (“the Operator”, “we”, “us”)';
 
 const TERMS = `
@@ -69,9 +69,9 @@ const PRIVACY = `
 <h2>6. International transfers</h2>
 <p>The Service may be hosted, and the providers you choose may operate, outside your country, including outside the EEA, the UK and India. Where GDPR applies to a transfer, we rely on the provider's standard contractual clauses or an adequacy decision. By using your own keys and connected apps you direct those transfers yourself.</p>
 <h2>7. Retention</h2>
-<p>Workspace content stays until you delete it (chats, notes, media and showcase entries can be deleted in the Service; missions can be voided or stopped; contact us to erase a whole workspace). Keys and tokens live only as long as the server process. Rate-limit counters last minutes. Server logs are kept for a short operational period. Backups, where taken, expire on a rolling basis.</p>
+<p>Workspace content stays until you delete it (chats, notes, media and showcase entries can be deleted in the Service; missions can be voided or stopped; a whole workspace can be erased from the Settings page, or by contacting us). Keys and tokens live only as long as the server process. Rate-limit counters last minutes. Server logs are kept for a short operational period. Backups, where taken, expire on a rolling basis.</p>
 <h2>8. Your rights</h2>
-<p>Under GDPR you can ask for access to, correction of, erasure of, or a copy (portability) of your personal data; object to or restrict processing; and withdraw consent at any time without affecting earlier processing. Under DPDP you have corresponding rights of access, correction, erasure, grievance redressal and nomination. You may also complain to your supervisory authority (in the EU, your national data protection authority; in the UK, the ICO; in India, the Data Protection Board). To exercise a right, use the support link in Get Help; we will answer within the time the law sets, normally one month. The Settings page lets you export your whole workspace at any time.</p>
+<p>Under GDPR you can ask for access to, correction of, erasure of, or a copy (portability) of your personal data; object to or restrict processing; and withdraw consent at any time without affecting earlier processing. Under DPDP you have corresponding rights of access, correction, erasure, grievance redressal and nomination. You may also complain to your supervisory authority (in the EU, your national data protection authority; in the UK, the ICO; in India, the Data Protection Board). To exercise a right, use the support link in Get Help; we will answer within the time the law sets, normally one month. The Settings page lets you export your whole workspace at any time, and erase it: erasure removes every mission, artifact, chat, note, media file and profile field and leaves only the version and time of your acceptance of these documents as proof.</p>
 <h2>9. Security</h2>
 <p>We use TLS in transit, rate limits, an access code where enabled, memory-only keys and tokens, atomic writes for the ledger, and baseline security headers. No system is perfectly secure; if we learn of a breach affecting your data we will inform you and any authority as the law requires.</p>
 <h2>10. Children</h2>

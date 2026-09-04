@@ -894,3 +894,16 @@ digest and the status page. Nine tests, zero dependencies, about half a
 minute. The deploy runs them first and refuses a red build. Writing the
 suite found that the house check and repair routes sat above the consent
 gate; they now sit below it.
+
+## v0.75: Take your data, erase your data (2026-09-04)
+
+The Terms and the Privacy Policy promised an export from Settings; now it
+exists. Settings → Take your data downloads the whole workspace as one
+zip, written without any dependency: every mission with its tape, every
+artifact with its provenance, chats, notes, the credit ledger, media,
+standing orders and the consent record, all plain JSON and HTML. Keys and
+tokens are never in it. Settings → Erase this workspace, behind a typed
+ERASE, stops live runs, removes every file and seeds a fresh house,
+keeping only the version and time of the rules acceptance as proof. The
+policies say so (rules version 2026-09-04.2). `prajna export [--out dir]`.
+Two more tests cover both.

@@ -15,6 +15,7 @@
 //   prajna standing [run|pause|resume|stop <order-id>]  list or manage standing orders
 //   prajna check                       the house check: disk, tapes, artifacts, reserve, rules, tokens, last link
 //   prajna repair                      put right what the house can, then check again
+//   prajna export [--out dir]          take your data: the whole workspace as one zip
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted, never the access code, never a provider key).
@@ -229,6 +230,16 @@ async function repair() {
   for (const a of r.actions) console.log(`${a.ok ? 'done' : 'left'} ${a.id}: ${a.detail}`);
   console.log('Checked again:'); printCheck(r.check); if (r.check.ok < r.check.total) process.exitCode = 1;
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, get: async () => save(need(), positional[0]) };
+async function exportZip() {
+  const cfg = need();
+  const r = await fetch(cfg.workspace + '/api/export', { headers: cfg.cookie ? { cookie: cfg.cookie } : {} });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  const dir = flag('out') || '.'; fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `prajna-export-${new Date().toISOString().slice(0, 10)}.zip`);
+  fs.writeFileSync(file, buf);
+  console.log(`${file} (${(buf.length / 1024).toFixed(0)} KB, ${r.headers.get('x-entries')} entries). Keys and tokens are never in it.`);
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, export: exportZip, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

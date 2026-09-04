@@ -73,7 +73,10 @@ test('a ticket is written, launched, runs to delivery and settles within its cei
   while (Date.now() - started < 120000) {
     m = (await api(`/api/missions/${w.j.id}`)).j;
     if (m.status === 'FILLED' || m.status === 'KILLED') break;
-    if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) await post(`/api/missions/${m.id}/attention/${a.id}`, { decision: 'approve', justification: 'test run, approving to reach delivery' }); }
+    if (m.status.startsWith('PAUSED')) {
+      const a = (m.attention || []).find((x) => !x.decision);
+      if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; const d = await post(`/api/missions/${m.id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick} to reach delivery` }); assert.equal(d.status, 200, `decision ${pick} on ${a.kind}: ${JSON.stringify(d.j)}`); }
+    }
     await new Promise((r) => setTimeout(r, 400));
   }
   assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
@@ -126,4 +129,25 @@ test('an amendment carries a delta against its parent, and the record can say wh
 test('the digest and the status page read from the same ledger', async () => {
   const d = await api('/api/digest'); assert.equal(d.status, 200); assert.match(d.j.text, /Prajñā digest/); assert.match(d.j.text, /Balance \d+ credits/);
   const s = await fetch(`${BASE}/status`); assert.equal(s.status, 200); assert.match(await s.text(), /Last house check/);
+});
+
+test('take your data: the export is a real zip holding the whole workspace, without keys', async () => {
+  const r = await fetch(`${BASE}/api/export`); assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /application\/zip/);
+  const buf = Buffer.from(await r.arrayBuffer());
+  assert.equal(buf.readUInt32LE(0), 0x04034b50, 'zip local header');
+  const text = buf.toString('latin1');
+  for (const name of ['README.txt', 'workspace.json', 'workspace-ui.json', 'missions.json', 'artifacts.json', 'artifacts/']) assert.ok(text.includes(name), name);
+  assert.ok(Number(r.headers.get('x-entries')) >= 6);
+  assert.ok(!/"key":\s*"sk-/.test(text), 'no provider key in the export');
+});
+
+test('erase: typed confirmation only, then a fresh house with the consent record kept', async () => {
+  const no = await post('/api/erase', { confirm: 'yes' }); assert.equal(no.status, 400);
+  const before = (await api('/api/bootstrap')).j; assert.ok(before.missions.length > 3);
+  const r = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(r.status, 200, JSON.stringify(r.j)); assert.equal(r.j.consentKept, true);
+  const after = (await api('/api/bootstrap')).j;
+  assert.equal(after.missions.length, 3, 'fresh seeded house');
+  assert.ok(after.consent && after.consent.version, 'consent version kept'); assert.equal(after.consent.name, undefined, 'no personal data in the kept consent');
+  assert.equal(after.profile.name, '', 'profile erased');
+  const c = await post('/api/housecheck'); assert.equal(c.status, 200); assert.equal(c.j.ok, c.j.total, JSON.stringify(c.j.rows.filter((x) => !x.ok)));
 });
