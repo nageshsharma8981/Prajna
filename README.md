@@ -658,3 +658,20 @@ all four finished, the reserve returned exactly to its starting value, the
 spent delta equalled the four settlements, every tape archived with
 contiguous sequence numbers, and every narrative was written. No code
 changed; this is the record of the check.
+
+## v0.51: The house rules (2026-09-04)
+
+Terms and Conditions, a Privacy and GDPR Policy and an AI Disclaimer, written
+to be explicit: eligibility, the access code, your content and your keys,
+acceptable use, credits and demo billing, outputs and no reliance, third-party
+services, public links, warranties disclaimed, liability capped, indemnity,
+governing law (India, courts at Bengaluru), and for privacy the data
+collected, legal bases, cookies, processors, transfers, retention, GDPR and
+DPDP rights, security, children and automated decisions. They are public at
+/legal/terms, /legal/privacy and /legal/ai, versioned, and must be accepted
+together on an acceptance screen before the workspace opens; nothing that
+changes the workspace runs until then (403 with consentRequired). The
+acceptance is recorded with version, time, name if given, address and agent.
+A new version asks again. The CLI has "prajna accept". These documents were
+drafted without legal counsel and should be reviewed by one before relying on
+them.

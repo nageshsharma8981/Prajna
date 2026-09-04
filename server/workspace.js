@@ -115,6 +115,7 @@ function ensure() {
       media: [],
       showcase: [],
       ledger: [],
+      consent: null,
       boards: [],
     };
   }
@@ -123,6 +124,7 @@ function ensure() {
   if (!st.ws.media) st.ws.media = [];
   if (!st.ws.showcase) st.ws.showcase = [];
   if (!st.ws.ledger) st.ws.ledger = [];
+  if (st.ws.consent === undefined) st.ws.consent = null;
   return st.ws;
 }
 export function ws() { return ensure(); }
@@ -165,6 +167,6 @@ export function publicWs() {
   return {
     chats: w.chats.map(({ messages, ...c }) => ({ ...c, messageCount: messages.length, last: messages[messages.length - 1]?.text?.slice(0, 80) || '' })),
     projects: w.projects, plugins: w.plugins, tools: w.tools, mcp: w.mcp,
-    profile: w.profile, personalization: w.personalization, language: w.language, plan: w.plan, invoices: w.invoices, boards: w.boards, media: w.media.slice(0, 48), showcase: w.showcase, ledger: (w.ledger || []).slice(0, 200),
+    profile: w.profile, personalization: w.personalization, language: w.language, plan: w.plan, invoices: w.invoices, boards: w.boards, media: w.media.slice(0, 48), showcase: w.showcase, ledger: (w.ledger || []).slice(0, 200), consent: w.consent || null,
   };
 }

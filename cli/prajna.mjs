@@ -10,6 +10,7 @@
 //   prajna bundle <mission-id> [--out dir]   the whole record in one HTML file
 //   prajna watch                       ring when a run needs a decision
 //   prajna sweep [--minutes 60] [--apply]   void stale tickets, stop runs stuck on a decision
+//   prajna accept [--yes] [--name N]   accept the house rules (Terms, Privacy and GDPR, AI Disclaimer)
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted, never the access code, never a provider key).
@@ -33,6 +34,7 @@ async function api(cfg, p, opts = {}) {
   const text = await r.text();
   let j; try { j = JSON.parse(text); } catch { j = { raw: text }; }
   if (r.status === 401) throw new Error(`The house is locked. Run: prajna login ${cfg.workspace} --code <access-code>`);
+  if (r.status === 403 && j.consentRequired) throw new Error(`The house rules (version ${j.version}) have not been accepted for this workspace. Read ${cfg.workspace}/legal/terms, /legal/privacy and /legal/ai, then run: prajna accept`);
   if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
   return j;
 }
@@ -171,6 +173,16 @@ async function sweep() {
   for (const m of r.stuck) console.log(`   ${amber('stuck')} ${m.serial}  ${m.subject} ${dim(m.kind)}`);
   console.log(r.dryRun ? dim('Dry run: add --apply to void and stop them (reserves released, all on the tape).') : green(r.note));
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, get: async () => save(need(), positional[0]) };
+async function accept() {
+  const cfg = need();
+  const legal = await api(cfg, '/api/legal');
+  console.log(bold('The house rules, version ' + legal.version));
+  for (const d of Object.values(legal.docs)) console.log(`  ${d.title}: ${cfg.workspace}/legal/${d.id}`);
+  const word = flag('yes') ? 'I ACCEPT' : await ask('Type I ACCEPT to accept all three documents: ');
+  if (word.trim() !== 'I ACCEPT') { console.log(dim('Not accepted.')); process.exit(1); }
+  const r = await post(cfg, '/api/consent', { accept: true, version: legal.version, name: flag('name') || '' });
+  console.log(green('Accepted'), dim(`version ${r.consent.version} at ${new Date(r.consent.acceptedAt).toISOString()}`));
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

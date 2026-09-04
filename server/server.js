@@ -17,6 +17,7 @@ import { auditBundle } from './bundle.js';
 import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
+import { LEGAL, legalPage } from './legal.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
 let VERSION = '0.0.0';
@@ -289,6 +290,25 @@ async function handle(req, res) {
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, page);
   }
 
+  // ---- The house rules: public pages, the JSON the acceptance screen reads, and the acceptance itself ----
+  const legalMatch = p.match(/^\/legal\/(terms|privacy|ai)$/);
+  if (legalMatch) return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, legalPage(legalMatch[1]));
+  if (p === '/legal') { res.writeHead(302, { location: '/legal/terms' }); return res.end(); }
+  if (p === '/api/legal') return json(res, 200, LEGAL);
+  if (p === '/api/consent') {
+    if (req.method === 'POST') {
+      if (!authed(req)) return json(res, 401, { locked: true, error: 'Session required.' });
+      const body = await readBody(req);
+      if (body.accept !== true || body.version !== LEGAL.version) return json(res, 400, { error: 'Acceptance must name the current version and accept all three documents.' });
+      const w = ws();
+      w.consent = { version: LEGAL.version, acceptedAt: Date.now(), name: String(body.name || w.profile?.name || '').trim().slice(0, 120) || null, ip: ipOf(req) || null, agent: String(req.headers['user-agent'] || '').slice(0, 200) };
+      flushWs();
+      return json(res, 200, { ok: true, consent: w.consent });
+    }
+    const c = ws().consent;
+    return json(res, 200, { version: LEGAL.version, accepted: !!c && c.version === LEGAL.version, consent: c });
+  }
+
   // ---- Session (always reachable) ----
   if (p === '/api/session') {
     if (req.method === 'POST') {
@@ -326,6 +346,12 @@ async function handle(req, res) {
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, auditBundle(pub(full), a, full.artifactId ? store.artifactHtml(full.artifactId) : null));
   }
 
+  // Nothing that changes the workspace runs before the house rules are accepted.
+  if (p.startsWith('/api/') && req.method !== 'GET' && !['/api/session', '/api/consent', '/api/logout'].includes(p)) {
+    const c = ws().consent;
+    if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
+  }
+
   if (p.startsWith('/api/') && !authed(req)) {
     if (limited(ipOf(req), 'locked', 60, 60000)) return json(res, 429, { locked: true, error: 'Too many requests. Try again in a minute.' });
     if (p === '/api/bootstrap') return json(res, 401, { locked: true, error: 'The house is locked. Enter the access code.' });
@@ -340,6 +366,7 @@ async function handle(req, res) {
       desks: DESKS,
       models: allModels().map((m) => ({ ...m, live: !!store.keyFor(m.provider), custom: String(m.id).startsWith('c_') })),
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
+      legalVersion: LEGAL.version,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTOR_CATALOG.map((c) => {

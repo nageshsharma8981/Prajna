@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useRoute, Link, navigate } from './lib/router.jsx';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
+import Consent from './views/Consent.jsx';
 import { EditIcon, PluginIcon, FactoryIcon, ChevronIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, FloorIcon, ToolIcon, BoardIcon } from './components/icons.jsx';
 import Home from './views/Home.jsx';
 import Chat from './views/Chat.jsx';
@@ -179,6 +180,7 @@ function Shell() {
   }, []);
   const full = path.startsWith('/artifact/') || path.startsWith('/compare/');
   if (s.locked) return <Gate />;
+  if (s.consentNeeded) return <Consent />;
   return (
     <div className="shell">
       <Sidebar open={sideOpen} onClose={() => setSideOpen(false)} menuRef={menuRef} />

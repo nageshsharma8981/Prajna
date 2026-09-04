@@ -75,6 +75,7 @@ export function StoreProvider({ children }) {
     pending,
     ready: !!data,
     locked,
+    consentNeeded: !!data && (!data.consent || data.consent.version !== data.legalVersion),
     error,
     async unlock(code) {
       const r = await fetch('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) });

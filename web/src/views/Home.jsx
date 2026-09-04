@@ -92,7 +92,7 @@ export default function Home() {
           <div className="feature-art coin" aria-hidden="true"><span className="fa-coin" /><span className="fa-coin two" /></div>
         </Link>
       </section>
-      <p className="disclaimer">Prajñā outputs may contain errors or omissions. Prajñā does not train models on your workspace data.</p>
+      <p className="disclaimer">Prajñā outputs may contain errors or omissions and are not professional advice. Prajñā does not train models on your workspace data. <a href="/legal/terms" target="_blank" rel="noreferrer">Terms</a> · <a href="/legal/privacy" target="_blank" rel="noreferrer">Privacy &amp; GDPR</a> · <a href="/legal/ai" target="_blank" rel="noreferrer">AI disclaimer</a></p>
     </div>
   );
 }
