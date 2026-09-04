@@ -703,6 +703,7 @@ export default function Run({ id }) {
             {mission.status === 'OPEN' && (
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <span>This ticket is written but not stamped. Nothing has run, nothing is reserved, nothing is spent.</span>
+                {mission.history?.line && <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>{mission.history.line}</span>}
                 {(() => {
                   const l = store.limits || {}; const u = store.limitUsage || {}; const c = mission.contract.ceiling;
                   const says = l.ticketCeiling != null && c > l.ticketCeiling ? `A house limit stops this: no ticket may reserve more than ${l.ticketCeiling} cr, and this one's ceiling is ${c}.`

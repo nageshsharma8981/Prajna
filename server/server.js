@@ -19,6 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
+import { costHistory, historyLine } from './history.js';
 import { search } from './search.js';
 import { docxFromArtifact, pptxFromArtifact, xlsxFromMission } from './office.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
@@ -511,6 +512,11 @@ async function handle(req, res) {
   }
   // The cheap question: has anything changed? A tab asks this, not for the
   // whole workspace, and pulls the workspace only when the answer moves.
+  if (p === '/api/history' && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const h = costHistory({ desk: url.searchParams.get('desk') || 'brief', depth: url.searchParams.get('depth') || null, variant: url.searchParams.get('variant') || null });
+    return json(res, 200, { ...h, line: historyLine(h, Number(url.searchParams.get('estimate')) || null) });
+  }
   if (p === '/api/pulse' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const pending = store.missions().reduce((a, m) => a + (m.attention || []).filter((x) => !x.decision).length, 0);
@@ -967,7 +973,11 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   const missionMatch = p.match(/^\/api\/missions\/([\w]+)$/);
   if (missionMatch) {
     const m = store.missionFull(missionMatch[1]);
-    return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    // What this kind of work has actually cost here, counted at read time so
+    // it is never stale: most useful on a ticket nobody has stamped yet.
+    const h = costHistory({ desk: m.desk, depth: m.depth, variant: m.variant, exclude: m.id });
+    return json(res, 200, { ...pub(m), history: { ...h, line: historyLine(h, m.contract?.estimate) } });
   }
 
   // ---- Community showcase: a delivered artifact, submitted with its provenance, becomes public ----

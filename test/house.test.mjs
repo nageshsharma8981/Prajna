@@ -1162,3 +1162,40 @@ test('the substance is written in the open, and the count survives the streaming
     assert.deepEqual({ prompt: m.keyUse.prompt, completion: m.keyUse.completion }, { prompt: 700, completion: 250 }, JSON.stringify(m.keyUse));
   } finally { child6.kill(); model.close(); fs.rmSync(DIR6, { recursive: true, force: true }); }
 });
+
+test('a ticket says what this kind of work has actually cost here', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const delivered = b.missions.filter((m) => m.status === 'FILLED' && (m.settlement?.settled ?? m.spent) > 0);
+  const desk = 'brief';
+  const w = await post('/api/missions', { goal: 'History test: a brief for a Coorg homestay', deskId: desk, depth: 'fast' });
+  assert.equal(w.status, 200);
+  const full = (await api(`/api/missions/${w.j.id}`)).j;
+  assert.ok(full.history, 'the ticket carries the house\'s own past');
+  const mine = delivered.filter((m) => m.desk === desk);
+  if (mine.length < 3) {
+    assert.equal(full.history.enough, false);
+    assert.match(full.history.line, /too few to say what it usually costs/);
+  } else {
+    assert.equal(full.history.enough, true);
+    // Every figure must be arithmetic over the record, not a guess.
+    const pool = mine.filter((m) => (full.history.like ? m.depth === 'fast' : true));
+    const costs = pool.map((m) => m.settlement?.settled ?? m.spent);
+    assert.equal(full.history.n, pool.length);
+    assert.equal(full.history.low, Math.round(Math.min(...costs) * 10) / 10);
+    assert.equal(full.history.high, Math.round(Math.max(...costs) * 10) / 10);
+    assert.ok(full.history.median >= full.history.low && full.history.median <= full.history.high);
+    assert.match(full.history.line, /settled between [\d.]+ and [\d.]+ credits, median [\d.]+/);
+    assert.match(full.history.line, /This ticket estimates \d+/);
+    assert.ok(!full.history.line.includes('NaN'));
+  }
+  // A mission never counts itself.
+  const again = (await api(`/api/missions/${w.j.id}`)).j;
+  assert.equal(again.history.n, full.history.n);
+  // And the same figures are available on their own.
+  const route = await api(`/api/history?desk=${desk}&depth=fast&estimate=40`);
+  assert.equal(route.status, 200);
+  assert.equal(route.j.desk, desk);
+  assert.equal(typeof route.j.line, 'string');
+  const empty = await api('/api/history?desk=nosuchdesk');
+  assert.equal(empty.j.enough, false, 'a desk with no history says so');
+});

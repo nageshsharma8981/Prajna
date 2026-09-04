@@ -1424,3 +1424,17 @@ notes on the record. Every one of those now answers to the same policy,
 and topping up credits and sending the digest through your own mailbox
 are the owner's alone whatever the policy says. The test walks each one
 as a read-only guest and as a guest in a house that works freely.
+
+## v1.17: What this kind of work has actually cost here (2026-09-05)
+
+An estimate came from a table of step costs, while the house sat on
+hundreds of finished runs that knew better. An unstamped ticket now says
+what its own kind has really cost: how many like it were delivered, the
+range they settled in and the median, how many cleared the gate first
+time, how many hit the ceiling and had to be decided, and whether this
+ticket's estimate sits inside that range, above it or below it.
+
+Every figure is counted from delivered missions at the moment you look,
+never modelled and never cached. A ticket never counts itself. With
+fewer than three of a kind the house says it has too few to say, rather
+than quoting a range from two runs.
