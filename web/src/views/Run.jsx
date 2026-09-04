@@ -330,6 +330,15 @@ export default function Run({ id }) {
         {(filled || killed) && !mission.voidedBeforeRun && (
           <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
         )}
+        {mission.status !== 'OPEN' && <button className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} title={mission.shareToken ? 'Revoke the public link to this record' : 'Public link to the whole record — contract, tape, decisions, artifact — revocable any time'} onClick={async () => {
+          const r = await fetch(`/api/missions/${mission.id}/share`, { method: mission.shareToken ? 'DELETE' : 'POST' });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) { setActionError(j.error || 'Refused.'); return; }
+          setMission((m) => ({ ...m, shareToken: j.shareToken }));
+          if (j.path) { const link = `${location.origin}${j.path}`; try { await navigator.clipboard.writeText(link); setAnnounce(`Record link copied: ${link}`); } catch { setAnnounce(`Record link: ${link}`); } setActionError(null); }
+          else setAnnounce('Record link revoked.');
+          store.refresh();
+        }}>{mission.shareToken ? 'Revoke record link' : 'Share record'}</button>}
         {mission.status !== 'OPEN' && <a className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} href={`/api/missions/${mission.id}/bundle?download=1`} title="One self-contained file: contract, tape, decisions, validation, sources, settlement, the artifact, and the machine-readable record">Audit bundle</a>}
         {mission.lineage && <span className="lineage-tag">v{mission.lineage.version} · amends {mission.lineage.parentSerial}</span>}
         {(live || paused) && confirmStop && (

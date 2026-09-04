@@ -280,6 +280,17 @@ async function handle(req, res) {
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, html);
   }
 
+  // Shared mission record (public by explicit share link): the audit bundle.
+  const sharedRun = p.match(/^\/r\/([a-f0-9]{32})$/);
+  if (sharedRun) {
+    if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
+    const m = store.missions().find((x) => x.shareToken === sharedRun[1]);
+    if (!m) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This record link is not on the books — it may have been revoked.</p>'); }
+    const full = store.missionFull(m.id);
+    const a = full.artifactId ? store.artifact(full.artifactId) : null;
+    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, auditBundle(pub(full), a, full.artifactId ? store.artifactHtml(full.artifactId) : null));
+  }
+
   if (p.startsWith('/api/') && !authed(req)) {
     if (limited(ipOf(req), 'locked', 60, 60000)) return json(res, 429, { locked: true, error: 'Too many requests. Try again in a minute.' });
     if (p === '/api/bootstrap') return json(res, 401, { locked: true, error: 'The house is locked. Enter the access code.' });
@@ -520,6 +531,17 @@ async function handle(req, res) {
     const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' };
     if (url.searchParams.get('download') === '1') headers['content-disposition'] = `attachment; filename="${name}"`;
     return sendCompressed(req, res, 200, headers, auditBundle(pub(m), a, html));
+  }
+
+  const runShare = p.match(/^\/api\/missions\/([\w]+)\/share$/);
+  if (runShare && (req.method === 'POST' || req.method === 'DELETE')) {
+    const m = store.mission(runShare[1]);
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    if (req.method === 'POST' && m.status === 'OPEN') return json(res, 400, { error: 'An unstamped ticket has no record to share yet.' });
+    m.shareToken = req.method === 'POST' ? (m.shareToken || crypto.randomBytes(16).toString('hex')) : null;
+    m.sharedAt = m.shareToken ? (m.sharedAt || Date.now()) : null;
+    store.flushMissions();
+    return json(res, 200, { ok: true, shareToken: m.shareToken, path: m.shareToken ? `/r/${m.shareToken}` : null });
   }
 
   const planMatch = p.match(/^\/api\/missions\/([\w]+)\/plan$/);

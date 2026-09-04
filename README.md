@@ -548,3 +548,11 @@ The profile is the visitor's own: no seeded name or email. The greeting says
 shows "Set up your profile" until then, email is editable and validated
 under My Profile, and the brand mark sits in the top bar on small screens
 where the sidebar is a drawer.
+
+## v0.38 — Share the record (2026-09-04)
+
+A finished mission's whole record — the audit bundle with contract, tape,
+decisions, sources, settlement and the embedded artifact — can be shared at a
+public, `noindex`, revocable link (`/r/<token>`) from the run view, alongside
+the download. Unstamped tickets have no record to share. The profile page
+nudges for a name while the house does not know one.

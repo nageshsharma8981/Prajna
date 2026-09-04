@@ -50,6 +50,7 @@ export default function Account({ page }) {
         {p === 'profile' && (
           <>
             <h1 className="pg-title">My profile</h1>
+            {!(s.profile.name || '').trim() && <p className="lede">The house does not know your name yet. Add it here and the greeting, the sidebar and every record you submit will carry it.</p>}
             <div className="form">
               <label>Name<input className="key-input" value={f('name', s.profile.name)} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
               <label>Handle<input className="key-input" value={f('handle', s.profile.handle)} onChange={(e) => setForm({ ...form, handle: e.target.value })} /></label>
