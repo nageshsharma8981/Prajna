@@ -1,25 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useRoute, Link, navigate } from './lib/router.jsx';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
 import { EditIcon, PluginIcon, FactoryIcon, ChevronIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, FloorIcon, ToolIcon, BoardIcon } from './components/icons.jsx';
 import Home from './views/Home.jsx';
 import Chat from './views/Chat.jsx';
-import Plugins from './views/Plugins.jsx';
-import Factory from './views/Factory.jsx';
-import Boards from './views/Boards.jsx';
-import Tools from './views/Tools.jsx';
-import Connectors from './views/Connectors.jsx';
-import Account from './views/Account.jsx';
-import Media from './views/Media.jsx';
-import Floor from './views/Floor.jsx';
-import Run from './views/Run.jsx';
-import Ledger from './views/Ledger.jsx';
-import ArtifactView from './views/ArtifactView.jsx';
-import Compare from './views/Compare.jsx';
-import Releases from './views/Releases.jsx';
-import Skills from './views/Skills.jsx';
-import Keys from './views/Keys.jsx';
+const Plugins = lazy(() => import('./views/Plugins.jsx'));
+const Factory = lazy(() => import('./views/Factory.jsx'));
+const Boards = lazy(() => import('./views/Boards.jsx'));
+const Tools = lazy(() => import('./views/Tools.jsx'));
+const Connectors = lazy(() => import('./views/Connectors.jsx'));
+const Account = lazy(() => import('./views/Account.jsx'));
+const Media = lazy(() => import('./views/Media.jsx'));
+const Floor = lazy(() => import('./views/Floor.jsx'));
+const Run = lazy(() => import('./views/Run.jsx'));
+const Ledger = lazy(() => import('./views/Ledger.jsx'));
+const ArtifactView = lazy(() => import('./views/ArtifactView.jsx'));
+const Compare = lazy(() => import('./views/Compare.jsx'));
+const Releases = lazy(() => import('./views/Releases.jsx'));
+const Skills = lazy(() => import('./views/Skills.jsx'));
+const Keys = lazy(() => import('./views/Keys.jsx'));
 
 const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions'], ['/releases', 'Release notes']];
 
@@ -197,7 +197,7 @@ function Shell() {
           <button className="palette-hint" onClick={() => setPalette(true)}><SearchIcon /> Jump <kbd>⌘K</kbd></button>
           <button className="ic round" onClick={() => setTheme(theme === 'day' ? 'night' : 'day')} aria-label={theme === 'day' ? 'Switch to night hall' : 'Switch to day desk'} title="Theme">{theme === 'day' ? <MoonIcon /> : <SunIcon />}</button>
         </div>
-        {full ? <Router /> : <div className="scroll"><Router /></div>}
+        <Suspense fallback={<div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening…</p></div>}>{full ? <Router /> : <div className="scroll"><Router /></div>}</Suspense>
       </div>
       {palette && <Palette onClose={() => setPalette(false)} />}
     </div>

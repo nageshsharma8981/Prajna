@@ -621,3 +621,11 @@ was driven by keys alone.
 `/releases` lists every version the house has shipped, newest first, parsed
 from this README (`GET /api/releases`), with the running version at the top.
 Linked from Get Help and the ⌘K palette.
+
+## v0.47 — Lighter first load, Escape everywhere (2026-09-04)
+
+The secondary views — run, account, boards, factory, connectors, tools,
+media, artifacts, compare, releases, skills, keys — now load on demand, which
+takes the first script from 104 KB to 76 KB gzipped; the home, chat and
+sidebar stay in the first chunk. In the composer, Escape closes whichever
+overlay is open — model picker, depth menu, council, templates.

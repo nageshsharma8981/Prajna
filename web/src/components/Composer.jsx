@@ -174,7 +174,7 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
   };
 
   return (
-    <div className={`composer${compact ? ' compact' : ''}`}>
+    <div onKeyDown={(e) => { if (e.key === 'Escape' && (showModels || showDepth || showCouncil || showTemplates)) { e.stopPropagation(); setShowModels(false); setShowDepth(false); setShowCouncil(false); setShowTemplates(false); } }} className={`composer${compact ? ' compact' : ''}`}>
       <div className="composer-box">
         <textarea
           ref={taRef}
