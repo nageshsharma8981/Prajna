@@ -29,6 +29,7 @@ function provenanceObject(mission) {
     deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, link: d.link || null, linkOk: d.linkOk ?? null, linkRevokedAt: d.linkRevokedAt || null, error: d.error || null })),
     dissent: mission.dissent || null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
+    writtenBy: mission.writtenBy || null,
     houseBrief: mission.houseBrief || null,
     keyUse: mission.keyUse || null,
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null, steppedIn: mission.authored.steppedIn || null } : null,
@@ -63,7 +64,7 @@ function provenanceObject(mission) {
     settlement: mission.settlement || { reserved: mission.contract.ceiling, settled: mission.spent, released: null },
     gate: mission.gate || null,
     review: mission.review || null,
-    decisions: (mission.attention || []).filter((a) => a.decision).map((a) => ({ kind: a.kind, decision: a.decision, justification: a.justification, decidedAt: a.decidedAt })),
+    decisions: (mission.attention || []).filter((a) => a.decision).map((a) => ({ kind: a.kind, decision: a.decision, justification: a.justification, decidedAt: a.decidedAt, by: a.decidedBy || null })),
     events: `mission ${mission.id}, seq 1..${mission.eventSeq || mission.events?.length || 0}`,
   };
 }
@@ -88,7 +89,7 @@ function provenance(mission) {
     ? (prov.review.verdict === 'pass' ? 'pass, no gaps' : `${prov.review.gaps.length} gap(s): ${prov.review.gaps.map((g) => g.id).join(', ')}`)
     : 'not reached';
   const decisions = prov.decisions.length
-    ? prov.decisions.map((d) => `<li><strong>${esc(d.kind)}</strong> → ${esc(d.decision)}, “${esc(d.justification)}”</li>`).join('')
+    ? prov.decisions.map((d) => `<li><strong>${esc(d.kind)}</strong> → ${esc(d.decision)}, “${esc(d.justification)}”${d.by ? `, decided by ${esc(d.by)}` : ''}</li>`).join('')
     : '<li>none required</li>';
   return `
   <footer class="prov">

@@ -360,6 +360,7 @@ export default function Run({ id }) {
           store.refresh();
         }}>{mission.shareToken ? 'Revoke record link' : 'Share record'}</button>}
         {mission.status !== 'OPEN' && <a className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} href={`/api/missions/${mission.id}/bundle?download=1`} title="One self-contained file: contract, tape, decisions, validation, sources, settlement, the artifact, and the machine-readable record">Audit bundle</a>}
+        {mission.writtenBy?.name && <span className="lineage-tag" title={`Written by ${mission.writtenBy.name} on ${new Date(mission.writtenBy.at).toLocaleString('en-GB')}`}>asked for by {mission.writtenBy.name}</span>}
         {mission.lineage && <span className="lineage-tag">v{mission.lineage.version} · amends {mission.lineage.parentSerial}</span>}
         {mission.amendedTo && <Link className="lineage-tag" to={`/run/${mission.amendedTo.id}`} title="The amended ticket the house wrote when the ground turned out to be empty">amended into {mission.amendedTo.serial}</Link>}
         {(live || paused) && confirmStop && (
@@ -603,7 +604,7 @@ export default function Run({ id }) {
                   <div key={i} className="tape-line">
                     <span className="ts">{ts(ev.at)}</span>
                     <span className="op">decision</span>
-                    <span className="detail">{ev.kind}: {ev.decision}, “{ev.justification}”</span>
+                    <span className="detail">{ev.kind}: {ev.decision}, “{ev.justification}”{ev.by ? `, decided by ${ev.by}` : ''}</span>
                   </div>
                 );
               }

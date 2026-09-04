@@ -758,7 +758,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null, pages: await pagesFor(goal) });
+    const mission = writeContract({ by: meOf(req)?.name || null, goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null, pages: await pagesFor(goal) });
     return json(res, 200, pub(mission));
   }
 
@@ -826,7 +826,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   if (attnMatch && req.method === 'POST') {
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
-    const result = await decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify);
+    const result = await decideAttention(attnMatch[1], attnMatch[2], String(body.decision || ''), String(body.justification || ''), notify, meOf(req)?.name || null);
     return json(res, result.error ? 400 : 200, result);
   }
 
@@ -1251,7 +1251,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (MODE_DESK[mode]) {
       const lead = modelById(body.lead || ws().personalization.defaultModel).id;
       const advisers = (Array.isArray(body.advisers) ? body.advisers : ws().personalization.defaultAdvisers).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs , pages: await pagesFor(text) });
+      const mission = writeContract({ by: meOf(req)?.name || null, goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs , pages: await pagesFor(text) });
       const credits = store.workspace().credits;
       if (credits < mission.contract.ceiling) {
         const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits, top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });

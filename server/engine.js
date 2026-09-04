@@ -167,7 +167,7 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   return bits.join(' ');
 }
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages, by }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
@@ -237,6 +237,9 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
       plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id], assertions, why,
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
+    // Who asked for this. A house several people can enter should say whose
+    // request each ticket is, and it travels with the artifact.
+    writtenBy: by ? { name: by, at: Date.now() } : null,
     lineage: lineage || null, // { parentId, parentSerial, version }
     variant: variant || 'build',
     template: template || null,
@@ -1073,7 +1076,7 @@ export function forkMission(missionId, { goal, installedSkills, queuedConnectors
   return next;
 }
 
-export async function decideAttention(missionId, requestId, decision, justification, notify) {
+export async function decideAttention(missionId, requestId, decision, justification, notify, by = null) {
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
   if (m.status === 'KILLED' || m.status === 'FILLED') {
@@ -1096,9 +1099,10 @@ export async function decideAttention(missionId, requestId, decision, justificat
   }
 
   req.decision = decision;
+  req.decidedBy = by || null;
   req.justification = justification.trim().slice(0, 300);
   req.decidedAt = Date.now();
-  pushEvent(m, { type: 'attention.resolved', requestId, kind: req.kind, decision, justification: req.justification }, notify);
+  pushEvent(m, { type: 'attention.resolved', requestId, kind: req.kind, decision, justification: req.justification, by: req.decidedBy }, notify);
 
   const runner = runners.get(missionId);
 

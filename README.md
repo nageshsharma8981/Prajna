@@ -1326,3 +1326,19 @@ never leaves in an export.
 Checked in a browser end to end, and pinned by a test. This does not
 close the door: without an access code anyone with the address can still
 enter the workspace.
+
+## v1.10: Whose request, and who decided (2026-09-05)
+
+Now that people sign in as themselves, the record says so. A ticket
+carries the name of whoever asked for it, and every decision carries the
+name of whoever made it, which need not be the same person: one can ask,
+another can answer the ceiling or the gate, and the artifact's
+provenance shows both. A ticket written by nobody signed in is left
+unattributed rather than credited to whoever happens to be the house.
+
+The gate test that had been flaking was fixed at the cause, not by
+re-running it: the engine deliberately overruns one serial in three, and
+serials start from a random counter, so the run sometimes paused on the
+ceiling and never reached the gate. The test now answers anything that
+is not the gate, so the gate is what is on trial. Three consecutive
+runs, thirty-seven tests, green.

@@ -759,6 +759,13 @@ test('a claim citing a source that does not speak to it is caught at the gate', 
       m = (await j3(`/api/missions/${w.j.id}`)).j;
       if ((m.attention || []).some((a) => a.kind === 'gate' && !a.decision)) break;
       if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      // Some serials are given a deliberate overrun, so answer anything that is
+      // not the gate and let the run reach the gate, which is what is on trial.
+      const other = (m.attention || []).find((a) => !a.decision && a.kind !== 'gate');
+      if (other) {
+        const pick = ['raise-ceiling', 'approve-step', 'approve', 'continue'].find((o) => other.options.includes(o)) || other.options[0];
+        await j3(`/api/missions/${w.j.id}/attention/${other.id}`, { method: 'POST', body: JSON.stringify({ decision: pick, justification: `let the run reach the gate, ${pick}` }) });
+      }
       await new Promise((r) => setTimeout(r, 300));
     }
     assert.ok((m.sources || []).some((s) => s.engine === 'wikipedia'), `the article is on the table: ${JSON.stringify((m.sources || []).map((s) => s.engine))}`);
@@ -844,4 +851,40 @@ test('nobody is greeted by name until they sign in, and signing out forgets them
   // A name is required to sign in; nothing else is.
   assert.equal((await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: '' }) })).status, 400);
   assert.equal((await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Bo', email: 'not-an-email' }) })).status, 400);
+});
+
+test('the record says whose request it was and who decided', async () => {
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  const asker = await signIn('Rakhi');
+  const decider = await signIn('Tomas');
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', cookie }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const w = await call('/api/missions', asker, { goal: 'Attribution test: a brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200);
+  assert.equal(w.j.writtenBy?.name, 'Rakhi', 'the ticket names who asked for it');
+  assert.equal((await call(`/api/missions/${w.j.id}/launch`, asker)).status, 200);
+  let m; let decided = null; const started = Date.now();
+  while (Date.now() - started < 120000) {
+    m = (await api(`/api/missions/${w.j.id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (m.status.startsWith('PAUSED')) {
+      const a = (m.attention || []).find((x) => !x.decision);
+      if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0];
+        // A different person answers the question, from their own browser.
+        await call(`/api/missions/${w.j.id}/attention/${a.id}`, decider, { decision: pick, justification: `answered by the second person, ${pick}` });
+        decided = a.id; }
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+  assert.equal(m.writtenBy.name, 'Rakhi');
+  if (decided) {
+    const answered = (m.attention || []).find((a) => a.id === decided);
+    assert.equal(answered.decidedBy, 'Tomas', 'the decision names who made it, not who asked');
+    const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
+    assert.match(html, /decided by Tomas/);
+  }
+  // Signed out, a ticket is simply unattributed rather than attributed to someone else.
+  const anon = await post('/api/missions', { goal: 'Attribution test: an unsigned ticket', deskId: 'brief', depth: 'fast' });
+  assert.equal(anon.j.writtenBy, null);
 });
