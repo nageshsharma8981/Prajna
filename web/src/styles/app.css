@@ -1396,3 +1396,12 @@ abbr.cite { cursor: help; }
 .hk-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; justify-content: space-between; }
 .hk-plan p { margin: 0.6rem 0 0.3rem; } .hk-plan ul { margin: 0; padding-left: 1.1rem; font-family: var(--mono); font-size: 0.74rem; display: flex; flex-direction: column; gap: 0.15rem; }
 .hk-actions { display: flex; gap: 0.6rem; margin-top: 0.6rem; }
+
+.welcome { border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); padding: 1rem 1.3rem 1.1rem; margin: 0 0 1.6rem; box-shadow: var(--shadow-soft); }
+.welcome-head { display: flex; justify-content: space-between; align-items: center; }
+.welcome-head .k { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--led); font-weight: 700; }
+.welcome-head .x { font-size: 1.3rem; color: var(--bone-faint); line-height: 1; }
+.welcome h2 { font-size: 1.15rem; font-weight: 500; font-style: italic; margin: 0.3rem 0 0.8rem; line-height: 1.35; }
+.welcome-steps { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.88rem; color: var(--bone-dim); line-height: 1.5; }
+.welcome-steps b { color: var(--bone); }
+.welcome-actions { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; margin-top: 0.9rem; }

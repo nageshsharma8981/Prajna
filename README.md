@@ -482,3 +482,10 @@ window are voided, runs paused on a decision nobody has taken for that long
 are stopped, reserves are released, and every action lands on the tape as
 such. Dry run by default. The Tickets & runs page has a Housekeeping control
 with a confirm step; the CLI has `prajna sweep [--minutes 60] [--apply]`.
+
+## v0.30 — First run (2026-09-04)
+
+A fresh workspace opens with a welcome: the three steps (ask for an outcome,
+watch it run, take the delivery with its evidence), a one-minute sample that
+writes and runs a fast research ticket into a new chat, and a link to load a
+key. Dismissed per browser; Get Help brings it back (`/?welcome=1`).
