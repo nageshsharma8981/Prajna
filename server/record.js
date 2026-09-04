@@ -6,6 +6,44 @@
 // house answers deterministically from the narrative and the ledger.
 import { store } from './store.js';
 import { missionDelta } from './delta.js';
+import { ws } from './workspace.js';
+
+// The house answers about money and schedule from the ledger, the missions
+// and the standing orders. Deterministic; nothing here is generated.
+const n0 = (x) => Number(x || 0).toFixed(0);
+const MONEY = /\b(spen[dt]|cost|credits?|balance|reserve[d]?|budget|bill|paid|settled|expensive|costliest|cheapest)\b/i;
+const SCHEDULE = /\b(schedul|standing order|repeat|recurring|next run|what.s (planned|due|coming))/i;
+const PERIOD = (q) => (/\b(today)\b/i.test(q) ? ['today', 1] : /\b(this week|week|7 days|seven days)\b/i.test(q) ? ['this week', 7] : /\b(month|30 days)\b/i.test(q) ? ['the last 30 days', 30] : null);
+export function houseAnswer(question) {
+  const q = String(question || '');
+  if (SCHEDULE.test(q)) {
+    const orders = ws().standingOrders || [];
+    if (!orders.length) return 'Nothing is scheduled: no standing orders. Make one from a delivered run with Repeat.';
+    const when = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return `${orders.length} standing order${orders.length === 1 ? '' : 's'}: ${orders.map((o) => `${o.serial} (${o.goal.slice(0, 50)}) ${o.cadence}${o.cap ? `, cap ${o.cap} cr a month` : ''}${o.paused ? ', paused' : `, next ${when(o.nextAt)}`}${o.runs?.[0] ? `, last ${o.runs[0].skipped ? `skipped: ${o.runs[0].skipped}` : `ran as ${o.runs[0].serial}`}` : ''}`).join('; ')}.`;
+  }
+  if (!MONEY.test(q)) return null;
+  // A question about one mission, named or the latest, belongs to that mission's record.
+  if (/PJ-\d+/i.test(q) || /\b(last|latest|most recent|previous)\b[^.]*\b(delivery|run|mission|ticket)\b/i.test(q)) return null;
+  const w = store.workspace();
+  const period = PERIOD(q);
+  const ms = store.missions();
+  const done = ms.filter((m) => m.status === 'FILLED' || m.status === 'KILLED');
+  const inPeriod = period ? done.filter((m) => (m.filledAt || m.createdAt || 0) >= Date.now() - period[1] * 86400000) : done;
+  const settled = (m) => (m.settlement?.settled ?? m.spent) || 0;
+  const total = inPeriod.reduce((a, m) => a + settled(m), 0);
+  const delivered = inPeriod.filter((m) => m.status === 'FILLED');
+  const top = [...inPeriod].sort((a, b) => settled(b) - settled(a))[0];
+  const cheapest = [...delivered].sort((a, b) => settled(a) - settled(b))[0];
+  const parts = [];
+  parts.push(period ? `${period[0][0].toUpperCase() + period[0].slice(1)} the house settled ${n0(total)} credits across ${delivered.length} deliver${delivered.length === 1 ? 'y' : 'ies'}${inPeriod.length - delivered.length ? ` and ${inPeriod.length - delivered.length} stopped run${inPeriod.length - delivered.length === 1 ? '' : 's'}` : ''}.` : `To date the house has settled ${n0(w.spent)} credits across ${delivered.length} deliveries.`);
+  if (/costliest|expensive|most/i.test(q) && top) parts.push(`The costliest was ${top.serial}, ${top.subject || top.goal}, at ${n0(settled(top))} cr.`);
+  else if (/cheapest|least/i.test(q) && cheapest) parts.push(`The cheapest delivery was ${cheapest.serial}, ${cheapest.subject || cheapest.goal}, at ${n0(settled(cheapest))} cr.`);
+  else if (top) parts.push(`The costliest was ${top.serial} at ${n0(settled(top))} cr.`);
+  parts.push(`Balance ${n0(w.credits)} credits, ${n0(w.reserved)} reserved against ${ms.filter((m) => m.status === 'LIVE' || String(m.status).startsWith('PAUSED')).length} run${ms.filter((m) => m.status === 'LIVE' || String(m.status).startsWith('PAUSED')).length === 1 ? '' : 's'} in flight.`);
+  return parts.join(' ') + ' Every figure is from the credit ledger under Payment and Invoices.';
+}
+
 
 const n = (x) => Number(x || 0).toFixed(1);
 

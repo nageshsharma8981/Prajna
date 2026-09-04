@@ -254,3 +254,21 @@ test('the record answers about any serial and about the latest delivery, not onl
   const none = await ask('What happened in PJ-999999?');
   assert.notEqual(none.kind, 'record', 'an unknown serial is not answered from the record');
 });
+
+test('the house answers about money and schedule from the ledger, without a model', async () => {
+  const c = await post('/api/chats', { title: 'Money test' });
+  const ask = async (text) => { const r = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); const raw = await r.text(); return raw.split('\n\n').map((x) => x.trim()).filter((x) => x.startsWith('event: done')).map((x) => JSON.parse(x.split('\ndata: ')[1]))[0].message; };
+  const b = (await api('/api/bootstrap')).j;
+  const week = await ask('How much did the house spend this week, and what was the costliest?');
+  assert.equal(week.kind, 'house', week.text.slice(0, 160));
+  assert.match(week.text, /This week the house settled \d+ credits across \d+ deliver/);
+  assert.match(week.text, /costliest was PJ-\d+/);
+  assert.ok(week.text.includes(`Balance ${b.workspace.credits.toFixed(0)} credits`), `balance from the ledger: ${week.text}`);
+  const none = await ask('What is scheduled?');
+  assert.equal(none.kind, 'house'); assert.match(none.text, /Nothing is scheduled/);
+  const filled = b.missions.find((m) => m.status === 'FILLED' && !m.standing);
+  const o = await post(`/api/missions/${filled.id}/standing`, { cadence: 'weekly', cap: 120 }); assert.equal(o.status, 200);
+  const sched = await ask('What is scheduled next?');
+  assert.ok(sched.text.includes(filled.serial) && /weekly, cap 120 cr a month, next/.test(sched.text), sched.text);
+  await api(`/api/standing/${o.j.id}`, { method: 'DELETE' });
+});

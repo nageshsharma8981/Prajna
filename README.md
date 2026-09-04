@@ -1049,3 +1049,13 @@ delivery reaches the three most recent in the house; the live model gets
 the same record, and a serial the house does not have is not answered
 from the record at all. A test asks about a mission from another thread,
 about the latest delivery, and about a serial that does not exist.
+
+## v0.87: The house answers about money and schedule (2026-09-04)
+
+Ask the companion what the house spent this week, what the balance and
+reserve are, what the costliest delivery was, or what is scheduled, and
+it answers from the ledger and the standing orders, no model needed and
+no number invented: settled credits over the period, deliveries counted,
+the costliest named by serial, balance and reserve as the ledger holds
+them, each standing order with its cadence and next run. A live model
+receives the same figures as context and is told to use only those.
