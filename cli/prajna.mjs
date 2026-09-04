@@ -11,7 +11,7 @@
 //   prajna watch                       ring when a run needs a decision
 //   prajna sweep [--minutes 60] [--apply]   void stale tickets, stop runs stuck on a decision
 //   prajna accept [--yes] [--name N]   accept the house rules (Terms, Privacy and GDPR, AI Disclaimer)
-//   prajna repeat <mission-id|serial> [daily|weekly]   make a delivered ticket a standing order
+//   prajna repeat <mission-id|serial> [daily|weekly] [--cap N]   make a delivered ticket a standing order, N cr a month at most
 //   prajna standing [run|pause|resume|stop <order-id>]  list or manage standing orders
 //   prajna check                       the house check: disk, tapes, artifacts, reserve, rules, tokens, last link
 //   prajna repair                      put right what the house can, then check again
@@ -199,8 +199,8 @@ async function repeat() {
   const cfg = need();
   const m = await resolveMission(cfg, positional[0]);
   const cadence = positional[1] || 'weekly';
-  const o = await api(cfg, `/api/missions/${m.id}/standing`, { method: 'POST', body: JSON.stringify({ cadence }) });
-  console.log(`${o.serial} repeats ${o.cadence}. Order ${o.id}, next run ${when(o.nextAt)}. Each run is a new version with its own reserve; a short balance skips it and says so.`);
+  const o = await api(cfg, `/api/missions/${m.id}/standing`, { method: 'POST', body: JSON.stringify({ cadence, cap: flag('cap') || null }) });
+  console.log(`${o.serial} repeats ${o.cadence}${o.cap ? `, at most ${o.cap} cr a month` : ''}. Order ${o.id}, next run ${when(o.nextAt)}. Each run is a new version with its own reserve; a short balance skips it and says so.`);
 }
 async function standing() {
   const cfg = need();
@@ -217,7 +217,7 @@ async function standing() {
   if (!orders.length) { console.log('No standing orders. Make one: prajna repeat <mission-id|serial> [daily|weekly]'); return; }
   for (const o of orders) {
     const last = o.runs?.[0];
-    console.log(`${o.id}  ${o.serial}  ${o.cadence.padEnd(6)}  ${o.paused ? 'paused' : `next ${when(o.nextAt)}`}  ${o.goal.slice(0, 60)}${last ? `
+    console.log(`${o.id}  ${o.serial}  ${o.cadence.padEnd(6)}  ${o.paused ? 'paused' : `next ${when(o.nextAt)}`}${o.cap ? `  cap ${o.cap} cr/month (${o.spentThisMonth || 0} settled)` : ''}  ${o.goal.slice(0, 60)}${last ? `
     last: ${last.skipped ? `skipped, ${last.skipped}` : `ran as ${last.serial}`} at ${when(last.at)}` : ''}`);
   }
 }

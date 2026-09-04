@@ -249,6 +249,7 @@ export default function Run({ id }) {
   }, [mission]);
   const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
   const [cadence, setCadence] = useState('weekly');
+  const [cap, setCap] = useState('');
   const amend = async () => {
     setBusy(true); setActionError(null);
     try {
@@ -334,9 +335,10 @@ export default function Run({ id }) {
         {filled && !mission.voidedBeforeRun && !mission.standing && (
           <span className="standing-make">
             <select className="key-input" value={cadence} onChange={(e) => setCadence(e.target.value)} aria-label="Repeat cadence" style={{ width: 'auto', padding: '0.4rem 0.6rem' }}><option value="daily">Every day</option><option value="weekly">Every week</option></select>
+            <input className="key-input" type="number" min="1" inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value)} placeholder="Cap cr/month" aria-label="Monthly credit cap, optional" title="Optional: the most this order may settle in any 30 days. A run that would exceed it is skipped and says so." style={{ width: '7.5rem', padding: '0.4rem 0.6rem' }} />
             <button className="btn-quiet" disabled={busy} title="Re-run this ticket on a cadence. Each run is a new version with its own reserve; a short balance skips the run and says so." onClick={async () => {
               setBusy(true); setActionError(null);
-              try { const r = await fetch(`/api/missions/${mission.id}/standing`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cadence }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Refused.'); await store.refresh(); setBusy(false); } catch (e) { setActionError(e.message); setBusy(false); }
+              try { const r = await fetch(`/api/missions/${mission.id}/standing`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cadence, cap: cap || null }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Refused.'); await store.refresh(); setBusy(false); } catch (e) { setActionError(e.message); setBusy(false); }
             }}>Repeat</button>
           </span>
         )}

@@ -12,13 +12,28 @@ const id = () => `so_${Date.now().toString(36)}${Math.random().toString(36).slic
 export function standingOrders() { const w = ws(); if (!w.standingOrders) w.standingOrders = []; return w.standingOrders; }
 export function standingFor(missionId) { return standingOrders().find((o) => o.rootId === missionId || o.missionId === missionId || (o.runs || []).some((r) => r.missionId === missionId)) || null; }
 
-export function addStandingOrder(missionId, cadence) {
+const MONTH = 30 * 24 * 60 * 60 * 1000;
+// What an order's runs have actually settled in the last 30 days.
+export function spentThisMonth(o, now = Date.now()) {
+  return Math.round((o.runs || []).filter((r) => !r.skipped && r.at >= now - MONTH).reduce((a, r) => { const m = store.mission(r.missionId); return a + (m ? (m.settlement?.settled ?? m.spent ?? 0) : 0); }, 0) * 10) / 10;
+}
+// Orders the house should worry about: root ticket gone, or overdue by more
+// than one interval (the scheduler was down, or every run has been skipped).
+export function standingHealth(now = Date.now()) {
+  const orphaned = standingOrders().filter((o) => !o.paused && !store.mission(o.missionId));
+  const overdue = standingOrders().filter((o) => !o.paused && now - o.nextAt > CADENCES[o.cadence]);
+  return { total: standingOrders().length, orphaned, overdue };
+}
+
+export function addStandingOrder(missionId, cadence, cap) {
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
   if (m.status !== 'FILLED') return { error: 'Only a delivered ticket can become a standing order.' };
   if (!CADENCES[cadence]) return { error: 'Cadence must be daily or weekly.' };
   if (standingFor(missionId)) return { error: 'This ticket already has a standing order.' };
-  const o = { id: id(), rootId: m.id, missionId: m.id, serial: m.serial, goal: m.goal, deskName: m.deskName, cadence, createdAt: Date.now(), nextAt: Date.now() + CADENCES[cadence], paused: false, runs: [] };
+  const capN = Number(cap);
+  if (cap !== undefined && cap !== null && cap !== '' && !(capN > 0)) return { error: 'The monthly cap must be a positive number of credits, or left empty.' };
+  const o = { id: id(), rootId: m.id, missionId: m.id, serial: m.serial, goal: m.goal, deskName: m.deskName, cadence, cap: capN > 0 ? Math.round(capN) : null, createdAt: Date.now(), nextAt: Date.now() + CADENCES[cadence], paused: false, runs: [] };
   standingOrders().push(o); flushWs();
   return { order: o };
 }
@@ -37,7 +52,11 @@ export function runOrder(o, { installedSkills, queuedConnectors, notify }) {
     else {
       next.standingOrderId = o.id; store.flushMissions();
       const credits = store.workspace().credits;
-      if (credits < next.contract.ceiling || !launchMission(next.id, notify)) {
+      const used = o.cap ? spentThisMonth(o, at) : 0;
+      if (o.cap && used + next.contract.ceiling > o.cap) {
+        run = { at, skipped: `monthly cap ${o.cap} cr: ${used} cr settled in the last 30 days, this run's ceiling is ${next.contract.ceiling} cr`, missionId: next.id, serial: next.serial };
+        try { voidTicket(next.id, notify); } catch { /* stays open for the owner */ }
+      } else if (credits < next.contract.ceiling || !launchMission(next.id, notify)) {
         run = { at, skipped: `balance ${credits.toFixed(0)} cr is below the ${next.contract.ceiling} cr ceiling`, missionId: next.id, serial: next.serial };
         try { voidTicket(next.id, notify); } catch { /* the ticket stays open for the owner to fund */ }
       } else { run = { at, missionId: next.id, serial: next.serial }; o.missionId = next.id; }

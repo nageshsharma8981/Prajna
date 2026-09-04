@@ -852,3 +852,12 @@ a standing order; `prajna standing` lists orders and `prajna standing
 run|pause|resume|stop <order-id>` manages them. `prajna check` runs the
 house check and exits non-zero on any failing row, so it can sit in a
 cron; `prajna repair` puts right what the house can and checks again.
+
+## v0.71: Standing orders under control (2026-09-04)
+
+A standing order can carry a monthly cap: the most it may settle in any
+30 days. A run whose ceiling would break the cap is skipped, its ticket
+voided, and the reason recorded, so recurring spend can never run away.
+The house check gains a standing-orders row that catches an order whose
+ticket is gone or that is overdue by more than an interval; repair pauses
+the orphans. `prajna repeat … --cap N`.

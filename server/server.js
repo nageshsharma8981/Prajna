@@ -18,7 +18,7 @@ import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
-import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, CADENCES } from './standing.js';
+import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
@@ -57,6 +57,8 @@ async function houseCheck() {
   const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
+  const sh = standingHealth();
+  if (sh.total) add('standing', !sh.orphaned.length && !sh.overdue.length, `${sh.total} standing order(s)${sh.orphaned.length ? `, ${sh.orphaned.length} orphaned (ticket gone): ${sh.orphaned.map((o) => o.serial).join(', ')}` : ''}${sh.overdue.length ? `, ${sh.overdue.length} overdue by more than one interval: ${sh.overdue.map((o) => o.serial).join(', ')}` : ''}`);
   const c = ws().consent;
   add('consent', !!c && c.version === LEGAL.version, c ? `house rules ${c.version} accepted ${new Date(c.acceptedAt).toISOString().slice(0, 16)} UTC` : 'house rules not yet accepted');
   for (const [prov, tok] of Object.entries(store.state.tokens)) {
@@ -96,6 +98,7 @@ async function houseRepair() {
     ledger('reconcile', drift, `Reserve reconciled to the in-flight tickets: ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr moved back into reserve`}`);
     actions.push({ id: 'reserve', ok: true, detail: `reserve set to ${expected} cr, ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr taken from balance`}, ledger line written` });
   }
+  for (const o of standingHealth().orphaned) { pauseStandingOrder(o.id, true); actions.push({ id: 'standing', ok: true, detail: `${o.serial}: order paused, its ticket is gone; stop it under Settings or repeat another ticket` }); }
   const c = ws().consent;
   if (!c || c.version !== LEGAL.version) actions.push({ id: 'consent', ok: false, detail: 'only a person can accept the house rules; the acceptance screen opens on the next load' });
   return { actions, check: await houseCheck() };
@@ -446,7 +449,7 @@ async function handle(req, res) {
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
       legalVersion: LEGAL.version,
       houseCheck: ws().lastHouseCheck || null,
-      standing: standingOrders(),
+      standing: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
@@ -502,11 +505,11 @@ async function handle(req, res) {
 
   // ---- Standing orders: a delivered ticket that re-runs itself ----
   const standingDeps = () => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify });
-  if (p === '/api/standing' && req.method === 'GET') return json(res, 200, { orders: standingOrders(), cadences: Object.keys(CADENCES) });
+  if (p === '/api/standing' && req.method === 'GET') return json(res, 200, { orders: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })), cadences: Object.keys(CADENCES) });
   const standingNew = p.match(/^\/api\/missions\/([\w]+)\/standing$/);
   if (standingNew && req.method === 'POST') {
     const body = await readBody(req);
-    const r = addStandingOrder(standingNew[1], String(body.cadence || 'weekly'));
+    const r = addStandingOrder(standingNew[1], String(body.cadence || 'weekly'), body.cap);
     if (r.error) return json(res, 400, { error: r.error });
     return json(res, 200, r.order);
   }
