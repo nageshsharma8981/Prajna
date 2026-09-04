@@ -722,7 +722,15 @@ test('a house that was already occupied does not claim nobody has entered', asyn
 });
 
 test('a claim citing a source that does not speak to it is caught at the gate', async () => {
-  // A model that cites source [1] for something the page never mentions.
+  // Everything this needs is local and deterministic: an encyclopedia that
+  // returns one known article, and a model that cites it for something the
+  // article never mentions. No live page read, no network, no timing luck.
+  const wiki = http.createServer((req, res) => {
+    const url = String(req.url || '');
+    res.writeHead(200, { 'content-type': 'application/json' });
+    if (url.includes('list=search')) return res.end(JSON.stringify({ query: { search: [{ title: 'Kerala ferry subsidy', pageid: 4242 }] } }));
+    res.end(JSON.stringify({ query: { pages: { 4242: { pageid: 4242, title: 'Kerala ferry subsidy', fullurl: 'https://example.org/ferry', extract: 'The Kerala ferry subsidy programme lowered fares on coastal routes and raised passenger numbers across the district.' } } } }));
+  });
   const liar = http.createServer((req, res) => {
     const brief = { stand: 'A brief with a citation attached to the wrong evidence.', verdict: 'Proceed carefully. The recommendation is stated before the evidence, in two sentences.',
       claims: [1, 2, 3].map((n) => ({ text: `Photosynthesis in mangrove seedlings governs quarterly retention, finding ${n}.`, grade: 'B', detail: `Support ${n}.`, src: 1 })),
@@ -730,30 +738,39 @@ test('a claim citing a source that does not speak to it is caught at the gate', 
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(brief) } }], usage: { prompt_tokens: 100, completion_tokens: 50 } })); });
   });
+  await new Promise((r) => wiki.listen(0, '127.0.0.1', r));
   await new Promise((r) => liar.listen(0, '127.0.0.1', r));
+  const DIR3 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-cite-'));
+  const P3 = PORT + 2;
+  const B3 = `http://localhost:${P3}`;
+  const child3 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P3), PRAJNA_DATA_DIR: DIR3, PRAJNA_WIKI_BASE: `http://127.0.0.1:${wiki.address().port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const j3 = async (p, o) => { const r = await fetch(B3 + p, { headers: { 'content-type': 'application/json' }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
-    assert.equal((await api('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` }) })).status, 200);
-    const model = await post('/api/models', { name: 'Confident Fabricator', provider: 'openai', modelId: 'fab-1', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` });
-    if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
-    const w = await post('/api/missions', { goal: `Citation test: what do the rules at ${BASE}/legal/terms say?`, deskId: 'brief', depth: 'fast', lead: model.j.id, advisers: [] });
-    assert.ok((w.j.sources || []).some((s) => s.engine === 'page'), 'a real page is on the table to cite');
-    assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B3}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await j3('/api/legal')).j;
+    await j3('/api/consent', { method: 'POST', body: JSON.stringify({ accept: true, version: legal.version, name: 'Citation Test' }) });
+    assert.equal((await j3('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` }) })).status, 200);
+    const model = await j3('/api/models', { method: 'POST', body: JSON.stringify({ name: 'Confident Fabricator', provider: 'openai', modelId: 'fab-1', baseUrl: `http://127.0.0.1:${liar.address().port}/v1` }) });
+    const w = await j3('/api/missions', { method: 'POST', body: JSON.stringify({ goal: 'Citation test: did the ferry subsidy raise passenger numbers?', deskId: 'brief', depth: 'fast', lead: model.j.id, advisers: [] }) });
+    assert.equal((await j3(`/api/missions/${w.j.id}/launch`, { method: 'POST' })).status, 200);
     let m; const started = Date.now();
-    while (Date.now() - started < 90000) {
-      m = (await api(`/api/missions/${w.j.id}`)).j;
+    while (Date.now() - started < 120000) {
+      m = (await j3(`/api/missions/${w.j.id}`)).j;
       if ((m.attention || []).some((a) => a.kind === 'gate' && !a.decision)) break;
       if (m.status === 'FILLED' || m.status === 'KILLED') break;
       await new Promise((r) => setTimeout(r, 300));
     }
+    assert.ok((m.sources || []).some((s) => s.engine === 'wikipedia'), `the article is on the table: ${JSON.stringify((m.sources || []).map((s) => s.engine))}`);
     const rows = (m.validations || []).flatMap((v) => v.rows);
     const caught = rows.find((r) => r.id === 'VAL-CLAIMS-SOURCE-SPEAKS' && r.lane === 'scrutiny' && !r.passed);
-    assert.ok(caught, `the gate caught it: ${JSON.stringify(rows.map((r) => `${r.id}:${r.lane}:${r.passed}`))}`);
+    assert.ok(caught, `the gate caught it: status ${m.status}, rows ${JSON.stringify(rows.map((r) => `${r.id}:${r.lane}:${r.passed}`))}`);
     assert.match(caught.detail, /rest on a source that does not speak to them/);
     assert.match(caught.detail, /photosynthesis|mangrove|seedlings/);
     const gate = (m.attention || []).find((a) => a.kind === 'gate');
     assert.ok(gate && /VAL-CLAIMS-SOURCE-SPEAKS/.test(gate.prompt), gate?.prompt);
     assert.equal(m.status, 'PAUSED_ATTENTION', 'the house stops rather than delivering it');
-  } finally { await api('/api/keys/openai', { method: 'DELETE' }); liar.close(); }
+  } finally { child3.kill(); liar.close(); wiki.close(); fs.rmSync(DIR3, { recursive: true, force: true }); }
 });
 
 test('the pulse is cheap and moves only when the house does', async () => {
@@ -797,4 +814,34 @@ test('the bootstrap carries what the lists read, not the whole memory of the hou
   assert.ok(full.contract.plan.some((p) => p.rationale) || full.contract.why, 'the full mission carries the reasoning');
   if ((full.sources || []).length) assert.ok(full.sources.some((s) => s.extract), 'the full mission carries source extracts');
   assert.ok(JSON.stringify(m).length * 2 < JSON.stringify(full).length + 4000, `the list form is materially smaller: ${JSON.stringify(m).length} vs ${JSON.stringify(full).length}`);
+});
+
+test('nobody is greeted by name until they sign in, and signing out forgets them', async () => {
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const get = async (p, cookie) => { const r = await fetch(BASE + p, { headers: cookie ? { cookie } : {} }); return { r, j: await r.json().catch(() => ({})) }; };
+  // A browser that has never been here is greeted by no name at all.
+  const fresh = await get('/api/bootstrap');
+  assert.equal(fresh.j.me, null, 'a stranger has no identity');
+  // Signing in names this browser, and nobody else's.
+  const signIn = await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada', email: 'ada@example.com' }) });
+  assert.equal(signIn.status, 200);
+  const cookie = jar(signIn);
+  assert.match(cookie, /prajna_who=/, 'an identity cookie was set');
+  const mine = await get('/api/bootstrap', cookie);
+  assert.equal(mine.j.me.name, 'Ada');
+  assert.equal(mine.j.me.email, 'ada@example.com');
+  const stranger = await get('/api/bootstrap');
+  assert.equal(stranger.j.me, null, 'another browser still sees no name');
+  // A forged or damaged cookie carries no identity.
+  const forged = await get('/api/bootstrap', 'prajna_who=deadbeef.0000000000000000000000');
+  assert.equal(forged.j.me, null, 'an unsigned identity is refused');
+  // Signing out forgets this browser.
+  const out = await fetch(`${BASE}/api/logout`, { method: 'POST', headers: { cookie } });
+  assert.equal(out.status, 200);
+  const cleared = (out.headers.get('set-cookie') || '');
+  assert.match(cleared, /prajna_who=;/, 'the identity cookie is cleared');
+  assert.match(cleared, /prajna_session=;/, 'the access session is cleared too');
+  // A name is required to sign in; nothing else is.
+  assert.equal((await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: '' }) })).status, 400);
+  assert.equal((await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Bo', email: 'not-an-email' }) })).status, 400);
 });

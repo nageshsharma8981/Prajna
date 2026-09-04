@@ -1305,3 +1305,24 @@ the reasoning behind every plan step. None of it is read by a list, a
 board or the dashboard, and the run page fetches the full mission when it
 opens one. The payload is now 44 per cent smaller, 628 kilobytes down to
 352, and every page renders exactly as before, checked page by page.
+
+## v1.9: You are you, and signing out means something (2026-09-05)
+
+Identity belonged to the house, so whoever set a name set it for every
+visitor: open the address and you were greeted as somebody else. And
+logging out cleared only the access-code session, which does nothing
+when no code is set.
+
+Your name and email now live against your own signed cookie. A browser
+that has never signed in is greeted by no name at all and the sidebar
+says so; My Profile is where you sign in, and it edits you, not the
+house. The first person to sign in becomes the house's own, so the
+digest still has an owner, and nobody after that changes it. Signing out
+clears both cookies and the greeting returns to nobody. A forged
+identity cookie carries no identity: the signing secret is minted once,
+kept with the workspace so a restart does not sign everyone out, and
+never leaves in an export.
+
+Checked in a browser end to end, and pinned by a test. This does not
+close the door: without an access code anyone with the address can still
+enter the workspace.

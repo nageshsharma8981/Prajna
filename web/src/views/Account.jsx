@@ -54,13 +54,13 @@ export default function Account({ page }) {
         {p === 'profile' && (
           <>
             <h1 className="pg-title">My profile</h1>
-            {!(s.profile.name || '').trim() && <p className="lede">The house does not know your name yet. Add it here and the greeting, the sidebar and every record you submit will carry it.</p>}
+            {!(s.me?.name || '').trim() && <p className="lede">Nobody is signed in on this browser, so the house greets you by no name at all. Sign in here and the greeting, the sidebar and every record you submit will carry yours. It is kept against this browser only; sign out and the house forgets you again.</p>}
             <div className="form">
-              <label>Name<input className="key-input" value={f('name', s.profile.name)} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-              <label>Handle<input className="key-input" value={f('handle', s.profile.handle)} onChange={(e) => setForm({ ...form, handle: e.target.value })} /></label>
-              <label>Email<input className="key-input" type="email" value={f('email', s.profile.email)} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></label>
-              <label>Bio<textarea className="key-input" rows={3} value={f('bio', s.profile.bio)} onChange={(e) => setForm({ ...form, bio: e.target.value })} /></label>
-              <button className="btn-stamp attn-btn" onClick={() => save('/api/profile', { name: f('name', s.profile.name), handle: f('handle', s.profile.handle), email: f('email', s.profile.email), bio: f('bio', s.profile.bio) }, 'Profile saved.')}>Save profile</button>
+              <label>Name<input className="key-input" value={f('name', s.me?.name || '')} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+              <label>Handle<input className="key-input" value={f('handle', s.me?.handle || '')} onChange={(e) => setForm({ ...form, handle: e.target.value })} /></label>
+              <label>Email<input className="key-input" type="email" value={f('email', s.me?.email || '')} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></label>
+              <label>Bio<textarea className="key-input" rows={3} value={f('bio', s.me?.bio || '')} onChange={(e) => setForm({ ...form, bio: e.target.value })} /></label>
+              <button className="btn-stamp attn-btn" onClick={() => save('/api/me', { name: f('name', s.me?.name || ''), handle: f('handle', s.me?.handle || ''), email: f('email', s.me?.email || ''), bio: f('bio', s.me?.bio || '') }, 'Profile saved.')}>Save profile</button>
             </div>
           </>
         )}

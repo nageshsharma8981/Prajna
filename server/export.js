@@ -60,7 +60,9 @@ export function exportWorkspace({ version }) {
     'Everything is plain JSON and HTML; nothing here needs Prajñā to read.',
   ].join('\n') });
   entries.push({ name: 'workspace.json', data: J(store.workspace()) });
-  entries.push({ name: 'workspace-ui.json', data: J(w) });
+  // The signing secret stays in the house: an export is data, not a key.
+  const { secret, ...uiWithoutSecret } = w;
+  entries.push({ name: 'workspace-ui.json', data: J(uiWithoutSecret) });
   entries.push({ name: 'missions.json', data: J(missions) });
   entries.push({ name: 'artifacts.json', data: J(artifacts) });
   for (const a of artifacts) { const html = store.artifactHtml(a.id); if (html) entries.push({ name: `artifacts/${a.id}.html`, data: html }); }

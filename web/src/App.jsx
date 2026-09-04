@@ -81,18 +81,18 @@ function Sidebar({ open, onClose, menuRef }) {
           </Link>
           <div className="rel">
             <button className="side-user" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>
-              <span className="seat">{s.ready ? ((s.profile.name || '').trim()[0] || s.profile.avatar || 'P').toUpperCase() : 'P'}</span>
-              <span className="who"><b>{s.ready ? (s.profile.name || 'Set up your profile') : '–'}</b><span>{s.ready ? (s.profile.email || s.profile.handle || 'name, handle, email') : ''}</span></span>
+              <span className="seat">{s.ready ? ((s.me?.name || '').trim()[0] || '?').toUpperCase() : '?'}</span>
+              <span className="who"><b>{s.ready ? (s.me?.name || 'Sign in') : '–'}</b><span>{s.ready ? (s.me?.email || (s.me ? 'signed in on this browser' : 'nobody is signed in on this browser')) : ''}</span></span>
             </button>
             {menu && (
               <div className="user-menu" role="menu">
-                <div className="um-head"><span className="seat">{((s.profile.name || '').trim()[0] || 'P').toUpperCase()}</span><span className="who"><b>{s.profile.name || 'No name yet'}</b><span>{s.profile.email || 'Add your details under My Profile'}</span></span></div>
+                <div className="um-head"><span className="seat">{((s.me?.name || '').trim()[0] || '?').toUpperCase()}</span><span className="who"><b>{s.me?.name || 'Nobody is signed in'}</b><span>{s.me?.email || (s.me ? 'Add your details under My Profile' : 'Sign in under My Profile to be greeted by name')}</span></span></div>
                 {MENU.map(([id, label]) => <Link key={id} to={`/account/${id}`} role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>{label}</Link>)}
                 <div className="um-sep" />
                 <Link to="/account/settings" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Settings</Link>
                 <Link to="/account/help" role="menuitem" className="um-item" onClick={() => { setMenu(false); onClose(); }}>Get Help</Link>
                 <div className="um-sep" />
-                <button role="menuitem" className="um-item danger" onClick={async () => { await fetch('/api/logout', { method: 'POST' }); localStorage.removeItem('prajna-theme'); setMenu(false); navigate('/'); s.refresh(); }}>Log out</button>
+                <button role="menuitem" className="um-item danger" onClick={async () => { await fetch('/api/logout', { method: 'POST' }); setMenu(false); window.location.assign('/'); }}>{s.me ? 'Sign out' : 'Clear this session'}</button>
               </div>
             )}
           </div>

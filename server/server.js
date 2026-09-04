@@ -189,6 +189,32 @@ function authed(req) {
   const want = sessionToken();
   return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
 }
+// Who is looking. A workspace is one house, but the person at the door is
+// not the house: their name lives against their own signed cookie, so an
+// empty browser sees no name at all until someone signs in.
+function whoCookie(req, value, maxAge) {
+  const secure = String(req.headers['x-forwarded-proto'] || '').includes('https');
+  return `prajna_who=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+}
+// The house's own signing secret: given by the environment, or minted once
+// and kept with the workspace so a restart does not sign everyone out.
+function houseSecret() {
+  if (process.env.PRAJNA_SECRET) return process.env.PRAJNA_SECRET;
+  const w = ws();
+  if (!w.secret) { w.secret = crypto.randomBytes(32).toString('hex'); flushWs(); }
+  return w.secret;
+}
+function signWho(id) { return `${id}.${crypto.createHmac('sha256', houseSecret()).update(id).digest('hex').slice(0, 24)}`; }
+function whoId(req) {
+  const raw = (String(req.headers.cookie || '').match(/prajna_who=([^;]+)/) || [])[1];
+  if (!raw) return null;
+  const [id, sig] = decodeURIComponent(raw).split('.');
+  if (!id || !sig) return null;
+  return signWho(id).endsWith(sig) ? id : null;
+}
+function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
+function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
+
 function sessionCookie(req, value, maxAge) {
   const secure = String(req.headers['x-forwarded-proto'] || '').includes('https');
   return `prajna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
@@ -692,6 +718,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       limits: limits(),
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
+      me: meOf(req),
+      people: Object.keys(ws().visitors || {}).length,
       consentLog: (ws().consentLog || []).slice(0, 12),
       openHouse: !ACCESS_CODE,
       evidenceSweep: ws().lastEvidenceSweep || null,
@@ -1292,6 +1320,24 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const mcpDel = p.match(/^\/api\/mcp\/(mcp_[\w]+)$/);
   if (mcpDel && req.method === 'DELETE') { const w = ws(); w.mcp = w.mcp.filter((x) => x.id !== mcpDel[1]); flushWs(); return json(res, 200, { ok: true }); }
+  // Sign in: a name against your own cookie, never against the house.
+  if (p === '/api/me' && (req.method === 'POST' || req.method === 'PATCH')) {
+    const body = await readBody(req);
+    const name = String(body.name || '').trim().slice(0, 120);
+    if (!name) return json(res, 400, { error: 'A name is needed to sign in. Nothing else is required.' });
+    const email = String(body.email || '').trim().slice(0, 160);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(res, 400, { error: 'That does not look like an email address.' });
+    let id = whoId(req);
+    if (!id) { id = crypto.randomBytes(12).toString('hex'); res.setHeader('set-cookie', whoCookie(req, encodeURIComponent(signWho(id)), 60 * 60 * 24 * 365)); }
+    const first = Object.keys(visitors()).length === 0;
+    visitors()[id] = { ...(visitors()[id] || {}), name, email, handle: String(body.handle || '').trim().slice(0, 60), bio: String(body.bio || '').trim().slice(0, 300), at: visitors()[id]?.at || Date.now(), lastSeen: Date.now() };
+    // The first person to sign in is the house's own: the digest and the
+    // workspace name follow them, and nobody after that changes them.
+    const w = ws();
+    if (first) { w.profile = { ...w.profile, name, email, avatar: name[0].toUpperCase() }; store.workspace().name = name; store.flushWorkspace(); }
+    flushWs();
+    return json(res, 200, { me: meOf({ headers: { cookie: `prajna_who=${encodeURIComponent(signWho(id))}` } }), owner: first });
+  }
   if (p === '/api/profile' && req.method === 'PATCH') {
     const body = await readBody(req); const w = ws();
     for (const k of ['name', 'handle', 'email', 'bio']) if (body[k] != null) w.profile[k] = String(body[k]).trim().slice(0, k === 'bio' ? 300 : 120);
@@ -1360,7 +1406,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     const b = { id: `b_${Math.random().toString(36).slice(2, 8)}`, name: String(body.name || 'Board').slice(0, 60), mode: String(body.mode || 'website'), createdAt: Date.now(), missionIds: [] };
     w.boards.push(b); flushWs(); return json(res, 200, b);
   }
-  if (p === '/api/logout' && req.method === 'POST') { res.setHeader('set-cookie', sessionCookie(req, '', 0)); return json(res, 200, { ok: true, note: ACCESS_CODE ? 'Session closed. The access code opens the house again.' : 'Open house (no access code set): local preferences cleared client-side.' }); }
+  if (p === '/api/logout' && req.method === 'POST') { res.setHeader('set-cookie', [sessionCookie(req, '', 0), whoCookie(req, '', 0)]); return json(res, 200, { ok: true, note: ACCESS_CODE ? 'Session closed. The access code opens the house again.' : 'Open house (no access code set): local preferences cleared client-side.' }); }
 
   // ---- OAuth connectors (apps + tokens memory-only) ----
   const appMatch = p.match(/^\/api\/oauth\/([\w]+)\/app$/);

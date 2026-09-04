@@ -10,9 +10,9 @@ export default function Home() {
   if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>The server is unreachable: {s.error}.</p></div>;
   if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening…</p></div>;
 
-  const first = (s.profile?.name || '').trim().split(' ')[0] || 'there';
+  const first = (s.me?.name || '').trim().split(' ')[0] || 'there';
   const [nameDraft, setNameDraft] = useState('');
-  const saveName = async () => { const name = nameDraft.trim(); if (!name) return; await fetch('/api/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }); setNameDraft(''); s.refresh(); };
+  const saveName = async () => { const name = nameDraft.trim(); if (!name) return; await fetch('/api/me', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }); setNameDraft(''); s.refresh(); };
   // First run: a fresh workspace gets three steps and a one-minute sample.
   const forced = new URLSearchParams(location.search).get('welcome') === '1';
   let dismissed = false; try { dismissed = localStorage.getItem('prajna-welcome') === 'seen'; } catch { /* no storage */ }
@@ -67,7 +67,7 @@ export default function Home() {
               <li><b>Bring your apps.</b> Connect Google, Slack, Notion or GitHub under <Link to="/connectors">Connectors</Link> and they put what they know on the table and deliver where you say; switch on <Link to="/plugins">Plugins</Link> for skills, web search, computation and documents.</li>
               <li><b>Take the delivery.</b> The artifact carries its provenance: who wrote what, which sources, what was sealed, what you decided. Amend it with notes, compare versions, or hand over the audit bundle.</li>
             </ol>
-            {!(s.profile?.name || '').trim() && (
+            {!(s.me?.name || '').trim() && (
               <div className="welcome-name">
                 <label htmlFor="welcome-name">What should the house call you?</label>
                 <input id="welcome-name" className="key-input" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveName(); }} placeholder="Your name" autoComplete="name" />
