@@ -963,6 +963,40 @@ h1.pg-title {
 .dod code { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-dim); }
 .dod .own { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-dim); }
 
+/* connectors: provider boards */
+.conn-legend { display: flex; flex-wrap: wrap; gap: 0.6rem 1.6rem; margin-top: 1.2rem; font-size: 0.76rem; color: var(--bone-dim); align-items: center; }
+.conn-legend > span { display: inline-flex; align-items: center; gap: 0.5rem; }
+.conn-legend .sflap { min-width: 0; }
+.conn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr)); gap: 1rem; }
+.conn-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: var(--shadow-soft); display: flex; flex-direction: column; overflow: hidden;
+  transition: border-color 0.15s var(--ease);
+}
+.conn-card.state-LIVE { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+.conn-card.state-READY { border-color: color-mix(in srgb, var(--blue) 35%, var(--line)); }
+.conn-head { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem 1.1rem; background: var(--hall); border-bottom: 1px solid var(--line); }
+.conn-glyph {
+  width: 36px; height: 36px; border-radius: 4px; flex: none;
+  background: var(--flap); border: 1px solid rgba(0, 0, 0, 0.5); color: var(--flap-ink);
+  display: grid; place-items: center; font-stretch: 115%; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.06em;
+}
+.conn-title { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.3; }
+.conn-title b { font-weight: 700; font-size: 0.95rem; }
+.conn-title span { font-size: 0.72rem; color: var(--bone-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conn-covers { list-style: none; margin: 0; padding: 0.7rem 1.1rem; display: flex; flex-wrap: wrap; gap: 0.45rem; flex: 1; align-content: flex-start; }
+.conn-covers li { display: inline-flex; align-items: baseline; gap: 0.4rem; border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.22rem 0.7rem; font-size: 0.76rem; }
+.conn-covers li b { font-weight: 650; }
+.conn-covers li span { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone-faint); }
+.conn-foot { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding: 0.8rem 1.1rem 0.95rem; border-top: 1px solid var(--line); }
+.conn-foot .btn-quiet, .conn-foot .btn-stamp { text-decoration: none; }
+.conn-hint { font-size: 0.72rem; color: var(--bone-faint); }
+.conn-unwired { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0.9rem 1.4rem 0.4rem; }
+.conn-unwired-chip { font-size: 0.74rem; color: var(--bone-dim); border: 1px dashed var(--line-strong); border-radius: 999px; padding: 0.22rem 0.7rem; }
+.conn-unwired-chip b { font-weight: 650; color: var(--bone); }
+.conn-note { margin: 0; padding: 0.4rem 1.4rem 1rem; font-size: 0.72rem; color: var(--bone-faint); }
+.conn-summary { margin: 1.2rem 0 0; font-family: var(--mono); font-size: 0.72rem; color: var(--bone-faint); }
+
 /* -------------------------------- utilities -------------------------------- */
 .fade-up { animation: fadeup 0.5s var(--ease) both; }
 @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

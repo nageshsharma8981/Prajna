@@ -1,9 +1,11 @@
 // Connectors: real sign-in (OAuth) to the sources a mission can draw on.
-// A connected source contributes live, read-only evidence lines on the tape
-// and can carry an external delivery step (which holds for your approval).
+// The unit is the PROVIDER — one Google sign-in covers five sources — so the
+// page is a small set of provider boards, each with one state and one action.
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
+
+const GLYPH = { google: 'G', slack: 'S', notion: 'N', github: 'GH' };
 
 export default function Connectors() {
   const s = useStore();
@@ -22,82 +24,89 @@ export default function Connectors() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>The connector list is unreachable: {s.error}.</p></div>;
-  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening the connector list…</p></div>;
+  if (s.error && !s.ready) return <div className="page"><p role="alert" style={{ color: 'var(--rose)' }}>Connectors are unreachable: {s.error}.</p></div>;
+  if (!s.ready) return <div className="page"><p style={{ color: 'var(--bone-faint)' }} role="status">Opening connectors…</p></div>;
 
-  const disconnect = async (provider, name) => {
+  const disconnect = async (provider, label) => {
     setBusy(provider); setErr(null);
     try {
       const r = await fetch(`/api/oauth/${provider}/disconnect`, { method: 'POST' });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Disconnect refused.');
       await s.refresh();
-    } catch (e) { setErr(`${name}: ${e.message}`); } finally { setBusy(null); }
+    } catch (e) { setErr(`${label}: ${e.message}`); } finally { setBusy(null); }
   };
 
-  const connected = s.connectors.filter((c) => c.connected);
-  const ready = s.connectors.filter((c) => !c.connected && c.supported && c.appConfigured);
-  const needsApp = s.connectors.filter((c) => !c.connected && c.supported && !c.appConfigured);
-  const unsupported = s.connectors.filter((c) => !c.supported);
-
-  const Row = ({ c }) => (
-    <div className="board-row" style={{ cursor: 'default' }}>
-      <span className="sym" style={{ '--tint': c.connected ? 'var(--green)' : 'var(--flap-ink)' }} aria-hidden="true">{c.name.slice(0, 3).toUpperCase()}</span>
-      <span className="what">
-        <b>{c.name}</b>
-        <span>
-          {c.kind} · {c.what}
-          {c.connected && c.account ? <> · <b style={{ color: 'var(--green)' }}>connected as {c.account}</b></> : null}
-          {!c.supported ? ' · no sign-in provider wired in this build yet' : null}
-          {c.supported && !c.appConfigured && !c.connected ? <> · needs a {s.oauthApps?.[c.provider]?.label} OAuth app — <Link to="/keys">add it under Your keys</Link></> : null}
-        </span>
-      </span>
-      {c.connected ? (
-        <button className="toggle-btn on" onClick={() => disconnect(c.provider, c.name)} disabled={busy === c.provider} aria-label={`Disconnect ${c.name}`}>Disconnect</button>
-      ) : c.supported && c.appConfigured ? (
-        <a className="toggle-btn" href={`/api/oauth/${c.provider}/start`} aria-label={`Connect ${c.name} with ${s.oauthApps?.[c.provider]?.label} sign-in`}>Connect</a>
-      ) : c.supported ? (
-        <Link to="/keys" className="toggle-btn" style={{ opacity: 0.8 }}>Needs app</Link>
-      ) : (
-        <span className="toggle-btn" style={{ opacity: 0.5, cursor: 'default' }}>Not wired</span>
-      )}
-    </div>
-  );
+  const providers = Object.entries(s.oauthApps || {}).map(([id, meta]) => {
+    const covers = s.connectors.filter((c) => c.provider === id);
+    const connected = covers.some((c) => c.connected);
+    const account = covers.find((c) => c.account)?.account || meta.connectedAs;
+    const state = connected ? 'LIVE' : meta.configured ? 'READY' : 'NEEDS APP';
+    return { id, meta, covers, connected, account, state };
+  });
+  const unwired = s.connectors.filter((c) => !c.supported);
+  const liveCount = providers.filter((p) => p.connected).length;
 
   return (
     <div className="page">
       <h1 className="pg-title">Connectors</h1>
       <p className="lede">
-        A mission is only as good as its evidence. Connect a source with a real sign-in and it does two
-        things: it contributes live, read-only evidence lines on the tape of every mission, and it can
-        carry a delivery step (post to Slack, publish to Notion) — which always holds for your approval.
-        Tokens live only in server memory for this session and are never saved.
+        Sign in once per provider and every mission gains live, read-only evidence from its sources —
+        plus a delivery step (post to Slack, publish to Notion) that always holds for your approval.
+        Sign-ins live in server memory for this session only; nothing is saved.
       </p>
       {flash.connected && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Connected {s.oauthApps?.[flash.connected]?.label || flash.connected}{flash.as ? ` as ${flash.as}` : ''}.</p>}
       {flash.error && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>Connection failed: {flash.error}</p>}
       {err && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>{err}</p>}
 
-      <section className="board section-gap" aria-label="Connected sources">
-        <div className="board-title"><span className="brd-sm">Connected</span><span className="count">{connected.length}</span></div>
-        <div className="board-rows">
-          {connected.length === 0 && <div className="board-empty">Nothing connected in this session. Add a provider app under Your keys, then Connect below.</div>}
-          {connected.map((c) => <Row key={c.id} c={c} />)}
-        </div>
+      <div className="conn-legend" aria-label="Status legend">
+        <span><span className="sflap LIVE">LIVE</span> signed in this session</span>
+        <span><span className="sflap OPEN">READY</span> app loaded — one click to sign in</span>
+        <span><span className="sflap QUEUED">NEEDS APP</span> add the provider's OAuth app under <Link to="/keys">Your keys</Link></span>
+      </div>
+
+      <section className="conn-grid section-gap" aria-label="Providers">
+        {providers.map((p) => (
+          <article key={p.id} className={`conn-card state-${p.state.replace(' ', '-')}`}>
+            <header className="conn-head">
+              <span className="conn-glyph" aria-hidden="true">{GLYPH[p.id] || p.meta.label.slice(0, 2).toUpperCase()}</span>
+              <span className="conn-title">
+                <b>{p.meta.label}</b>
+                <span>{p.connected ? `signed in as ${p.account}` : p.meta.configured ? 'app loaded · not signed in' : 'no OAuth app loaded'}</span>
+              </span>
+              <span className={`sflap ${p.state === 'LIVE' ? 'LIVE' : p.state === 'READY' ? 'OPEN' : 'QUEUED'}`}>{p.state}</span>
+            </header>
+            <ul className="conn-covers">
+              {p.covers.map((c) => (
+                <li key={c.id} title={c.what}><b>{c.name}</b><span>{c.kind}</span></li>
+              ))}
+            </ul>
+            <footer className="conn-foot">
+              {p.connected ? (
+                <button className="btn-quiet" onClick={() => disconnect(p.id, p.meta.label)} disabled={busy === p.id}>Disconnect</button>
+              ) : p.meta.configured ? (
+                <a className="btn-stamp attn-btn" href={`/api/oauth/${p.id}/start`}>Sign in with {p.meta.label}</a>
+              ) : (
+                <Link to="/keys" className="btn-quiet">Add {p.meta.label} app</Link>
+              )}
+              <span className="conn-hint">
+                {p.connected ? 'evidence lines print on every mission' : p.meta.configured ? 'read-only scopes · revocable any time' : 'register the redirect URI shown under Your keys'}
+              </span>
+            </footer>
+          </article>
+        ))}
       </section>
-      <section className="board section-gap" aria-label="Ready to connect">
-        <div className="board-title"><span className="brd-sm">Ready to connect</span><span className="count">{ready.length}</span></div>
-        <div className="board-rows">
-          {ready.length === 0 && <div className="board-empty">No provider app loaded yet — Google covers Gmail, Drive, Calendar, Sheets and YouTube with one app.</div>}
-          {ready.map((c) => <Row key={c.id} c={c} />)}
-        </div>
-      </section>
-      <section className="board section-gap" aria-label="Needs a provider app">
-        <div className="board-title"><span className="brd-sm">Needs a provider app</span><span className="count">{needsApp.length}</span></div>
-        <div className="board-rows">{needsApp.map((c) => <Row key={c.id} c={c} />)}</div>
-      </section>
+
       <section className="board section-gap" aria-label="Not wired yet">
-        <div className="board-title"><span className="brd-sm">Not wired yet</span><span className="count">{unsupported.length}</span></div>
-        <div className="board-rows">{unsupported.map((c) => <Row key={c.id} c={c} />)}</div>
+        <div className="board-title"><span className="brd-sm">Not wired yet</span><span className="count">{unwired.length}</span></div>
+        <div className="conn-unwired">
+          {unwired.map((c) => (
+            <span key={c.id} className="conn-unwired-chip" title={c.what}><b>{c.name}</b> · {c.kind}</span>
+          ))}
+        </div>
+        <p className="conn-note">These sources have no sign-in provider in this build yet. They are listed, not pretended.</p>
       </section>
+
+      <p className="conn-summary" role="status">{liveCount} of {providers.length} providers live this session.</p>
     </div>
   );
 }
