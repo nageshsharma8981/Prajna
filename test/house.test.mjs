@@ -225,3 +225,18 @@ test('the companion reads a pasted address and quotes it, even without a model k
   const r2 = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `And ${BASE}/legal/terms?` }) });
   const raw2 = await r2.text(); assert.ok(!raw2.includes('event: read'), 'nothing read with the tool off');
 });
+
+test('the companion reads an attached text file and quotes it, even without a model key', async () => {
+  const c = await post('/api/chats', { title: 'Attachment test' }); assert.equal(c.status, 200);
+  const note = 'Board note. The Mysore roastery pilot settled at 41 credits and cleared the gate first time. Dissent from DeepSeek was carried into the deck. Next step: a second site by March.';
+  const r = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'What does the attached note say about the next step?', attachments: [{ name: 'board-note.txt', text: note }, { name: 'photo.png' }] }) });
+  assert.equal(r.status, 200);
+  const raw = await r.text();
+  const done = raw.split('\n\n').map((b) => b.trim()).filter((b) => b.startsWith('event: done')).map((b) => JSON.parse(b.split('\ndata: ')[1]))[0];
+  assert.ok(done, 'a done event');
+  assert.match(done.message.text, /I read board-note\.txt \(\d+ words\)/, done.message.text.slice(0, 200));
+  assert.match(done.message.text, /Mysore roastery pilot/, 'quotes the note');
+  const user = done.chat.messages.find((m) => m.role === 'user' && m.read);
+  assert.ok(user && user.read.length === 1 && user.read[0].name === 'board-note.txt' && user.read[0].words > 20, JSON.stringify(user?.read));
+  assert.deepEqual(user.attachments, ['board-note.txt', 'photo.png'], 'both names recorded, only the text one read');
+});

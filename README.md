@@ -1028,3 +1028,14 @@ with their title, address and word count before the owner stamps and
 pays; the ticket lists them beside any attachments. The research step
 reads only what is not already there, and a page is never counted twice.
 The same holds for tickets started from a conversation.
+
+## v0.85: The companion reads what you attach (2026-09-04)
+
+Attach a text file, or a Word, PowerPoint or Excel file with the
+Documents plugin on, to a plain conversation and the companion reads it:
+the streaming chat path used to record attachments by name only. Now
+both chat paths share one parser, the message shows "Read: name · words"
+for each file read, the live model receives the text as material it must
+cite by name, and without a key the house quotes the opening and says it
+can quote but not discuss. A file that is not text is recorded by name
+and left unread, and the reply says so by omission rather than pretence.

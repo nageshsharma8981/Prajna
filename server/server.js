@@ -194,6 +194,21 @@ function limited(ip, bucket, max, windowMs) {
 const ipOf = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 const tooMany = (ip) => limited(ip, 'code', 12, 600000);
 
+// Attachments with text on the table: plain text as sent; Word, PowerPoint and
+// Excel through the Documents plugin. Anything else is recorded by name only.
+function docsFrom(body) {
+  const docsPlugin = (ws().plugins || []).includes('documents');
+  return (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => {
+    if (!a || typeof a !== 'object') return null;
+    const name = String(a.name || 'attachment').slice(0, 120);
+    if (typeof a.text === 'string' && a.text.trim()) return { name, text: String(a.text).slice(0, 200000) };
+    if (typeof a.base64 === 'string' && /\.(docx|pptx|xlsx)$/i.test(name)) {
+      if (!docsPlugin) return null;
+      try { const text = extractText(name, Buffer.from(a.base64, 'base64')); return text ? { name, text } : null; } catch { return null; }
+    }
+    return null;
+  }).filter(Boolean);
+}
 // Pages named in a goal are read when the ticket is written, so they are on
 // the table before stamping; only with the Browser tool on.
 async function pagesFor(goal) {
@@ -953,15 +968,17 @@ async function handle(req, res) {
     if (!text) return json(res, 400, { error: 'Say something first.' });
     // The Browser tool in conversation: addresses in the message are read first,
     // recorded on the message, and handed to the model as pages it may quote.
+    const docs = docsFrom(body);
     let pages = [], unread = [];
     if (ws().tools?.browser && urlsIn(text).length) {
       const results = await readPages(urlsIn(text));
       pages = results.filter((r) => !r.error); unread = results.filter((r) => r.error);
     }
-    const userMsg = addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))), ...(pages.length || unread.length ? { pages: [...pages.map((p) => ({ title: p.title, url: p.url, words: p.words })), ...unread.map((u) => ({ url: u.url, error: u.error }))] } : {}) });
+    const userMsg = addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))), ...(pages.length || unread.length ? { pages: [...pages.map((p) => ({ title: p.title, url: p.url, words: p.words })), ...unread.map((u) => ({ url: u.url, error: u.error }))] } : {}), ...(docs.length ? { read: docs.map((d) => ({ name: d.name, words: d.text.split(/\s+/).filter(Boolean).length })) } : {}) });
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     if (pages.length || unread.length) emit('read', { pages: userMsg.pages });
+    const docsPrompt = docs.length ? `\n\nAttachments the user supplied (quote from them and cite them by name; say plainly when they do not answer the question):\n${docs.map((d, i) => `[${String.fromCharCode(65 + i)}] ${d.name} (${d.text.split(/\s+/).filter(Boolean).length} words)\n${d.text.slice(0, 6000)}`).join('\n\n')}` : '';
     const pagesPrompt = pages.length ? `\n\nPages the user named, read by the house just now (quote from them and cite them by title; say plainly when they do not answer the question):\n${pages.map((p, i) => `[${i + 1}] ${p.title} (${p.url}, ${p.words} words)\n${p.text.slice(0, 6000)}`).join('\n\n')}${unread.length ? `\n\nNot read: ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}` : ''}` : unread.length ? `\n\nThe user named pages the house could not read: ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}. Say so.` : '';
     const seatId = body.lead || ws().personalization.defaultModel;
     const live = liveSeat(seatId);
@@ -969,7 +986,7 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${pagesPrompt}${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${docsPrompt}${pagesPrompt}${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
         if (mm && !ws().tools?.['task-agent']) reply = reply.replace(mm[0], '').trim() + '\n\n(The Task Agent tool is switched off under Tools, so I did not start a mission for this. Switch it on, or pick a mode in the composer.)';
@@ -996,7 +1013,9 @@ async function handle(req, res) {
         emit('done', { message: m, chat: getChat(c.id) });
         return res.end();
       }
-      reply = pages.length
+      reply = docs.length
+        ? `I read ${docs.map((d) => `${d.name} (${d.text.split(/\s+/).filter(Boolean).length} words)`).join(' and ')}${pages.length ? ` and ${pages.map((p) => `${p.title} (${p.words} words)`).join(' and ')}` : ''}. From ${docs[0].name}: "${docs[0].text.replace(/\s+/g, ' ').trim().slice(0, 280)}". Without a model key I can only quote, not discuss; load one under Your keys, or ask for a brief on it and the house will run a mission that cites it.`
+        : pages.length
         ? `I read ${pages.map((p) => `${p.title} (${p.words} words)`).join(' and ')}. From the first: "${pages[0].extract.slice(0, 280)}". Without a model key I can only quote, not discuss; load one under Your keys, or ask for a brief on it and the house will run a mission that cites the page.`
         : unread.length
           ? `I could not read ${unread.map((u) => `${u.url} (${u.error})`).join('; ')}. ${modelById(seatId).name} is not live either; load a key under Your keys.`
@@ -1015,17 +1034,7 @@ async function handle(req, res) {
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) return json(res, 400, { error: 'Say something first.' });
     const mode = String(body.mode || c.mode || 'chat');
-    const docsPlugin = (ws().plugins || []).includes('documents');
-    const docs = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => {
-      if (!a || typeof a !== 'object') return null;
-      const name = String(a.name || 'attachment').slice(0, 120);
-      if (typeof a.text === 'string' && a.text.trim()) return { name, text: String(a.text).slice(0, 200000) };
-      if (typeof a.base64 === 'string' && /\.(docx|pptx|xlsx)$/i.test(name)) {
-        if (!docsPlugin) return null; // recorded by name only; the Documents plugin reads these
-        try { const text = extractText(name, Buffer.from(a.base64, 'base64')); return text ? { name, text } : null; } catch { return null; }
-      }
-      return null;
-    }).filter(Boolean);
+    const docs = docsFrom(body);
     addMessage(c.id, { role: 'user', text, mode, attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))) });
     const MODE_DESK = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
     if (MODE_DESK[mode]) {
