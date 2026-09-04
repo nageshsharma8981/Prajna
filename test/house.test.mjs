@@ -191,6 +191,9 @@ test('the Browser tool reads the pages a ticket names and puts them on the table
   const t = await post('/api/tools/browser/toggle'); assert.equal(t.status, 200);
   if (!t.j.enabled) await post('/api/tools/browser/toggle');
   const w = await post('/api/missions', { goal: `Summarise the house rules at ${BASE}/legal/terms for a new user`, deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200, JSON.stringify(w.j));
+  assert.equal(w.j.status, 'OPEN');
+  const onTable = (w.j.sources || []).find((s) => s.engine === 'page'); assert.ok(onTable && onTable.words > 500, `page on the table before stamping: ${JSON.stringify(w.j.sources)}`);
+  assert.ok((w.j.attachments || []).some((a) => a.page && /Terms/.test(a.name)), `the ticket lists the page: ${JSON.stringify(w.j.attachments)}`);
   assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
   const started = Date.now(); let m;
   while (Date.now() - started < 120000) {
@@ -203,7 +206,7 @@ test('the Browser tool reads the pages a ticket names and puts them on the table
   const page = (m.sources || []).find((s) => s.engine === 'page');
   assert.ok(page, `a page source on the table: ${JSON.stringify((m.sources || []).map((s) => s.engine))}`);
   assert.match(page.title, /Terms and Conditions/); assert.ok(page.words > 500);
-  const read = (m.events || []).find((e) => e.type === 'log' && e.label === 'read'); assert.ok(read && /1 page\(s\) read/.test(read.detail), read?.detail);
+  assert.equal((m.sources || []).filter((s) => s.engine === 'page').length, 1, 'read once, kept once');
 });
 
 test('the companion reads a pasted address and quotes it, even without a model key', async () => {

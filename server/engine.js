@@ -148,7 +148,7 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   return bits.join(' ');
 }
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
@@ -225,10 +225,10 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     chatId: chatId || null,
     // Owner-supplied sources: text attachments are on the table from the
     // start, citable, and their figures count as sourced.
-    attachments: (attachments || []).map((d) => ({ name: d.name, chars: d.text.length })),
+    attachments: [...(attachments || []).map((d) => ({ name: d.name, chars: d.text.length })), ...(pages || []).map((p) => ({ name: p.title, chars: (p.text || '').length, url: p.url, words: p.words, page: true }))],
     // Owner data: the first CSV attached to an analysis mission is the data the charts plot.
     data: ['analysis', 'brief'].includes(desk.id) ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
-    sources: (attachments || []).map((d, i) => ({ id: `src-${i + 1}`, title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })),
+    sources: [...(attachments || []).map((d) => ({ title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })), ...(pages || []).map((p) => ({ title: p.title, url: p.url, kind: 'page', engine: 'page', retrieved: p.retrieved, words: p.words, extract: (p.text || p.extract || '').replace(/\s+/g, ' ').trim().slice(0, 4000) }))].map((s, i) => ({ ...s, id: `src-${i + 1}` })),
     connected: [...(queuedConnectors || [])],
     patches: [],
     acceptedRisks: [],
@@ -611,7 +611,7 @@ async function applyEvent(m, ev, notify, runner) {
       pushEvent(m, record, notify);
       // The Browser tool: pages the ticket names are read first and kept as owned sources.
       let pages = [];
-      if (ws().tools?.browser) {
+      if (ws().tools?.browser && !(m.sources || []).some((s) => s.engine === 'page')) {
         const urls = urlsIn(m.goal);
         if (urls.length) {
           const results = await readPages(urls);
@@ -624,12 +624,12 @@ async function applyEvent(m, ev, notify, runner) {
         const started = Date.now();
         const { query, sources, engines } = await retrieve(m.goal);
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
-        const owned = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector'), ...pages];
+        const owned = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector' || s.engine === 'page'), ...pages];
         m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}”, the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
-        m.sources = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector'), ...pages].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
+        m.sources = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector' || s.engine === 'page'), ...pages].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}), recorded; the brief carries no retrieved reading` }, notify);
       }
       return 'ok';

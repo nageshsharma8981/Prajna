@@ -194,6 +194,14 @@ function limited(ip, bucket, max, windowMs) {
 const ipOf = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 const tooMany = (ip) => limited(ip, 'code', 12, 600000);
 
+// Pages named in a goal are read when the ticket is written, so they are on
+// the table before stamping; only with the Browser tool on.
+async function pagesFor(goal) {
+  if (!ws().tools?.browser) return [];
+  const urls = urlsIn(goal);
+  if (!urls.length) return [];
+  return (await readPages(urls)).filter((r) => !r.error);
+}
 /* --------------------------------- seeding -------------------------------- */
 
 function seed() {
@@ -572,7 +580,7 @@ async function handle(req, res) {
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null });
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null, pages: await pagesFor(goal) });
     return json(res, 200, pub(mission));
   }
 
@@ -924,10 +932,10 @@ async function handle(req, res) {
     if (/\b(analy[sz]e|analysis|dashboard|chart)\b/.test(t)) return 'analysis';
     return null;
   };
-  const startMissionFromChat = (c, mode, goal, seatId) => {
+  const startMissionFromChat = async (c, mode, goal, seatId) => {
     const lead = modelById(seatId || ws().personalization.defaultModel).id;
     const advisers = (ws().personalization.defaultAdvisers || []).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-    const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id });
+    const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id , pages: await pagesFor(goal) });
     if (store.workspace().credits < mission.contract.ceiling) return { mission, text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ceiling ${mission.contract.ceiling}) but the house holds only ${store.workspace().credits.toFixed(0)} credits, top up before stamping.`, kind: 'ticket' };
     launchMission(mission.id, notify);
     return { mission, text: `Started ${mission.deskName.replace(' desk', '')} mission ${mission.serial} from this conversation: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}).`, kind: 'run' };
@@ -967,7 +975,7 @@ async function handle(req, res) {
         if (mm && !ws().tools?.['task-agent']) reply = reply.replace(mm[0], '').trim() + '\n\n(The Task Agent tool is switched off under Tools, so I did not start a mission for this. Switch it on, or pick a mode in the composer.)';
         if (mm && ws().tools?.['task-agent']) {
           reply = reply.replace(mm[0], '').trim();
-          const started = startMissionFromChat(c, mm[1].toLowerCase(), mm[2].trim().slice(0, 400), seatId);
+          const started = await startMissionFromChat(c, mm[1].toLowerCase(), mm[2].trim().slice(0, 400), seatId);
           const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
           const m2 = addMessage(c.id, { role: 'assistant', text: started.text, missionId: started.mission.id, kind: started.kind });
           emit('done', { message: m, mission: m2, chat: getChat(c.id) });
@@ -983,7 +991,7 @@ async function handle(req, res) {
       }
       const mode = ws().tools?.['task-agent'] ? inferMode(text) : null;
       if (mode) {
-        const started = startMissionFromChat(c, mode, text.slice(0, 400), seatId);
+        const started = await startMissionFromChat(c, mode, text.slice(0, 400), seatId);
         const m = addMessage(c.id, { role: 'assistant', text: started.text, missionId: started.mission.id, kind: started.kind });
         emit('done', { message: m, chat: getChat(c.id) });
         return res.end();
@@ -1023,7 +1031,7 @@ async function handle(req, res) {
     if (MODE_DESK[mode]) {
       const lead = modelById(body.lead || ws().personalization.defaultModel).id;
       const advisers = (Array.isArray(body.advisers) ? body.advisers : ws().personalization.defaultAdvisers).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs });
+      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs , pages: await pagesFor(text) });
       const credits = store.workspace().credits;
       if (credits < mission.contract.ceiling) {
         const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits, top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });

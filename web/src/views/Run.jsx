@@ -445,7 +445,7 @@ export default function Run({ id }) {
               <details className="plan-why sources-panel" open>
                 <summary>Sources on the table · {mission.sources.length}</summary>
                 <ol>{mission.sources.map((src, i) => (
-                  <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}</em></li>
+                  <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}{src.words ? ` · ${src.words} words` : ''}</em></li>
                 ))}</ol>
                 {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}), recorded, not hidden.</p>}
               </details>

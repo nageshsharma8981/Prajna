@@ -1019,3 +1019,12 @@ by title. Without a model key the house still reads the page and quotes
 its opening, and says plainly that it can quote but not discuss. A page
 that cannot be read is named with the reason. The tool's descriptions no
 longer speak of a browser session the house never had.
+
+## v0.84: Pages on the table before stamping (2026-09-04)
+
+With the Browser tool on, the pages a goal names are now read when the
+ticket is written, not at the research step, so they sit on the table
+with their title, address and word count before the owner stamps and
+pays; the ticket lists them beside any attachments. The research step
+reads only what is not already there, and a page is never counted twice.
+The same holds for tickets started from a conversation.
