@@ -872,3 +872,12 @@ delivered, and the notes that drove the change. It sits on the run page
 above the narrative, with a link to the two versions side by side. A
 standing-order run reads it as "what is new this week".
 `GET /api/missions/:id/delta`.
+
+## v0.73: The delta travels with the record (2026-09-04)
+
+What changed since last run now goes wherever the record goes: the audit
+bundle carries it as a section, the public record page with it, the
+digest names it against each delivered version ("v2 of PJ-4483: 22.9 cr
+more; 2 new sources"), and asking the record "what changed since last
+time?" answers from the same figures. A first version says plainly that
+it has nothing earlier to compare with.

@@ -5,6 +5,7 @@
 // prompt with an instruction to answer only from it; without a live model the
 // house answers deterministically from the narrative and the ledger.
 import { store } from './store.js';
+import { missionDelta } from './delta.js';
 
 const n = (x) => Number(x || 0).toFixed(1);
 
@@ -25,6 +26,7 @@ export function digest(m) {
     `MISSION ${m.serial} (${m.deskName}), status ${m.status}${m.partial ? ', partial' : ''}${m.voided ? ', voided' : ''}`,
     `Goal: ${m.goal}`,
     m.narrative ? `Narrative: ${m.narrative}` : null,
+    (() => { const d = missionDelta(m); return d && d.lines.length ? `Since last run (v${d.parent.version}, ${d.parent.serial}): ${d.lines.join(' ')}` : null; })(),
     `Credits: estimate ${m.contract?.estimate}, ceiling ${m.contract?.ceiling}, spent ${n(m.spent)}${m.settlement ? `, settled ${n(m.settlement.settled)}, released ${n(m.settlement.released)}` : ''}`,
     `Plan:\n${plan}`,
     m.contract?.why ? `Why this plan: ${m.contract.why}` : null,
@@ -50,6 +52,7 @@ export function recordContext(chat, limit = 7000) {
 // Deterministic answers when no live model is loaded. Returns null when the
 // question is not about the record, so the caller can fall through.
 const TOPICS = [
+  { re: /\b(chang|since last|last time|last run|previous (run|version)|what.s new|different)/i, pick: /^$/, delta: true },
   { re: /\b(cost|credit|spend|spent|estimate|ceiling|settle|price|expensive|over budget|cheap)/i, pick: /(credit|estimate|ceiling|settle|reserved)/i },
   { re: /\b(gate|refus|fail|assert|valid|seal|patch|risk)/i, pick: /(gate|lane|sealed|assertion|accepted risk)/i },
   { re: /\b(source|cite|citation|evidence|retriev|sweep|attach)/i, pick: /(source|sweep|attached|table)/i },
@@ -68,6 +71,7 @@ export function answerFromRecord(question, missions) {
   const serialAsked = (q.match(/PJ-\d+/i) || [])[0];
   const targets = serialAsked ? missions.filter((m) => m.serial.toLowerCase() === serialAsked.toLowerCase()) : [missions.at(-1)];
   const answers = targets.map((m) => {
+    if (topic?.delta) { const d = missionDelta(m); return d && d.lines.length ? `${m.serial} against v${d.parent.version} (${d.parent.serial}): ${d.lines.join(' ')}` : `${m.serial} has no earlier version to compare with; it is v1.`; }
     const sentences = (m.narrative || '').split(/(?<=\.)\s+/).filter(Boolean);
     if (!sentences.length) return `${m.serial} has no narrative yet, it is ${m.status.toLowerCase()}${m.status === 'LIVE' || m.status.startsWith('PAUSED') ? '; the tape is still being written' : ''}.`;
     if (wantsAll || !topic) return sentences.join(' ');

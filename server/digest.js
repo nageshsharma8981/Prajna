@@ -3,6 +3,7 @@
 // token in memory, no send; the route says so rather than pretending.
 import { store } from './store.js';
 import { ws } from './workspace.js';
+import { missionDelta } from './delta.js';
 
 const n = (x) => Number(x || 0).toFixed(0);
 
@@ -27,7 +28,7 @@ export function digestText({ days = 1 } = {}) {
   if (pending.length) lines.push(`${pending.length} run${pending.length === 1 ? ' is' : 's are'} waiting on a decision: ${pending.map((m) => `${m.serial} (${(m.attention || []).find((a) => !a.decision)?.kind})`).join(', ')}.`);
   if (incidents.length) lines.push(`${incidents.length} incident${incidents.length === 1 ? '' : 's'} recorded: ${incidents.map((m) => `${m.serial}, ${m.retrieval && m.retrieval.ok === false ? `retrieval failed (${m.retrieval.error})` : `live model could not author (${m.authored.error})`}`).join('; ')}.`);
   lines.push('');
-  if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) lines.push(`  • ${m.serial}, ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)`); lines.push(''); }
+  if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) { const d = m.lineage ? missionDelta(m) : null; const since = d ? [d.lines.find((l) => l.startsWith('Settled')), d.lines.find((l) => /source/.test(l))].filter(Boolean).map((l) => l.replace(/\.$/, '').replace(/^Settled [\d.]+ cr against [\d.]+ cr last time, /, '')).join('; ') : ''; lines.push(`  • ${m.serial}, ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)${d ? ` · v${d.version} of ${d.parent.serial}${since ? `: ${since}` : ''}` : ''}`); } lines.push(''); }
   lines.push(`Balance ${n(w.credits)} credits, ${n(w.reserved)} reserved, ${n(w.spent)} spent to date.`);
   const runs = (ws().standingOrders || []).flatMap((o) => (o.runs || []).filter((r) => r.at >= since).map((r) => ({ ...r, order: o.serial })));
   if (runs.length) { const ran = runs.filter((r) => !r.skipped), skipped = runs.filter((r) => r.skipped); lines.push(`Standing orders: ${ran.length} ran${ran.length ? ` (${ran.map((r) => r.serial).join(', ')})` : ''}, ${skipped.length} skipped${skipped.length ? ` (${skipped.map((r) => `${r.order}: ${r.skipped}`).join('; ')})` : ''}.`); }

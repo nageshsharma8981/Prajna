@@ -1,3 +1,4 @@
+import { missionDelta } from './delta.js';
 // The audit bundle: one self-contained HTML file that carries a mission's
 // whole record, contract, tape, decisions, validation, sources, settlement,
 // the delivered artifact (embedded, sandboxed) and the machine-readable
@@ -44,6 +45,7 @@ details summary{cursor:pointer;font-weight:700}
 </div>
 
 ${m.narrative ? `<h2>In plain words</h2><p>${esc(m.narrative)}</p>` : ''}
+${(() => { const d = missionDelta(m); return d && d.lines.length ? `<h2>Since v${d.parent.version}, ${esc(d.parent.serial)}, this ${d.reason}</h2><ul>${d.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''; })()}
 <h2>Contract</h2>
 ${m.contract.why ? `<p>${esc(m.contract.why)}</p>` : ''}
 <table><thead><tr><th>#</th><th>Step</th><th>Tool</th><th>Access</th><th>Cost</th><th>Status</th><th>Why</th></tr></thead><tbody>
