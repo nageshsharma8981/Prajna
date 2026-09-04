@@ -188,6 +188,30 @@ export default function Account({ page }) {
         {p === 'help' && (
           <>
             <h1 className="pg-title">Get help</h1>
+            <section className="limits" aria-label="What the house can and cannot do yet">
+              <h2 className="h2">What the house can and cannot do yet</h2>
+              <p className="sub">One honest list. Everything else in the interface says the same thing in its own place.</p>
+              <div className="limits-grid">
+                <div><span className="k">Does</span><ul>
+                  <li>Writes a contract before anything runs: plan, estimate, ceiling, assertions, and why.</li>
+                  <li>Runs website, mobile, deck, research and analysis missions with every step, cost and panel position on the tape.</li>
+                  <li>With your own key, the lead seat writes the substance; advisers critique it; figures must trace to a source.</li>
+                  <li>Retrieves real sources (encyclopedia; the live web with a Brave key) and reads your text attachments as evidence.</li>
+                  <li>Gates every delivery with two validator lanes, brings decisions to you with a justification on the record, and settles credits against the estimate.</li>
+                  <li>Delivers artifacts with provenance, notes, versions, comparisons, public share links and a full audit bundle.</li>
+                  <li>Streams chat, starts missions from conversation, and answers questions about a run from its record.</li>
+                </ul></div>
+                <div><span className="k">Does not, yet</span><ul>
+                  <li>Without a key, the substance of every delivery is house-scripted sample material — labelled, never hidden.</li>
+                  <li>Charts plot sample series until a data connector is wired; the reading and caveats can be live, the numbers are not.</li>
+                  <li>Video generation on hosted models is not wired; images are, on your OpenAI or Google key.</li>
+                  <li>Billing is demo: top-ups and plans are ledger lines, nothing is charged.</li>
+                  <li>One workspace per house: the access code opens it; there are no separate user accounts.</li>
+                  <li>Keys and OAuth tokens live in memory only, so a restart means loading them again.</li>
+                  <li>Connectors beyond Google, Slack, Notion and GitHub are catalogue entries, not live integrations.</li>
+                </ul></div>
+              </div>
+            </section>
             <div className="board section-gap"><div className="board-rows">
               {[['First-run welcome', 'The three steps and the one-minute sample, again.', '/?welcome=1'], ['How missions work', 'State an outcome → the house writes a ticket → it runs in the open → a validated artifact is delivered.', '/missions'], ['Bring your own keys', 'Load a provider key to make panel seats live. Keys are never saved.', '/keys'], ['Connect apps', 'Register a provider OAuth app, then Connect from the catalog.', '/connectors'], ['Boards', 'See every mission on a Kanban and each plan as a task map.', '/boards']].map(([t, d, to]) => (
                 <Link key={t} to={to} className="board-row"><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>?</span><span className="what"><b>{t}</b><span>{d}</span></span></Link>

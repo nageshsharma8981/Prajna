@@ -574,3 +574,10 @@ runs waiting on a decision, incidents, deliveries, balance. `POST
 no token in memory it says so and sends nothing. Settings offers "Send now"
 and an opt-in "every morning at 08:00 UTC while the server holds a Google
 token" — tokens are memory-only, so a restart means reconnecting.
+
+## v0.41 — What the house can and cannot do yet (2026-09-04)
+
+Get Help opens with one honest list: what the house does today and what it
+does not do yet — scripted substance without a key, sample chart series,
+no hosted video, demo billing, one workspace per house, memory-only keys and
+tokens, and which connectors are live versus catalogue entries.
