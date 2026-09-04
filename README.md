@@ -784,3 +784,11 @@ beneath a dated heading. Slack: the post lands in the earlier thread. GitHub:
 a comment on the earlier issue. Gmail drafts stay one per delivery. The
 earlier delivery is found on the same mission or up the lineage chain, and
 the handover names where the update went.
+
+## v0.64: What left the house (2026-09-04)
+
+The Connectors page lists every delivery that ever went out through a
+connected app, per app, newest first: the mission, when, where it landed,
+its id or link, whether it was a re-delivery, and whether the public link it
+carried still resolves or was revoked. Nothing leaves the house without a
+place it can be seen.

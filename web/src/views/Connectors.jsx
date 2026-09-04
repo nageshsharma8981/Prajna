@@ -83,6 +83,27 @@ export default function Connectors() {
         )}
       </section>
 
+      {(() => {
+        // Everything that ever left the house through an app, per app, from the mission ledger.
+        const rows = [];
+        for (const m of s.missions || []) for (const d of m.deliveries || []) rows.push({ ...d, serial: m.serial, missionId: m.id });
+        if (!rows.length) return null;
+        const byApp = rows.reduce((acc, r) => { (acc[r.connector] ||= []).push(r); return acc; }, {});
+        return (
+          <section className="section-gap" aria-label="Activity">
+            <h2 className="h2">What left the house</h2>
+            <p className="sub">Every delivery through a connected app, newest first, with its id or link and whether the public link it carried still resolves.</p>
+            {Object.entries(byApp).map(([cid, list]) => (
+              <details key={cid} className="plan-why activity">
+                <summary>{(s.connectors || []).find((c) => c.id === cid)?.name || cid} · {list.length} deliver{list.length === 1 ? 'y' : 'ies'}{list.some((r) => !r.ok) ? ` · ${list.filter((r) => !r.ok).length} failed` : ''}</summary>
+                <ul>{list.slice().sort((a, b) => b.at - a.at).slice(0, 8).map((r, i) => (
+                  <li key={i}><Link to={`/run/${r.missionId}`}>{r.serial}</Link> · {new Date(r.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {r.ok ? <>{r.where}{r.id ? ` (${r.id})` : ''}{r.url ? <> · <a href={r.url} target="_blank" rel="noreferrer">open</a></> : null}{r.redelivery ? ' · again' : ''}{r.linkRevokedAt ? <span className="live-error"> · link revoked</span> : r.linkOk === false ? <span className="live-error"> · link did not resolve</span> : ''}</> : <span className="live-error">failed: {r.error}</span>}</li>
+                ))}</ul>
+              </details>
+            ))}
+          </section>
+        );
+      })()}
       {Object.entries(byCat).map(([category, items]) => (
         <section key={category} className="section-gap">
           <h2 className="h2">{category}</h2>
