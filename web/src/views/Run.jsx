@@ -361,6 +361,7 @@ export default function Run({ id }) {
         }}>{mission.shareToken ? 'Revoke record link' : 'Share record'}</button>}
         {mission.status !== 'OPEN' && <a className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} href={`/api/missions/${mission.id}/bundle?download=1`} title="One self-contained file: contract, tape, decisions, validation, sources, settlement, the artifact, and the machine-readable record">Audit bundle</a>}
         {mission.lineage && <span className="lineage-tag">v{mission.lineage.version} · amends {mission.lineage.parentSerial}</span>}
+        {mission.amendedTo && <Link className="lineage-tag" to={`/run/${mission.amendedTo.id}`} title="The amended ticket the house wrote when the ground turned out to be empty">amended into {mission.amendedTo.serial}</Link>}
         {(live || paused) && confirmStop && (
           <span className="stop-confirm" role="group" aria-label="Confirm stop">
             <span>Stop now? Completed steps are kept and ship as a partial artifact; {mission.spent.toFixed(1)}cr already settled stays settled; the rest of the reservation returns.</span>

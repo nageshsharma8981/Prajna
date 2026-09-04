@@ -60,7 +60,8 @@ export function queryFor(goal) {
 }
 
 async function wikipedia(q, limit, retrieved) {
-  const base = 'https://en.wikipedia.org/w/api.php';
+  // The encyclopedia's address, overridable so a test can stand one up locally.
+  const base = process.env.PRAJNA_WIKI_BASE || 'https://en.wikipedia.org/w/api.php';
   const search = await get(`${base}?action=query&list=search&srsearch=${encodeURIComponent(q)}&format=json&srlimit=${limit}&srprop=wordcount`);
   const hits = search?.query?.search || [];
   if (!hits.length) return [];

@@ -612,3 +612,45 @@ test('a shared delivery can be taken away, in the same formats, with no account'
   assert.equal((await fetch(`${BASE}/s/${token}.docx`)).status, 404);
   assert.equal((await fetch(`${BASE}/s/${token}`)).status, 404);
 });
+
+test('when the sweep finds nothing, the house offers a smaller ticket instead of charging for empty steps', async () => {
+  // An encyclopedia of our own that knows nothing, so the sweep succeeds and
+  // still returns no sources: the case the house must notice.
+  const empty = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ query: { search: [] } })); });
+  await new Promise((r) => empty.listen(0, '127.0.0.1', r));
+  const port = empty.address().port;
+  const child2 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT + 1), PRAJNA_DATA_DIR: DIR, PRAJNA_WIKI_BASE: `http://127.0.0.1:${port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const B2 = `http://localhost:${PORT + 1}`;
+  const j2 = async (p, o) => { const r = await fetch(B2 + p, { headers: { 'content-type': 'application/json' }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B2}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const w = await j2('/api/missions', { method: 'POST', body: JSON.stringify({ goal: 'Ground test: should we enter the market for a thing nobody has written about?', deskId: 'brief' }) });
+    assert.equal(w.status, 200);
+    const dead = w.j.contract.plan.filter((p) => ['cite-guard', 'steelman'].includes(p.tool));
+    assert.ok(dead.length >= 1, 'the deep plan has source-dependent steps');
+    assert.equal((await j2(`/api/missions/${w.j.id}/launch`, { method: 'POST' })).status, 200);
+    let m; const started = Date.now();
+    while (Date.now() - started < 60000) {
+      m = (await j2(`/api/missions/${w.j.id}`)).j;
+      if ((m.attention || []).some((a) => a.kind === 'ground' && !a.decision)) break;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    const ask = (m.attention || []).find((a) => a.kind === 'ground');
+    assert.ok(ask, `the house asked about the empty ground: ${m.status}, ${JSON.stringify((m.events || []).slice(-2).map((e) => e.detail))}`);
+    assert.match(ask.prompt, /The sweep found no sources/);
+    assert.deepEqual(ask.options, ['amend-ticket', 'continue-as-stamped']);
+    assert.equal(m.status, 'PAUSED_ATTENTION');
+    const d = await j2(`/api/missions/${w.j.id}/attention/${ask.id}`, { method: 'POST', body: JSON.stringify({ decision: 'amend-ticket', justification: 'nothing to grade, so do not pay to grade it' }) });
+    assert.equal(d.status, 200);
+    const after = (await j2(`/api/missions/${w.j.id}`)).j;
+    assert.equal(after.status, 'KILLED');
+    assert.ok(after.amendedTo?.serial, 'the amended ticket is named on the record');
+    const next = (await j2(`/api/missions/${after.amendedTo.id}`)).j;
+    assert.equal(next.status, 'OPEN', 'the amended ticket waits to be stamped');
+    assert.equal(next.contract.plan.filter((p) => ['cite-guard', 'steelman'].includes(p.tool)).length, 0, 'the empty steps are gone');
+    assert.ok(next.contract.ceiling < w.j.contract.ceiling, `a smaller ceiling: ${next.contract.ceiling} vs ${w.j.contract.ceiling}`);
+    assert.equal(next.lineage.parentId, w.j.id);
+  } finally { child2.kill(); empty.close(); }
+});

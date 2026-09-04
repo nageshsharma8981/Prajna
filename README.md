@@ -1213,3 +1213,16 @@ ledger, the limits, the backups, the export and the erasure are the
 owner's. Keys are never written to disk. Ninety-three iterations, each
 verified before it shipped, and a suite of twenty-nine tests the deploy
 refuses to skip.
+
+## v1.1: When the ground is empty, the house says so (2026-09-04)
+
+A plan is written before the work starts, so sometimes the work proves
+the plan wrong. If the sweep returns no sources, the steps that exist
+only to grade and steelman sources have nothing to do, and the house now
+stops before spending on them: it names those steps and what they cost,
+and offers to write an amended ticket without them or to run the plan as
+you stamped it. Choosing the amendment stops this run with its partial
+artifact, releases the unspent reserve, and leaves a smaller unstamped
+ticket in the same lineage, linked from the run you stopped. The plan
+stays a contract: the house proposes, the owner decides, and the reason
+is on the record either way.

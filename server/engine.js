@@ -646,6 +646,23 @@ async function applyEvent(m, ev, notify, runner) {
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
         const owned = [...(m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector' || s.engine === 'page'), ...pages];
         m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
+        // The ground changed: a plan that grades and steelmans sources cannot
+        // do either with none. The house says so and offers the cheaper path
+        // rather than charging for steps with nothing to work on.
+        if (!(m.sources || []).length) {
+          const started = m.contract.plan.findIndex((p) => p.id === step.id);
+          const dead = m.contract.plan.filter((p, i) => i > started && ['cite-guard', 'steelman'].includes(p.tool));
+          if (dead.length) {
+            const save = Math.round(dead.reduce((a, p) => a + p.cost, 0) * 10) / 10;
+            raiseAttention(m, notify, {
+              kind: 'ground', stepId: step.id, dead: dead.map((p) => p.id),
+              prompt: `The sweep found no sources, and ${dead.length} step${dead.length === 1 ? '' : 's'} on this ticket exist only to work on them: ${dead.map((p) => `“${p.title}”`).join(', ')}, ${save} cr of the plan. Write an amended ticket without them, or run the plan as you stamped it?`,
+              options: ['amend-ticket', 'continue-as-stamped'],
+            });
+            pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: `Nothing was retrieved for “${query}”; the plan is now larger than the evidence. Brought to you before more is spent.` }, notify);
+            return 'pause';
+          }
+        }
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}”, the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
@@ -1088,6 +1105,23 @@ export async function decideAttention(missionId, requestId, decision, justificat
       scheduleNext(missionId);
     } else {
       killMission(missionId, notify);
+    }
+  } else if (req.kind === 'ground') {
+    if (decision === 'amend-ticket') {
+      const dead = new Set(req.dead || []);
+      killMission(missionId, notify);
+      const next = forkMission(missionId, { goal: m.goal, installedSkills: m.installedSkills || [], queuedConnectors: m.connected || [], feedback: [`The sweep found no sources, so ${dead.size} step(s) that could only work on sources were dropped from this ticket.`] });
+      if (next) {
+        const kept = next.contract.plan.filter((p) => !['cite-guard', 'steelman'].includes(p.tool));
+        if (kept.length) { try { editPlan(next.id, kept.map((p) => ({ id: p.id, title: p.title, tool: p.tool, access: p.access, dependsOn: p.dependsOn }))); } catch { /* the standard plan stands */ } }
+        m.amendedTo = { id: next.id, serial: next.serial };
+        store.flushMissions();
+        pushEvent(m, { type: 'log', label: 'amend', detail: `Amended into ${next.serial}: the same goal without the steps that had nothing to work on. Nothing beyond ${m.spent.toFixed(1)}cr was spent here, and ${next.serial} is unstamped until you stamp it.` }, notify);
+      }
+    } else {
+      m.status = 'LIVE';
+      pushEvent(m, { type: 'log', label: 'ground', detail: 'Running the plan as stamped, with no sources on the table. The brief will say so.' }, notify);
+      scheduleNext(missionId);
     }
   } else if (req.kind === 'approval') {
     const step = m.contract.plan.find((p) => p.id === req.stepId);
