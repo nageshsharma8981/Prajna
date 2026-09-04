@@ -223,7 +223,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     // start — citable, and their figures count as sourced.
     attachments: (attachments || []).map((d) => ({ name: d.name, chars: d.text.length })),
     // Owner data: the first CSV attached to an analysis mission is the data the charts plot.
-    data: desk.id === 'analysis' ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
+    data: ['analysis', 'brief'].includes(desk.id) ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
     sources: (attachments || []).map((d, i) => ({ id: `src-${i + 1}`, title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })),
     connected: [...(queuedConnectors || [])],
     patches: [],

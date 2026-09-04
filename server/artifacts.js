@@ -186,6 +186,13 @@ ${claimsHtml}
 <h2>2 · What the evidence does not support</h2>
 ${A && Array.isArray(A.refuted) && A.refuted.length ? `<p>Claims commonly made that did not survive grading: ${A.refuted.slice(0, 4).map((r) => `${esc(str(r))}<span class="grade gC">C</span>`).join(', ')}. The brief refuses them as planning assumptions.</p>` : '<p>Claims commonly made in this space that did not survive grading: that the market is winner-take-all<span class="grade gC">C</span>, that regulation will remain favorable by default<span class="grade gC">C</span>, and that early entrants hold durable data advantages<span class="grade gC">C</span>. Each rests on analogy rather than measurement. The brief refuses them as planning assumptions.</p>'}
 
+${mission.data && mission.data.series ? `<h2>2b · Data on the table — ${esc(mission.data.name)}</h2>
+<p>${mission.data.rows} rows, ${mission.data.columns.length} columns, attached by the owner. ${esc(mission.data.series.column)}${mission.data.series.labelColumn ? ` by ${esc(mission.data.series.labelColumn)}` : ''}: sum ${mission.data.stats.sum}, mean ${mission.data.stats.mean}, range ${mission.data.stats.min}–${mission.data.stats.max}.${mission.data.segments ? ` By ${esc(mission.data.segments.column)}: ${mission.data.segments.items.map((s) => `${esc(s.name)} ${s.value}`).join(', ')}.` : ''} Parsed, not verified; figures in this brief that trace to it are marked as owner data.</p>
+<table><thead><tr><th>${esc(mission.data.series.labelColumn || '#')}</th><th>${esc(mission.data.series.column)}</th></tr></thead><tbody>
+${mission.data.series.points.slice(0, 12).map((p, i) => `<tr><td>${esc(p.label || String(i + 1))}</td><td>${p.value}</td></tr>`).join('')}
+${mission.data.series.points.length > 12 ? `<tr><td colspan="2">… ${mission.data.series.points.length - 12} more rows in the attachment</td></tr>` : ''}
+</tbody></table>` : ''}
+
 <h2>3 · The narrow move</h2>
 <table><thead><tr><th>Move</th><th>Commitment</th><th>Reversibility</th><th>What it buys</th></tr></thead><tbody>
 ${A && Array.isArray(A.moves) && A.moves.length ? A.moves.slice(0, 4).map((mv) => `<tr><td>${esc(str(mv.move))}</td><td>${esc(str(mv.commitment))}</td><td>${esc(str(mv.reversibility))}</td><td>${esc(str(mv.buys))}</td></tr>`).join('\n') : `<tr><td>Focused pilot in the identified segment</td><td>Small, time-boxed</td><td>High</td><td>Direct demand measurement, not survey proxy</td></tr>

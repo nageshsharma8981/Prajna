@@ -591,3 +591,11 @@ exactly what it parsed — rows, columns, series and segments. The live author
 and the panel get the numbers in their prompt; the artifact names the file
 and carries the profile in provenance (`data`). No CSV → the house sample
 series, labelled as such, as before.
+
+## v0.43 — Data in the brief (2026-09-04)
+
+A CSV attached to a research mission appears in the brief as "Data on the
+table": the file, its shape, the series with sum, mean and range, the segment
+breakdown, and the first rows — parsed, not verified, and marked as owner
+data. The author gets the same summary in its prompt; figures that trace to
+the file pass the honesty lane.
