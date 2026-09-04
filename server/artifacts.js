@@ -26,7 +26,7 @@ function provenanceObject(mission) {
     computed: mission.computed && !mission.computed.none ? mission.computed : null,
     data: mission.data ? { name: mission.data.name, rows: mission.data.rows, columns: mission.data.columns, series: mission.data.series?.column || null, segments: mission.data.segments?.column || null } : null,
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
-    deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, error: d.error || null })),
+    deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, link: d.link || null, linkOk: d.linkOk ?? null, error: d.error || null })),
     dissent: mission.dissent || null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,

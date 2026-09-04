@@ -740,3 +740,13 @@ A finished run shows a handover block at the end of its tape: the artifact
 and its public link if shared, the audit bundle and the public record link
 if shared, and every connector delivery with where it went, its id and a
 link, or the recorded failure. Everything that left the house, in one place.
+
+## v0.59: Deliveries that point somewhere (2026-09-04)
+
+A connector delivery now points at a public, revocable link to the artifact
+rather than a workspace page a recipient could not open. The approval prompt
+says so before you approve. The artifact is produced ahead of the delivery
+step when it does not exist yet (validation still follows and the same
+artifact is refreshed, never duplicated), and when PRAJNA_PUBLIC_URL is set
+the house fetches the link before sending and records whether it resolved,
+on the tape, in provenance and in the handover block.

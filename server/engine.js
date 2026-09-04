@@ -560,7 +560,7 @@ async function applyEvent(m, ev, notify, runner) {
       runner.pendingStep = ev;
       raiseAttention(m, notify, {
         kind: 'approval', stepId: step.id,
-        prompt: `Step “${step.title}” acts outside the workspace (${step.access}). Approve it, or skip it and close the mission without it?`,
+        prompt: `Step “${step.title}” acts outside the workspace (${step.access}).${step.tool === 'connector-post' ? ' Approving publishes the artifact at a public link (revocable from the artifact bar) so the delivery can point at it.' : ''} Approve it, or skip it and close the mission without it?`,
         options: ['approve-step', 'skip-step'],
       });
       store.flushMissions();
@@ -631,12 +631,19 @@ async function applyEvent(m, ev, notify, runner) {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
     if (step && step.tool === 'connector-post' && step.connector && !(m.deliveries || []).some((d) => d.stepId === step.id)) {
       pushEvent(m, record, notify);
-      const link = `${process.env.PRAJNA_PUBLIC_URL || ''}/artifact/${m.artifactId || ''}`.replace(/^\/artifact/, '/artifact');
+      if (!m.artifactId) { const a = makeArtifact(m, notify); pushEvent(m, { type: 'artifact.ready', ...a, early: true, note: 'Artifact produced ahead of delivery so the delivery can point at it; validation still follows.' }, notify); }
+      const art = store.artifact(m.artifactId);
+      if (art && !art.shareToken) store.refreshArtifact(art.id, { shareToken: crypto.randomBytes(16).toString('hex'), sharedAt: Date.now(), sharedBy: 'delivery' }, store.artifactHtml(art.id));
+      const token = store.artifact(m.artifactId)?.shareToken;
+      const origin = (process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '');
+      const link = `${origin}/s/${token}`;
+      let linkOk = null;
+      if (origin) { try { const r = await fetch(link, { method: 'GET' }); linkOk = r.ok; } catch { linkOk = false; } }
       let rec;
       try {
         const r = await deliver(step.connector, m, link);
-        rec = { stepId: step.id, connector: step.connector, ok: true, id: r.id, url: r.url, where: r.where, at: Date.now() };
-        pushEvent(m, { type: 'log', stepId: step.id, label: 'deliver', live: true, detail: `${r.where}: delivered${r.id ? ` (${r.id})` : ''}${r.url ? ` ${r.url}` : ''}` }, notify);
+        rec = { stepId: step.id, connector: step.connector, ok: true, id: r.id, url: r.url, where: r.where, link, linkOk, at: Date.now() };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'deliver', live: true, detail: `${r.where}: delivered${r.id ? ` (${r.id})` : ''}${r.url ? ` ${r.url}` : ''} · points at ${link}${linkOk === true ? ' (link checked)' : linkOk === false ? ' (LINK DID NOT RESOLVE, recorded)' : ' (no public host set, link not checked)'}` }, notify);
       } catch (e) {
         rec = { stepId: step.id, connector: step.connector, ok: false, error: String(e.message || e).slice(0, 200), at: Date.now() };
         pushEvent(m, { type: 'log', stepId: step.id, label: 'deliver', live: false, detail: `${step.connector}: delivery failed (${rec.error}), recorded, not hidden` }, notify);
@@ -763,8 +770,14 @@ async function applyEvent(m, ev, notify, runner) {
         }
       }
     }
-    const a = makeArtifact(m, notify);
-    Object.assign(record, a);
+    if (m.artifactId) {
+      const { title, kind, html } = GENERATORS[m.desk](m);
+      store.refreshArtifact(m.artifactId, { title: m.partial ? `${title} (partial)` : title, cost: m.spent }, html);
+      Object.assign(record, { artifactId: m.artifactId, title, kind });
+    } else {
+      const a = makeArtifact(m, notify);
+      Object.assign(record, a);
+    }
   }
 
   if (ev.type === 'validate.run') {
