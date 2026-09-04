@@ -13,6 +13,7 @@ import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
+import { authorContent } from './author.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -20,7 +21,7 @@ import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 export function liveSeat(modelIdOrRef) {
   const model = modelById(modelIdOrRef);
   const k = model && model.provider ? store.keyFor(model.provider) : null;
-  return k ? { model, key: k.key, baseUrl: k.baseUrl || model.baseUrl || null } : null;
+  return k ? { model, key: k.key, baseUrl: model.baseUrl || k.baseUrl || null } : null; // a seat's own host wins over the provider default
 }
 
 function positionPrompt(mission, model) {
@@ -488,6 +489,28 @@ async function applyEvent(m, ev, notify, runner) {
     if (step) step.status = ev.status;
   }
 
+  // Live authoring: at the step that writes the deliverable, a live lead seat
+  // authors the substance itself. Success or failure, the ledger says which.
+  if (ev.type === 'step.status' && ev.status === 'LIVE') {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && ['compose', 'build', 'design'].includes(step.tool) && !m.authored) {
+      const live = liveSeat(m.lead);
+      if (live) {
+        pushEvent(m, record, notify);
+        let log;
+        try {
+          m.authored = await authorContent(m, live);
+          log = { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it` };
+        } catch (e) {
+          m.authored = { live: false, model: live.model.name, modelId: live.model.modelId, error: String(e.message || e).slice(0, 200), at: Date.now() };
+          log = { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${live.model.name} could not author (${m.authored.error}) — house-scripted substance used and recorded as such` };
+        }
+        pushEvent(m, log, notify);
+        return 'ok';
+      }
+    }
+  }
+
   if (ev.type === 'cost') {
     const wouldBe = Math.round((m.spent + ev.delta) * 10) / 10;
     if (wouldBe > m.contract.ceiling) {
@@ -582,10 +605,14 @@ function runValidation(m, notify, runner) {
       : `Gate NOT cleared: ${openAfterRisk.join(', ')} — ${gate.failed.length} failed, ${gate.dissenting.length} dissenting, ${gate.missing.length} missing.` }, notify);
   m.gateResult = gate;
   if (openAfterRisk.length === 0) return 'pushed';
+  // A patch that did not clear is not offered twice: the honest options left
+  // are to carry the risk on the record or stop.
+  const alreadyPatched = openAfterRisk.filter((id) => (m.patches || []).includes(id));
+  const patchable = alreadyPatched.length < openAfterRisk.length;
   raiseAttention(m, notify, {
     kind: 'gate', assertions: openAfterRisk,
-    prompt: `The gate did not clear: ${openAfterRisk.map((id) => `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}`).join('; ')}. Patch the artifact and re-validate, accept the risk on the record, or stop?`,
-    options: ['patch', 'accept-risk', 'stop-run'],
+    prompt: `The gate did not clear: ${openAfterRisk.map((id) => `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}`).join('; ')}. ${alreadyPatched.length ? `A patch was already applied to ${alreadyPatched.join(', ')} and did not clear it. ` : ''}${patchable ? 'Patch the artifact and re-validate, accept the risk on the record, or stop?' : 'Accept the risk on the record, or stop?'}`,
+    options: patchable ? ['patch', 'accept-risk', 'stop-run'] : ['accept-risk', 'stop-run'],
   });
   store.flushMissions();
   return 'pause';

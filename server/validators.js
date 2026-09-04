@@ -5,6 +5,9 @@
 // pass and reports dissent (lanes disagree) and missing (no lane covered).
 // These are real checks on real output — never a scripted vote.
 
+// The deliverable body: what the user receives, minus the house's own
+// provenance footer and audit object (which legitimately carry lists).
+const body = (html) => html.replace(/<footer class="prov">[\s\S]*?<\/footer>/, '').replace(/<script type="application\/json" id="prajna-provenance">[\s\S]*?<\/script>/, '');
 const has = (html, re) => (re instanceof RegExp ? re.test(html) : html.includes(re));
 const count = (html, re) => (html.match(re) || []).length;
 const provenance = (html) => {
@@ -34,7 +37,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => count(h, /<section class="slide/g) === 9, surface: (h) => has(h, /1 \/ 9/) && has(h, /9 \/ 9/) },
     { id: 'VAL-ONE-IDEA', title: 'Every slide holds one idea: a single heading and one supporting line', owner: 'deck-doctor',
       scrutiny: (h) => { const slides = h.split('<section class="slide').slice(1); return slides.every((s) => count(s, /<h[12]>/g) === 1 && count(s, /class="sub"/g) === 1); },
-      surface: (h) => !has(h, /<ul>|<li>/) },
+      surface: (h) => !has(body(h), /<ul>|<li>/) },
     { id: 'VAL-KEYBOARD-NAV', title: 'Arrow keys and click advance the deck', owner: 'compose',
       scrutiny: (h) => has(h, /ArrowRight/) && has(h, /ArrowLeft/), surface: (h) => has(h, /addEventListener\('click'/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
@@ -53,7 +56,7 @@ export const ASSERTIONS = {
   ],
   mobile: [
     { id: 'VAL-FOUR-SCREENS', title: 'Four screens are present and navigable from the tab bar', owner: 'build',
-      scrutiny: (h) => count(h, /class="screen"/g) >= 4 && count(h, /class="tab"/g) >= 4, surface: (h) => has(h, /data-screen=/) && has(h, /addEventListener\('click'/) },
+      scrutiny: (h) => count(h, /class="screen(?: on)?"/g) >= 4 && count(h, /class="tab(?: on)?"/g) >= 4, surface: (h) => has(h, /data-screen=/) && has(h, /addEventListener\('click'/) },
     { id: 'VAL-TOUCH-TARGETS', title: 'Tap targets are at least 44px', owner: 'a11y-audit',
       scrutiny: (h) => has(h, /min-height:44px/), surface: (h) => has(h, /min-width:44px/) },
     { id: 'VAL-PHONE-FRAME', title: 'The prototype renders inside a phone frame', owner: 'build',
@@ -75,7 +78,7 @@ export const ASSERTIONS = {
     { id: 'VAL-ONE-PARAGRAPH-READ', title: 'A one-paragraph read leads the dashboard', owner: 'compose',
       scrutiny: (h) => has(h, /class="read"/), surface: (h) => h.indexOf('class="read"') < h.indexOf('class="grid"') },
     { id: 'VAL-CHART-A11Y', title: 'Charts carry accessible names', owner: 'chart-smith',
-      scrutiny: (h) => count(h, /role="img" aria-label=/g) >= 2, surface: (h) => !has(h, /<svg[^>]*>(?![\s\S]*?aria-label)/) },
+      scrutiny: (h) => count(h, /role="img" aria-label=/g) >= 2, surface: (h) => !has(body(h), /<svg(?:(?!aria-label)[^>])*>/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
   ],

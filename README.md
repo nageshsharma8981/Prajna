@@ -228,3 +228,22 @@ tools, MCP registry, profile, plan tiers, boards, deck templates, connector
 catalog) and the `/api/chats*`, `/api/projects*`, `/api/plugins`, `/api/tools`,
 `/api/mcp`, `/api/profile|personalization|language|plan`, `/api/boards`
 routes. Keys and OAuth tokens remain memory-only.
+
+## v0.9 — Live authoring (2026-09-04)
+
+The first "better than Zenith" move: when the lead seat is live (a BYOK key is
+loaded for its provider), the lead model **writes the substance of the
+deliverable itself** at the compose / build / design step — brief claims,
+verdict and dissent; deck beats; site copy; mobile screens; analysis read and
+caveats; design regions. The house lays it out, the two validator lanes gate
+it exactly as they gate scripted output, and the provenance block records
+`mode: "live"` with the model, character count and latency. No key → scripted
+substance, labeled as such. A model reply that misses the required shape is
+recorded on the tape and the scripted substance is used instead — nothing is
+silently swapped.
+
+Also fixed: two validator surface lanes (deck one-idea, chart accessibility)
+were reading the house's own provenance footer as part of the deliverable.
+Validators now scan the deliverable body only.
+
+`server/author.js` holds the per-desk shapes and the authoring call.
