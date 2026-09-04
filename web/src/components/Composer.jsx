@@ -187,11 +187,22 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
           aria-label="Message"
         />
         {attachments.length > 0 && (
-          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip">{a} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a}`}>×</button></span>)}</div>
+          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip" title={a.text ? `${a.text.length} characters read — on the table as an owner source` : 'name only — not a text file, so its contents are not read'}>{a.name}{a.text ? '' : ' (name only)'} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a.name}`}>×</button></span>)}</div>
         )}
         <div className="composer-bar">
           <button className="ic" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files"><ClipIcon /></button>
-          <input ref={fileRef} type="file" multiple hidden onChange={(e) => setAttachments([...attachments, ...Array.from(e.target.files).map((f) => f.name)].slice(0, 8))} />
+          <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,.csv,.json,.html,.htm,text/*" onChange={async (e) => {
+            // Text files are read in the browser and travel with the message as
+            // owner-supplied sources; anything else is recorded by name only.
+            const files = Array.from(e.target.files).slice(0, 8);
+            const read = await Promise.all(files.map((f) => new Promise((res) => {
+              const textish = /^text\/|json|csv|html|markdown/.test(f.type) || /\.(txt|md|csv|json|html?)$/i.test(f.name);
+              if (!textish || f.size > 400000) return res({ name: f.name });
+              const r = new FileReader(); r.onload = () => res({ name: f.name, text: String(r.result || '').slice(0, 200000) }); r.onerror = () => res({ name: f.name }); r.readAsText(f);
+            })));
+            setAttachments([...attachments, ...read].slice(0, 8));
+            e.target.value = '';
+          }} />
           {mode !== 'chat' && (
             <span className="mode-pill">{m.icon && <m.icon />} {m.label} <button className="x" onClick={() => setMode('chat')} aria-label="Clear mode">×</button></span>
           )}

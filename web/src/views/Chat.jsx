@@ -112,7 +112,7 @@ export default function Chat({ id }) {
           {chat.messages.map((m) => (
             <div key={m.id} className={`msg ${m.role}`}>
               {m.role === 'user' ? (
-                <div className="bubble">{m.text}{m.attachments?.length ? <div className="attach-row">{m.attachments.map((a) => <span key={a} className="attach-chip">{a}</span>)}</div> : null}</div>
+                <div className="bubble">{m.text}{m.attachments?.length ? <div className="attach-row">{m.attachments.map((a, i) => <span key={i} className="attach-chip">{a.name || a}</span>)}</div> : null}</div>
               ) : (
                 <div className="answer">
                   <div className="answer-meta">{m.kind === 'live' ? `${m.model} · live on your key` : m.kind === 'run' ? 'mission' : m.model || 'Prajñā'}</div>

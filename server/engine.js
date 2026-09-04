@@ -142,7 +142,7 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   return bits.join(' ');
 }
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
@@ -215,6 +215,10 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     template: template || null,
     depth: depth || 'deep',
     chatId: chatId || null,
+    // Owner-supplied sources: text attachments are on the table from the
+    // start — citable, and their figures count as sourced.
+    attachments: (attachments || []).map((d) => ({ name: d.name, chars: d.text.length })),
+    sources: (attachments || []).map((d, i) => ({ id: `src-${i + 1}`, title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })),
     connected: [...(queuedConnectors || [])],
     patches: [],
     acceptedRisks: [],
@@ -582,7 +586,8 @@ async function applyEvent(m, ev, notify, runner) {
         const started = Date.now();
         const { query, sources, engines } = await retrieve(m.goal);
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
-        m.sources = sources;
+        const owned = (m.sources || []).filter((s) => s.engine === 'attachment');
+        m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}” — the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };

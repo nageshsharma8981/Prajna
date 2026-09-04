@@ -527,7 +527,7 @@ async function handle(req, res) {
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) return json(res, 400, { error: 'Say something first.' });
-    addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: Array.isArray(body.attachments) ? body.attachments.slice(0, 8) : [] });
+    addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))) });
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
     const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     const seatId = body.lead || ws().personalization.defaultModel;
@@ -571,12 +571,13 @@ async function handle(req, res) {
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) return json(res, 400, { error: 'Say something first.' });
     const mode = String(body.mode || c.mode || 'chat');
-    addMessage(c.id, { role: 'user', text, mode, attachments: Array.isArray(body.attachments) ? body.attachments.slice(0, 8) : [] });
+    const docs = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).filter((a) => a && typeof a === 'object' && typeof a.text === 'string' && a.text.trim()).map((a) => ({ name: String(a.name || 'attachment').slice(0, 120), text: String(a.text).slice(0, 200000) }));
+    addMessage(c.id, { role: 'user', text, mode, attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))) });
     const MODE_DESK = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
     if (MODE_DESK[mode]) {
       const lead = modelById(body.lead || ws().personalization.defaultModel).id;
       const advisers = (Array.isArray(body.advisers) ? body.advisers : ws().personalization.defaultAdvisers).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id });
+      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs });
       const credits = store.workspace().credits;
       if (credits < mission.contract.ceiling) {
         const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits — top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });

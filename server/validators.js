@@ -28,7 +28,7 @@ function unsupportedFigures(html, { allowLabelled = false } = {}) {
   const p = provenance(html);
   if (!p || p.mode !== 'live') return { ok: true, detail: 'scripted substance is house-labelled sample; figures not checked' };
   const text = textOf(html);
-  const allowed = [p.goal || '', ...((p.retrieval?.sources || []).map((s) => `${s.title} ${s.extract || ''}`))].map(norm).join(' ');
+  const allowed = [p.goal || '', ...((p.attachments || []).map((a) => `${a.name} ${a.extract || ''}`)), ...((p.retrieval?.sources || []).map((s) => `${s.title} ${s.extract || ''}`))].map(norm).join(' ');
   const figures = figuresIn(text);
   const bad = figures.filter((f) => {
     if (allowed.includes(norm(f))) return false;

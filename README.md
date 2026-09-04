@@ -384,3 +384,16 @@ provenance records the notes it was written to address. A scripted version
 records the notes too and says plainly that scripted substance cannot act on
 them. `POST/DELETE /api/artifacts/:id/notes`, `POST /api/missions/:id/fork
 {feedback: [...]}`.
+
+## v0.20 — Brand mark, and your own evidence on the table (2026-09-04)
+
+- **Logo.** The supplied Prajñā mark replaces the split-flap wordmark in the
+  sidebar, the locked-house screen and the favicon; "Outcome Exchange" is gone
+  from the interface. The PNG's white ground multiplies onto the day paper and
+  is inverted-and-screened in the night hall.
+- **Attachments are evidence.** Text files attached to a message (txt, md,
+  csv, json, html; up to 200k characters) are read in the browser and travel
+  as owner-supplied sources: on the table for the lead author and the panel,
+  citable in the brief, listed in provenance (`attachments`), and their figures
+  count as sourced for the honesty lane. Non-text files are recorded by name
+  only and the chip says so.

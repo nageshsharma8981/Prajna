@@ -1334,3 +1334,14 @@ h1.pg-title {
 .notes-panel li span { flex: 1; } .notes-panel li button { color: var(--bone-faint); font-size: 1.1rem; line-height: 1; }
 .notes-panel li.empty { color: var(--bone-faint); font-style: italic; border-style: dashed; }
 .notes-add { display: flex; gap: 0.5rem; } .notes-add .key-input { flex: 1; }
+
+/* Brand mark: the supplied PNG has a white ground. In the day theme it
+   multiplies onto the paper; in the night hall it is inverted and screened,
+   so the ground disappears and the navy reads as bone. */
+.logo-img { display: block; height: 52px; width: auto; max-width: 100%; mix-blend-mode: screen; filter: invert(1) hue-rotate(180deg) saturate(0.6) brightness(1.05); }
+:root[data-theme="day"] .logo-img { mix-blend-mode: multiply; filter: none; }
+.side-logo { padding: 0.2rem 0.4rem 0.9rem; }
+.gate-card .logo-img { height: 56px; }
+
+.side-item.chat { min-width: 0; }
+.side-item.chat .t { flex: 1; min-width: 0; }
