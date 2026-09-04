@@ -1,4 +1,6 @@
-// ⌘K command palette: routes, desks, missions, artifacts. A real dialog,
+// ⌘K command palette: routes, desks, missions, artifacts, and the words
+// themselves: the second group searches inside the record, the delivered
+// artifacts, every tape, the decisions and the sources. A real dialog,
 // focus trapped, Escape anywhere, focus restored, selection announced.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { navigate } from '../lib/router.jsx';
@@ -12,12 +14,29 @@ export default function Palette({ onClose }) {
   const listRef = useRef(null);
   const dialogRef = useRef(null);
   const restoreRef = useRef(null);
+  const [deep, setDeep] = useState({ q: '', hits: [], searching: false });
 
   useEffect(() => {
     restoreRef.current = document.activeElement;
     inputRef.current?.focus();
     return () => restoreRef.current?.focus?.();
   }, []);
+
+  // The record is searched on the server, debounced; the local list stays instant.
+  useEffect(() => {
+    const needle = q.trim();
+    if (needle.length < 2) { setDeep({ q: '', hits: [], searching: false }); return; }
+    setDeep((d) => ({ ...d, searching: true }));
+    let live = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/search?q=${encodeURIComponent(needle)}&limit=8`);
+        const j = await r.json();
+        if (live) setDeep({ q: needle, hits: r.ok ? j.hits || [] : [], total: j.total || 0, searching: false });
+      } catch { if (live) setDeep({ q: needle, hits: [], searching: false }); }
+    }, 180);
+    return () => { live = false; clearTimeout(t); };
+  }, [q]);
 
   const items = useMemo(() => {
     const base = [
@@ -41,8 +60,11 @@ export default function Palette({ onClose }) {
     ];
     if (!q.trim()) return base.slice(0, 12);
     const needle = q.toLowerCase();
-    return base.filter((i) => `${i.k} ${i.decide ? 'decision needed decide' : ''} ${i.t}`.toLowerCase().includes(needle)).slice(0, 12);
-  }, [q, s]);
+    const near = base.filter((i) => `${i.k} ${i.decide ? 'decision needed decide' : ''} ${i.t}`.toLowerCase().includes(needle)).slice(0, 8);
+    const seen = new Set(near.map((i) => i.to));
+    const found = (deep.q === q.trim() ? deep.hits : []).filter((h) => !seen.has(h.to)).map((h) => ({ k: h.serial || (h.kind === 'chat' ? 'CHAT' : 'ART'), t: h.title, to: h.to, where: h.where, snippet: h.snippet }));
+    return [...near, ...found].slice(0, 14);
+  }, [q, s, deep]);
 
   useEffect(() => setSel(0), [q]);
   useEffect(() => {
@@ -109,10 +131,11 @@ export default function Palette({ onClose }) {
               onClick={() => go(item)}
             >
               <span className="k">{item.k}</span>
-              <span className="t">{item.t}</span>
+              <span className="t">{item.t}{item.snippet && <span className="pal-snip"><em className="pal-where">{item.where}</em> {item.snippet}</span>}</span>
             </button>
           ))}
-          {items.length === 0 && <div className="palette-empty" role="status">Nothing on the board matches “{q}”.</div>}
+          {items.length === 0 && <div className="palette-empty" role="status">{deep.searching ? `Searching the record for “${q}”…` : `Nothing on the board or in the record matches “${q}”.`}</div>}
+          {items.length > 0 && deep.q === q.trim() && deep.total > deep.hits.length && <div className="palette-empty" role="status">{deep.total} places in the record mention “{q}”; the closest are listed.</div>}
         </div>
       </div>
     </div>

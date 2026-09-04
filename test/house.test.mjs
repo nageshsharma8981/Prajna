@@ -272,3 +272,19 @@ test('the house answers about money and schedule from the ledger, without a mode
   assert.ok(sched.text.includes(filled.serial) && /weekly, cap 120 cr a month, next/.test(sched.text), sched.text);
   await api(`/api/standing/${o.j.id}`, { method: 'DELETE' });
 });
+
+test('search finds the words themselves, in tapes, artifacts, decisions and chats', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const m = b.missions.find((x) => x.status === 'FILLED' && x.subject);
+  const word = (m.subject.match(/[A-Za-z]{6,}/) || ['brief'])[0].toLowerCase();
+  const r = await api(`/api/search?q=${encodeURIComponent(word)}`);
+  assert.equal(r.status, 200);
+  assert.ok(r.j.hits.length > 0, `a hit for "${word}"`);
+  for (const h of r.j.hits) { assert.ok(h.to && h.where && h.snippet, JSON.stringify(h)); assert.ok(h.snippet.toLowerCase().includes(word) || h.title.toLowerCase().includes(word), h.snippet); }
+  assert.ok(r.j.scanned.missions >= 1 && r.j.scanned.artifacts >= 1);
+  const inTape = await api('/api/search?q=' + encodeURIComponent('reserved'));
+  assert.ok(inTape.j.hits.some((h) => /tape|narrative|ticket|delivered/.test(h.where)), JSON.stringify(inTape.j.hits.map((h) => h.where)));
+  const two = await api('/api/search?q=' + encodeURIComponent('zzzznotaword ' + word));
+  assert.equal(two.j.hits.length, 0, 'every term must match');
+  assert.equal((await api('/api/search?q=a')).j.hits.length, 0, 'a single letter is not a search');
+});

@@ -1066,3 +1066,15 @@ Every answer in a conversation now carries a quiet row that appears on
 hover, or always on touch screens: Copy puts the answer on the clipboard
 and says so, Retry asks the same question again, and the time it was
 answered sits beside them. Answers from the ledger are labelled as such.
+
+## v0.89: Search inside the record (2026-09-04)
+
+The palette matched titles of the eight most recent things. Now ⌘K
+searches the words themselves: every delivered artifact, every tape
+including archived ones, the decisions and their justifications, the
+sources on the table, recorded dissent, failed gate lanes and every
+conversation. Each hit says where it was found, "a decision", "the tape",
+"the deck delivered, v1", and shows the line it matched, so you can find
+the run where someone raised a ceiling and read the reason they gave.
+Every term must match, artifact text is cached against the file, and a
+full house answers in about ten milliseconds. `GET /api/search?q=`.

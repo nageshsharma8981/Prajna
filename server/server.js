@@ -19,6 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
+import { search } from './search.js';
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
@@ -385,6 +386,11 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/search' && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (limited(ipOf(req), 'search', 120, 60000)) return json(res, 429, { error: 'Too many searches. Wait a minute.' });
+    return json(res, 200, search(url.searchParams.get('q') || '', { limit: Math.min(50, Number(url.searchParams.get('limit')) || 24) }));
+  }
   if (p === '/api/backups' && req.method === 'GET') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, { backups: listBackups(), health: listBackups().length ? backupHealth() : null }); }
   const backupGet = p.match(/^\/api\/backups\/([\w.-]+)$/);
   if (backupGet && req.method === 'GET') {
