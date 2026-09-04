@@ -524,3 +524,26 @@ test('a delivery can leave as Word, and the house can read back what it wrote', 
   assert.ok(!/<w:p>|<\/w:t>/.test(text), 'markup did not leak into the text');
   assert.equal((await fetch(`${BASE}/api/artifacts/nosuchid/docx`)).status, 404);
 });
+
+test('a deck can leave as PowerPoint, with every slide and the dissent intact', async () => {
+  const { extractText } = await import('../server/docs.js');
+  const b = (await api('/api/bootstrap')).j;
+  const deck = b.artifacts.find((x) => /deck/i.test(x.kind) || /deck/i.test(x.title));
+  assert.ok(deck, 'a delivered deck to export');
+  const r = await fetch(`${BASE}/api/artifacts/${deck.id}/pptx`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /presentationml\.presentation/);
+  const buf = Buffer.from(await r.arrayBuffer());
+  assert.equal(buf.readUInt32LE(0), 0x04034b50, 'a real zip');
+  const names = buf.toString('latin1');
+  for (const part of ['ppt/presentation.xml', 'ppt/slideMasters/slideMaster1.xml', 'ppt/slideLayouts/slideLayout1.xml', 'ppt/theme/theme1.xml', 'ppt/slides/slide1.xml']) assert.ok(names.includes(part), part);
+  const text = extractText('deck.pptx', buf);
+  const slides = text.split(/\nSlide \d+: /).filter(Boolean);
+  assert.ok(slides.length >= 7, `every slide travels: ${slides.length}`);
+  assert.ok(text.includes(deck.serial), 'the serial is on the deck');
+  assert.match(text, /Provenance/);
+  assert.ok(!/<a:t>|<\/p:sp>/.test(text), 'markup did not leak into the text');
+  // A brief has no slides, so the house refuses rather than shipping an empty deck.
+  const brief = b.artifacts.find((x) => /brief/i.test(x.kind) || /brief/i.test(x.title));
+  if (brief) { const bad = await fetch(`${BASE}/api/artifacts/${brief.id}/pptx`); assert.equal(bad.status, 400); assert.match((await bad.json()).error, /no slides/); }
+});

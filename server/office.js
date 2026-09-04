@@ -67,3 +67,72 @@ export function docxFromArtifact({ artifact, mission, html, publicUrl }) {
     { name: 'word/numbering.xml', data: numbering },
   ], new Date(artifact.createdAt || Date.now()));
 }
+
+// PowerPoint out of the house, the same way: a .pptx is a zip of XML. Slides
+// are taken from the deck the house delivered, one section each, so the file
+// carries the same words in the same order, with the recorded dissent and the
+// provenance on a closing slide rather than dropped on the way out.
+export function slidesFromHtml(html) {
+  const out = [];
+  const re = /<section class="slide([^"]*)"[^>]*>([\s\S]*?)<\/section>/gi;
+  let m;
+  while ((m = re.exec(String(html || '')))) {
+    const kind = (m[1] || '').trim();
+    const inner = m[2];
+    const head = (inner.match(/<h[12][^>]*>([\s\S]*?)<\/h[12]>/i) || [])[1];
+    const sub = (inner.match(/<p class="sub"[^>]*>([\s\S]*?)<\/p>/i) || [])[1];
+    const run = (inner.match(/<p class="run"[^>]*>([\s\S]*?)<\/p>/i) || [])[1];
+    const dissent = (inner.match(/<p class="deck-dissent"[^>]*>([\s\S]*?)<\/p>/i) || [])[1];
+    if (!head && !sub) continue;
+    out.push({ kind, title: strip(head || ''), body: [strip(sub || ''), dissent ? strip(dissent) : ''].filter(Boolean).join('  '), label: strip(run || '') });
+  }
+  return out;
+}
+
+const EMU = { w: 12192000, h: 6858000 }; // 16:9
+function slideXml(s, n, total) {
+  const title = `<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title ${n}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="838200" y="${s.kind.includes('title') || s.kind.includes('big') ? 2200000 : 1000000}"/><a:ext cx="10515600" cy="2000000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="l"/><a:r><a:rPr lang="en-GB" sz="${s.kind.includes('title') ? 4000 : 3200}" b="1" dirty="0"><a:solidFill><a:srgbClr val="121614"/></a:solidFill></a:rPr><a:t>${esc(s.title)}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  const body = s.body ? `<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body ${n}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="838200" y="${s.kind.includes('title') || s.kind.includes('big') ? 4300000 : 3200000}"/><a:ext cx="10515600" cy="2200000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-GB" sz="1800" dirty="0"><a:solidFill><a:srgbClr val="1B201C"/></a:solidFill></a:rPr><a:t>${esc(s.body)}</a:t></a:r></a:p></p:txBody></p:sp>` : '';
+  const foot = `<p:sp><p:nvSpPr><p:cNvPr id="4" name="Foot ${n}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="838200" y="6100000"/><a:ext cx="10515600" cy="400000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-GB" sz="1100" dirty="0"><a:solidFill><a:srgbClr val="6B6857"/></a:solidFill></a:rPr><a:t>${esc(`${s.label ? `${s.label} · ` : ''}${n} / ${total}`)}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="F5F1E6"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${title}${body}${foot}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+}
+
+export function pptxFromArtifact({ artifact, mission, html, publicUrl }) {
+  const slides = slidesFromHtml(html);
+  if (!slides.length) return null;
+  slides.push({
+    kind: '', title: 'Provenance',
+    body: `${artifact.serial} · ${artifact.desk} · v${artifact.version}. ${mission?.authored?.live ? `The substance was written by ${mission.authored.model} on the owner's own key.` : mission?.authored?.composed ? 'No model was loaded: the substance is quoted from the sources on the table.' : 'No model was loaded: the substance is house-scripted sample material, labelled as such.'}${mission?.settlement ? ` Settled ${mission.settlement.settled} of a ${mission.contract?.ceiling} credit ceiling.` : ''}${publicUrl ? ` Full record: ${publicUrl}` : ''}`,
+    label: 'Prajñā',
+  });
+  const total = slides.length;
+  const ids = slides.map((_, i) => i + 1);
+  const files = [];
+  files.push({ name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/><Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>${ids.map((i) => `<Override PartName="/ppt/slides/slide${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')}</Types>` });
+  files.push({ name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>` });
+  files.push({ name: 'docProps/core.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${esc(artifact.title)}</dc:title><dc:creator>Prajñā · ${esc(artifact.serial)}</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date(artifact.createdAt).toISOString()}</dcterms:created></cp:coreProperties>` });
+  files.push({ name: 'ppt/presentation.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${ids.map((i) => `<p:sldId id="${255 + i}" r:id="rId${i + 1}"/>`).join('')}</p:sldIdLst><p:sldSz cx="${EMU.w}" cy="${EMU.h}"/><p:notesSz cx="${EMU.h}" cy="${EMU.w}"/></p:presentation>` });
+  files.push({ name: 'ppt/_rels/presentation.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>${ids.map((i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i}.xml"/>`).join('')}<Relationship Id="rId${total + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/></Relationships>` });
+  for (const [i, s] of slides.entries()) {
+    files.push({ name: `ppt/slides/slide${i + 1}.xml`, data: slideXml(s, i + 1, total) });
+    files.push({ name: `ppt/slides/_rels/slide${i + 1}.xml.rels`, data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>` });
+  }
+  files.push({ name: 'ppt/slideMasters/slideMaster1.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>` });
+  files.push({ name: 'ppt/slideMasters/_rels/slideMaster1.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/></Relationships>` });
+  files.push({ name: 'ppt/slideLayouts/slideLayout1.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>` });
+  files.push({ name: 'ppt/slideLayouts/_rels/slideLayout1.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>` });
+  files.push({ name: 'ppt/theme/theme1.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Prajñā"><a:themeElements><a:clrScheme name="Prajñā"><a:dk1><a:srgbClr val="121614"/></a:dk1><a:lt1><a:srgbClr val="F5F1E6"/></a:lt1><a:dk2><a:srgbClr val="1B201C"/></a:dk2><a:lt2><a:srgbClr val="EFE7D6"/></a:lt2><a:accent1><a:srgbClr val="FFB300"/></a:accent1><a:accent2><a:srgbClr val="7FBF9A"/></a:accent2><a:accent3><a:srgbClr val="E05A4E"/></a:accent3><a:accent4><a:srgbClr val="9A9583"/></a:accent4><a:accent5><a:srgbClr val="8FD19E"/></a:accent5><a:accent6><a:srgbClr val="235C40"/></a:accent6><a:hlink><a:srgbClr val="FFB300"/></a:hlink><a:folHlink><a:srgbClr val="9A9583"/></a:folHlink></a:clrScheme><a:fontScheme name="Prajñā"><a:majorFont><a:latin typeface="Helvetica Neue"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Helvetica Neue"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Prajñā"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>` });
+  return zipStore(files, new Date(artifact.createdAt || Date.now()));
+}

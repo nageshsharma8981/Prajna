@@ -1171,3 +1171,15 @@ against its ceiling, whether a model wrote the substance on your key or
 the house quoted its sources, and the public record link when one
 exists. Verified two ways: the house reads its own file back through the
 Documents plugin, and Apple's own converter opens it.
+
+## v0.98: A deck can leave as PowerPoint (2026-09-04)
+
+Decks now offer a .pptx as well: one slide per slide, in order, with the
+label and page number, the recorded dissent where the deck carried it,
+and a closing provenance slide naming the mission, what wrote the
+substance, what it settled and the public record link. Built without a
+dependency on the house's own paper and ink. Checked three ways: an
+independent parser confirms every part is valid XML with no dangling
+relationship and every slide declared, the house reads its own file
+back, and macOS renders the first slide. A delivery with no slides is
+refused rather than shipped as an empty deck.

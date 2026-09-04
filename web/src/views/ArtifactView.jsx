@@ -66,6 +66,11 @@ export default function ArtifactView({ id }) {
             <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/docx`} title="A Word document built from this artifact, with its provenance">
               Word (.docx)
             </a>
+            {/^deck$/i.test(artifact?.kind || '') || /deck/i.test(artifact?.title || '') ? (
+              <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/pptx`} title="A PowerPoint deck built from these slides, with the recorded dissent and provenance">
+                PowerPoint (.pptx)
+              </a>
+            ) : null}
             <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/html`} target="_blank" rel="noreferrer">
               <OpenIcon /> Open full tab
             </a>
