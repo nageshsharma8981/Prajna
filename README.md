@@ -599,3 +599,10 @@ table": the file, its shape, the series with sum, mean and range, the segment
 breakdown, and the first rows — parsed, not verified, and marked as owner
 data. The author gets the same summary in its prompt; figures that trace to
 the file pass the honesty lane.
+
+## v0.44 — Accessibility pass (2026-09-04)
+
+Measured contrast on the surfaces added today. The amber that reads on the
+night hall was far below AA on day paper for the decision cues and the bell;
+they now take a darker amber by day. The disclaimer steps up a shade. The
+logo link and the hidden file input carry accessible names.

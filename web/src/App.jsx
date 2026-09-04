@@ -46,7 +46,7 @@ function Sidebar({ open, onClose, menuRef }) {
     <>
       {open && <div className="rail-veil" onClick={onClose} />}
       <nav className={`side${open ? ' open' : ''}`} aria-label="Primary" inert={mobile && !open}>
-        <Link to="/" className="side-logo" onClick={onClose}><img className="logo-img" src="/logo.png" alt="Prajñā" width="180" height="60" /></Link>
+        <Link to="/" className="side-logo" onClick={onClose} aria-label="Prajñā home"><img className="logo-img" src="/logo.png" alt="Prajñā" width="180" height="60" /></Link>
         <div className="side-nav">
           <Link to="/" className={`side-item${path === '/' ? ' on' : ''}`} onClick={onClose}><EditIcon /> New chat</Link>
           <Link to="/plugins" className={`side-item${active('/plugins') ? ' on' : ''}`} onClick={onClose}><PluginIcon /> Plugins</Link>

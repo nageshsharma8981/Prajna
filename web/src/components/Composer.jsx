@@ -191,7 +191,7 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
         )}
         <div className="composer-bar">
           <button className="ic" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files"><ClipIcon /></button>
-          <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,.csv,.json,.html,.htm,text/*" onChange={async (e) => {
+          <input ref={fileRef} type="file" multiple hidden aria-label="Attach files" accept=".txt,.md,.csv,.json,.html,.htm,text/*" onChange={async (e) => {
             // Text files are read in the browser and travel with the message as
             // owner-supplied sources; anything else is recorded by name only.
             const files = Array.from(e.target.files).slice(0, 8);

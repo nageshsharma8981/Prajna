@@ -1453,3 +1453,15 @@ abbr.cite { cursor: help; }
 .limits-grid .k { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
 .limits-grid ul { margin: 0.5rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.86rem; color: var(--bone-dim); line-height: 1.5; }
 @media (max-width: 800px) { .limits-grid { grid-template-columns: 1fr; } }
+
+/* Accessibility pass: the amber that reads on the night hall is too light on
+   day paper — decision cues and the bell take a darker amber there; the
+   disclaimer steps up one shade everywhere. */
+:root[data-theme="day"] .side-item.decisions, :root[data-theme="day"] .bell, :root[data-theme="day"] .side-item.decisions .badge-n { color: #7a4a00; }
+:root[data-theme="day"] .side-item.decisions { border-color: #b98a2a; }
+:root[data-theme="day"] .bell { border-color: #b98a2a; }
+:root[data-theme="day"] .pulse { background: #b98a2a; box-shadow: 0 0 6px #b98a2a; }
+:root[data-theme="day"] .palette-item.decide .t, :root[data-theme="day"] .plan-meta em, :root[data-theme="day"] .cite, :root[data-theme="day"] .tm-node b, :root[data-theme="day"] .plan-why b { color: #7a4a00; }
+.disclaimer { color: var(--bone-dim); }
+
+:root[data-theme="day"] .badge-n { color: var(--led); }
