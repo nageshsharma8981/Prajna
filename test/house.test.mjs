@@ -888,3 +888,34 @@ test('the record says whose request it was and who decided', async () => {
   const anon = await post('/api/missions', { goal: 'Attribution test: an unsigned ticket', deskId: 'brief', depth: 'fast' });
   assert.equal(anon.j.writtenBy, null);
 });
+
+test('a conversation belongs to whoever started it', async () => {
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const get = async (p, cookie) => call(p, cookie, null, 'GET');
+  const mine = await signIn('Priya');
+  const theirs = await signIn('Wes');
+  // A chat nobody owns, started before anyone signed in, stays visible to all.
+  const open = await call('/api/chats', null, { title: 'An open conversation' });
+  const a = await call('/api/chats', mine, { title: 'Priya thinking aloud' });
+  const b = await call('/api/chats', theirs, { title: 'Wes thinking aloud' });
+  assert.equal(a.status, 200); assert.equal(b.status, 200);
+  const titles = async (cookie) => (await get('/api/bootstrap', cookie)).j.chats.map((c) => c.title);
+  const mineList = await titles(mine);
+  assert.ok(mineList.includes('Priya thinking aloud'), 'I see my own');
+  assert.ok(!mineList.includes('Wes thinking aloud'), 'I do not see theirs');
+  assert.ok(mineList.includes('An open conversation'), 'an unowned conversation is visible');
+  const theirList = await titles(theirs);
+  assert.ok(theirList.includes('Wes thinking aloud') && !theirList.includes('Priya thinking aloud'));
+  const anonList = await titles(null);
+  assert.ok(anonList.includes('An open conversation') && !anonList.includes('Priya thinking aloud'), 'a signed-out visitor sees only what nobody owns');
+  // Nor can they open it by its address, or write into it.
+  assert.equal((await get(`/api/chats/${a.j.id}`, theirs)).status, 404);
+  assert.equal((await get(`/api/chats/${a.j.id}`, mine)).status, 200);
+  assert.equal((await call(`/api/chats/${a.j.id}/messages`, theirs, { text: 'reading over a shoulder' })).status, 404);
+  const streamed = await fetch(`${BASE}/api/chats/${a.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: theirs }, body: JSON.stringify({ text: 'and listening in' }) });
+  assert.equal(streamed.status, 404, 'nor stream from it');
+  // The missions and their artifacts stay shared: that is the house record.
+  assert.ok((await get('/api/bootstrap', theirs)).j.missions.length > 0);
+});

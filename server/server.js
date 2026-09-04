@@ -10,7 +10,7 @@ import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomMode
 import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat, editPlan, PLAN_TOOLS } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
-import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
+import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS, chatFor } from './workspace.js';
 import { callModel, streamModel, generateImage } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
@@ -737,7 +737,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       pluginCatalog: PLUGINS,
       toolCatalog: TOOLS,
       planTiers: PLAN_TIERS,
-      ...publicWs(),
+      ...publicWs(whoId(req)),
       oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(lean),
       // A delivery whose mission has a data table can leave as a workbook.
@@ -1127,11 +1127,11 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Chats (Zenith parity): a message in a mode becomes a mission that runs at once ----
   if (p === '/api/chats' && req.method === 'POST') {
     const body = await readBody(req);
-    return json(res, 200, createChat({ title: body.title, mode: body.mode, projectId: body.projectId }));
+    return json(res, 200, createChat({ title: body.title, mode: body.mode, projectId: body.projectId, owner: whoId(req) }));
   }
   const chatMatch = p.match(/^\/api\/chats\/([\w]+)$/);
   if (chatMatch) {
-    const c = getChat(chatMatch[1]);
+    const c = chatFor(chatMatch[1], whoId(req));
     if (!c) return json(res, 404, { error: 'Chat not found.' });
     if (req.method === 'DELETE') { deleteChat(c.id); return json(res, 200, { ok: true }); }
     if (req.method === 'PATCH') { const body = await readBody(req); return json(res, 200, renameChat(c.id, body.title || c.title)); }
@@ -1165,7 +1165,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // message. Without a live model the house answers honestly in one event.
   const chatStreamMatch = p.match(/^\/api\/chats\/([\w]+)\/stream$/);
   if (chatStreamMatch && req.method === 'POST') {
-    const c = getChat(chatStreamMatch[1]);
+    const c = chatFor(chatStreamMatch[1], whoId(req));
     if (!c) return json(res, 404, { error: 'Chat not found.' });
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
@@ -1238,7 +1238,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const msgMatch = p.match(/^\/api\/chats\/([\w]+)\/messages$/);
   if (msgMatch && req.method === 'POST') {
-    const c = getChat(msgMatch[1]);
+    const c = chatFor(msgMatch[1], whoId(req));
     if (!c) return json(res, 404, { error: 'Chat not found.' });
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });

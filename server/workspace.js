@@ -138,9 +138,12 @@ export function flushWs() { store._write('workspace-ui.json', ensure()); }
 
 const id = () => Math.random().toString(36).slice(2, 10);
 
-export function createChat({ title, mode, projectId }) {
+// A conversation belongs to the person who started it. A house several
+// people can enter should not show one person's talk to another; the
+// missions and their artifacts stay shared, because those are the record.
+export function createChat({ title, mode, projectId, owner }) {
   const w = ensure();
-  const chat = { id: id(), title: (title || 'New chat').slice(0, 80), mode: mode || 'chat', projectId: projectId || 'p_default', createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
+  const chat = { id: id(), owner: owner || null, title: (title || 'New chat').slice(0, 80), mode: mode || 'chat', projectId: projectId || 'p_default', createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
   w.chats.unshift(chat);
   const p = w.projects.find((x) => x.id === chat.projectId) || w.projects[0];
   p.chatIds.unshift(chat.id);
@@ -148,6 +151,8 @@ export function createChat({ title, mode, projectId }) {
   return chat;
 }
 export function getChat(cid) { return ensure().chats.find((c) => c.id === cid) || null; }
+// The reader may open a conversation of their own, or one nobody owns.
+export function chatFor(cid, who) { const c = getChat(cid); return c && (!c.owner || c.owner === who) ? c : null; }
 export function addMessage(cid, msg) {
   const c = getChat(cid);
   if (!c) return null;
@@ -166,10 +171,12 @@ export function deleteChat(cid) {
 }
 export function renameChat(cid, title) { const c = getChat(cid); if (c) { c.title = String(title).slice(0, 80); flushWs(); } return c; }
 
-export function publicWs() {
+// `who` is the reader: their own conversations, plus any that belong to
+// nobody (started before anyone signed in, or by a signed-out visitor).
+export function publicWs(who = null) {
   const w = ensure();
   return {
-    chats: w.chats.map(({ messages, ...c }) => ({ ...c, messageCount: messages.length, last: messages[messages.length - 1]?.text?.slice(0, 80) || '' })),
+    chats: w.chats.filter((c) => !c.owner || c.owner === who).map(({ messages, ...c }) => ({ ...c, messageCount: messages.length, last: messages[messages.length - 1]?.text?.slice(0, 80) || '' })),
     projects: w.projects, plugins: w.plugins, tools: w.tools, mcp: w.mcp,
     profile: w.profile, personalization: w.personalization, language: w.language, plan: w.plan, invoices: w.invoices, boards: w.boards, media: w.media.slice(0, 48), showcase: w.showcase, ledger: (w.ledger || []).slice(0, 200), consent: w.consent || null,
   };

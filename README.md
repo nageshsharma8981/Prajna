@@ -1342,3 +1342,15 @@ serials start from a random counter, so the run sometimes paused on the
 ceiling and never reached the gate. The test now answers anything that
 is not the gate, so the gate is what is on trial. Three consecutive
 runs, thirty-seven tests, green.
+
+## v1.11: A conversation belongs to whoever started it (2026-09-05)
+
+Once two people can sign in to one house, one person's talk should not
+be another's to read. A conversation now belongs to whoever started it:
+you see your own, and any that belong to nobody, and someone else's is
+not in your list, cannot be opened by its address, and cannot be written
+to or streamed from. Conversations started before anyone signed in
+belong to nobody and stay visible, so nothing already here disappears.
+
+Missions and their artifacts stay shared, because those are the house's
+record rather than anyone's private line.
