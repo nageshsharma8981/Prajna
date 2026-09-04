@@ -501,3 +501,26 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     good.close(); bad.close();
   }
 });
+
+test('a delivery can leave as Word, and the house can read back what it wrote', async () => {
+  const { extractText } = await import('../server/docs.js');
+  const b = (await api('/api/bootstrap')).j;
+  const a = b.artifacts.find((x) => x.missionId) || b.artifacts[0];
+  const r = await fetch(`${BASE}/api/artifacts/${a.id}/docx`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /wordprocessingml\.document/);
+  assert.match(r.headers.get('content-disposition'), /attachment; filename=".*\.docx"/);
+  const buf = Buffer.from(await r.arrayBuffer());
+  assert.equal(buf.readUInt32LE(0), 0x04034b50, 'a real zip');
+  const names = buf.toString('latin1');
+  for (const part of ['[Content_Types].xml', 'word/document.xml', 'word/numbering.xml', 'docProps/core.xml']) assert.ok(names.includes(part), part);
+  // The Documents plugin reads .docx; the house reads back its own file.
+  const text = extractText('delivery.docx', buf);
+  assert.ok(text.includes(a.title.slice(0, 40)), `the title survives: ${text.slice(0, 120)}`);
+  assert.ok(text.includes(a.serial), 'the serial is in the document');
+  assert.match(text, /Provenance/);
+  assert.match(text, /Written by Prajñā as mission/);
+  assert.ok(text.length > 400, `real content, not an empty shell: ${text.length} chars`);
+  assert.ok(!/<w:p>|<\/w:t>/.test(text), 'markup did not leak into the text');
+  assert.equal((await fetch(`${BASE}/api/artifacts/nosuchid/docx`)).status, 404);
+});

@@ -1159,3 +1159,15 @@ plainly and add that the house does not guess a price, because token
 prices change and an invented figure would be worse than none. A
 provider that reports no counts adds nothing but the call itself, and a
 refused call bills nothing and is not counted.
+
+## v0.97: A delivery can leave as Word (2026-09-04)
+
+Every artifact now offers a .docx beside the HTML: a real Word document
+built without any dependency, from the artifact itself, block by block,
+so what is in the file is what was delivered. It carries the title, the
+serial, the desk, the version, the date, every heading, paragraph and
+bullet, and a provenance page naming the mission, what it settled
+against its ceiling, whether a model wrote the substance on your key or
+the house quoted its sources, and the public record link when one
+exists. Verified two ways: the house reads its own file back through the
+Documents plugin, and Apple's own converter opens it.

@@ -20,6 +20,7 @@ import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { search } from './search.js';
+import { docxFromArtifact } from './office.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
 import { checkMission as checkEvidence, sweep as sweepEvidence, evidenceHealth } from './evidence.js';
 import { hooks, hookState, setHooks, fire as fireHook, fromMissionEvent, HOOK_EVENTS } from './hooks.js';
@@ -965,6 +966,18 @@ async function handle(req, res) {
     return json(res, 200, { ok: true, shareToken: token, path: token ? `/s/${token}` : null, revokedDeliveries: revoked });
   }
 
+  const artifactDocx = p.match(/^\/api\/artifacts\/([\w]+)\/docx$/);
+  if (artifactDocx && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const a = store.artifact(artifactDocx[1]);
+    const html = a ? store.artifactHtml(a.id) : null;
+    if (!a || !html) return json(res, 404, { error: 'Artifact not found.' });
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    const buf = docxFromArtifact({ artifact: a, mission: m, html, publicUrl: m?.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null });
+    const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'artifact'}.docx`;
+    res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
+    return res.end(buf);
+  }
   const artifactHtml = p.match(/^\/api\/artifacts\/([\w]+)\/html$/);
   if (artifactHtml) {
     const html = store.artifactHtml(artifactHtml[1]);
