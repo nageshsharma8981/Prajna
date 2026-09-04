@@ -363,3 +363,14 @@ recomputed — estimate, ceiling, access counts, assertion ownership — and the
 edit is recorded on the contract (`contract.edited`: count, added, removed)
 and in every artifact's provenance. `PATCH /api/missions/:id/plan` refuses
 anything but an OPEN ticket, unknown tools and oversized plans.
+
+## v0.18 — Why this plan, and what each step costs (2026-09-04)
+
+Every ticket now shows the cost, access class and approval flag of each step,
+the per-seat price on the panel step (live seats on your own key are priced
+at 0 house credits, house seats share the panel cost), and a house-written
+"Why this plan" — a contract-level explanation of depth, variant, removed
+skill steps, connector steps and the ceiling rule — plus a one-line rationale
+per step. All of it is carried in the provenance block (`contract.why`,
+`contract.steps`). Deterministic and honest: the house explains its own
+reasoning; it does not ask a model to invent one.

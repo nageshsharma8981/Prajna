@@ -358,13 +358,24 @@ export default function Run({ id }) {
             <p className="ticket-deliv">panel: {mission.councilNames.join(', ')}</p>
             <ol className="ticket-plan">
               {mission.contract.plan.map((p, i) => (
-                <li key={p.id}>
+                <li key={p.id} className="plan-row">
                   <span className="n">{i + 1}</span>
-                  <span className="t" style={{ opacity: p.status === 'QUEUED' ? 0.55 : 1 }}>{p.title}</span>
+                  <span className="t" style={{ opacity: p.status === 'QUEUED' ? 0.55 : 1 }}>
+                    {p.title}
+                    <span className="plan-meta"><b>{p.cost} cr</b> · {p.access}{p.requiresConfirmation ? ' · approval' : ''}{p.rationale ? <> · <em title={p.rationale}>why</em></> : null}</span>
+                    {p.seats && p.seats.length > 0 && <span className="plan-seats">{p.seats.map((st) => <span key={st.id} className={`seat-cost${st.live ? ' live' : ''}`}>{st.name} {st.live ? '0 cr · your key' : `${st.cost} cr`}</span>)}</span>}
+                  </span>
                   <StatusFlap status={p.status} />
                 </li>
               ))}
             </ol>
+            {mission.contract.why && (
+              <details className="plan-why">
+                <summary>Why this plan</summary>
+                <p>{mission.contract.why}</p>
+                <ol>{mission.contract.plan.map((p) => <li key={p.id}><b>{p.tool}</b> — {p.rationale}</li>)}</ol>
+              </details>
+            )}
             {mission.contract.edited && <p className="ticket-deliv" style={{ marginTop: '0.4rem' }}>plan edited before stamping · {mission.contract.edited.steps} steps{mission.contract.edited.added ? ` · ${mission.contract.edited.added} added` : ''}{mission.contract.edited.removed ? ` · ${mission.contract.edited.removed} removed` : ''}</p>}
             {mission.status === 'OPEN' && !editing && <button className="btn-quiet" style={{ marginTop: '0.6rem', padding: '0.4rem 0.8rem' }} onClick={openEditor} disabled={busy}>Edit plan</button>}
             {editing && (

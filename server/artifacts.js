@@ -38,6 +38,8 @@ function provenanceObject(mission) {
       ceiling: mission.contract.ceiling,
       dimensions: mission.contract.dimensions || [],
       edited: mission.contract.edited || null,
+      why: mission.contract.why || null,
+      steps: mission.contract.plan.map((p) => ({ id: p.id, tool: p.tool, cost: p.cost, access: p.access, rationale: p.rationale || null, seats: (p.seats || []).map((s) => ({ name: s.name, live: !!s.live, cost: s.cost })) })),
     },
     lineage: mission.lineage || null,
     planVsActual: {

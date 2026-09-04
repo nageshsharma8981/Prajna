@@ -109,6 +109,39 @@ export const DIMENSIONS = {
 // installing a skill genuinely changes every future ticket.
 const SKILL_TOOLS = new Set(SKILLS.map((s) => s.id));
 
+// Why each step is on the ticket — house-written, deterministic, honest.
+// Shown on the ticket and carried in provenance so a reader can see the
+// reasoning behind the estimate, not just the number.
+export const RATIONALE = {
+  scope: 'Fixes the question first so every later step, and the estimate, means something.',
+  search: 'Retrieves real, dated sources; nothing downstream may cite what was not retrieved.',
+  'cite-guard': 'Grades every claim and refuses ungraded ones — the brief cannot ship an unsourced sentence.',
+  steelman: 'Builds the strongest case against the recommendation so the dissent is real, not decorative.',
+  storyboard: 'Orders the beats before any slide is written; tension is decided here, not in the copy.',
+  compose: 'Writes the deliverable from graded material. Live lead seats author it on your own key.',
+  'deck-doctor': 'Splits or cuts any slide carrying more than one idea.',
+  'copy-cutter': 'Reduces copy to promise → proof → action; refuses filler.',
+  build: 'Produces the working deliverable — semantic, responsive — and owns its structural assertions.',
+  'a11y-audit': 'Contrast, focus order and touch targets checked against the real output.',
+  ingest: 'Loads and profiles the data before any conclusion is drawn.',
+  analyze: 'Tests the obvious explanation against the alternative and isolates what moves opposite.',
+  'chart-smith': 'Chooses honest chart forms and draws the finding on the chart itself.',
+  'connector-post': 'Delivers outside the workspace — always behind an approval checkpoint.',
+  design: 'Decides layout, hierarchy and states before any pixel; a draft, not a promise of final styling.',
+  council: 'Every seat states a position; advisers challenge; dissent is recorded and survives into the artifact.',
+};
+function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, connectors }) {
+  const bits = [`${desk.name}: ${plan.length} steps, ordered by dependency so independent steps run in parallel.`];
+  if (desk.id === 'brief') bits.push(depth === 'fast' ? 'Fast research keeps scope → sweep → compose only; grading and steelman steps are dropped and the brief says so.' : 'Deep research keeps the full grading and steelman steps.');
+  if (variant === 'design') bits.push('Design mode produces an annotated draft instead of a build, so the accessibility audit does not apply.');
+  if (removedSkills.length) bits.push(`Skill steps not on the desk were removed (${removedSkills.join(', ')}); their dependents re-pointed so the graph stays connected.`);
+  if (connectors.length) bits.push(`Connected apps add an external delivery step each (${connectors.join(', ')}), gated by approval.`);
+  const live = seatsAll.filter((x) => x.live).length;
+  bits.push(live ? `${live} of ${seatsAll.length} panel seats are live on your own keys and priced at 0 house credits; the rest share the panel cost.` : `All ${seatsAll.length} panel seats are house seats and share the panel cost.`);
+  bits.push('The ceiling is the estimate plus 25%; nothing beyond it is spent without a decision.');
+  return bits.join(' ');
+}
+
 export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
@@ -155,7 +188,9 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   });
   raw = raw.map((p) => ({ ...p, targets: assertions.filter((a) => a.owner === p.id).map((a) => a.id) }));
 
-  const plan = raw.map((p, i) => ({ status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), ...p }));
+  const plan = raw.map((p, i) => ({ status: 'QUEUED', contextHash: hash(`${desk.id}:${i}:${p.tool}:${goal}`), rationale: RATIONALE[p.tool] || 'House step.', ...p }));
+  const seatsPriced = (plan.find((p) => p.tool === 'council') || {}).seats || seatsAll.map((id) => ({ id, live: !!liveSeat(id) }));
+  const why = contractWhy({ desk, depth, variant, plan, seatsAll: seatsPriced, removedSkills: [...removed].map((id) => byId[id]?.tool).filter(Boolean), connectors: [...(queuedConnectors || [])] });
   const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
   const mission = {
     id: id(),
@@ -172,7 +207,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     councilNames: seatsAll.map((m) => modelById(m).name),
     status: 'OPEN', // OPEN → LIVE → FILLED | KILLED | PAUSED_ATTENTION | PAUSED_CEILING
     contract: {
-      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id], assertions,
+      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id], assertions, why,
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
     lineage: lineage || null, // { parentId, parentSerial, version }
@@ -228,7 +263,7 @@ export function editPlan(missionId, steps) {
     if (!dependsOn.length && i > 0 && !Array.isArray(s.dependsOn)) dependsOn.push(ids[i - 1]);
     ids.push(id);
     const cost = prev ? prev.cost : Math.min(40, Math.max(1, Number(s.cost) || DEFAULT_COST[tool] || 8));
-    return { ...(prev || {}), id, title, tool, access, cost, dependsOn, status: 'QUEUED', requiresConfirmation: access === 'external' || !!prev?.requiresConfirmation, contextHash: hash(`${m.desk}:${i}:${tool}:${m.goal}`) };
+    return { ...(prev || {}), id, title, tool, access, cost, dependsOn, status: 'QUEUED', rationale: prev?.tool === tool && prev?.rationale ? prev.rationale : (RATIONALE[tool] || 'Owner-added step.'), requiresConfirmation: access === 'external' || !!prev?.requiresConfirmation, contextHash: hash(`${m.desk}:${i}:${tool}:${m.goal}`) };
   });
   // Assertion ownership follows the tool that produces each promise.
   const fallbackOwner = plan.find((p) => ['compose', 'build', 'design'].includes(p.tool)) || plan[plan.length - 1];
