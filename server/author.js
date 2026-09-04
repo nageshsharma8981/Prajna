@@ -39,13 +39,14 @@ export function parseAuthored(text) {
   return JSON.parse(s.slice(start, end + 1));
 }
 
-export async function authorContent(mission, live) {
+export async function authorContent(mission, live, { revise } = {}) {
   const started = Date.now();
-  const text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: authorPrompt(mission), maxTokens: 2600 });
+  const prompt = revise ? `${authorPrompt(mission)}\n\nREVISION REQUIRED. Your previous draft failed the house gate: ${revise}. Rewrite the whole object so it passes: drop or re-source every offending figure; never replace one invented number with another.` : authorPrompt(mission);
+  const text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt, maxTokens: 2600 });
   const content = parseAuthored(text);
   const ok = MIN[shapeFor(mission)];
   if (!ok || !ok(content)) throw new Error('the reply did not match the required shape');
-  return { live: true, model: live.model.name, modelId: live.model.modelId, chars: text.length, ms: Date.now() - started, at: Date.now(), content };
+  return { live: true, model: live.model.name, modelId: live.model.modelId, chars: text.length, ms: Date.now() - started, at: Date.now(), content, revisions: (mission.authored?.revisions || 0) + (revise ? 1 : 0) };
 }
 
 // Generators call this: authored substance only when it is live and present.

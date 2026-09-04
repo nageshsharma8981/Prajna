@@ -15,6 +15,34 @@ const provenance = (html) => {
   try { return m ? JSON.parse(m[1]) : null; } catch { return null; }
 };
 
+// Figures in the deliverable body: percentages, money, counts with units,
+// ratios, "n=". A live author may only use figures the goal or a retrieved
+// source actually contains; everything else is an invented number.
+const FIG_RE = /(?:[$₹€£]\s?\d[\d,.]*\s?(?:million|billion|crore|lakh|bn|k|m)?|\b\d[\d,.]*\s?(?:%|percent|per cent|million|billion|crore|lakh|x\b|:\s?1\b)|\bn\s?=\s?\d+)/gi;
+export function figuresIn(text) {
+  return [...new Set((String(text).match(FIG_RE) || []).map((f) => f.replace(/\s+/g, ' ').trim()))];
+}
+const textOf = (html) => body(html).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
+const norm = (s) => String(s).toLowerCase().replace(/[\s,]/g, '');
+function unsupportedFigures(html, { allowLabelled = false } = {}) {
+  const p = provenance(html);
+  if (!p || p.mode !== 'live') return { ok: true, detail: 'scripted substance is house-labelled sample; figures not checked' };
+  const text = textOf(html);
+  const allowed = [p.goal || '', ...((p.retrieval?.sources || []).map((s) => `${s.title} ${s.extract || ''}`))].map(norm).join(' ');
+  const figures = figuresIn(text);
+  const bad = figures.filter((f) => {
+    if (allowed.includes(norm(f))) return false;
+    if (allowLabelled) {
+      const i = text.indexOf(f); const around = text.slice(Math.max(0, i - 160), i + 160).toLowerCase();
+      if (/illustrative|sample|placeholder|hypothetical|evidence pending|for example/.test(around)) return false;
+    }
+    return true;
+  });
+  return bad.length ? { ok: false, detail: `unsupported figures: ${bad.slice(0, 6).join(', ')}${bad.length > 6 ? '…' : ''}` } : { ok: true, detail: figures.length ? `${figures.length} figure(s), all traceable to the goal or a retrieved source` : 'no figures asserted' };
+}
+const HONESTY = { id: 'VAL-FIGURES-SOURCED', title: 'Every figure in a live-authored deliverable traces to the goal or a retrieved source', owner: 'compose',
+  scrutiny: (h) => unsupportedFigures(h), surface: (h) => unsupportedFigures(h, { allowLabelled: true }) };
+
 // scrutiny lane: reads structure. surface lane: exercises behavior a user
 // would hit (runnable script, resolvable anchors, parseable audit object).
 export const ASSERTIONS = {
@@ -31,6 +59,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => h.indexOf('The verdict') > 0 && h.indexOf('The verdict') < h.indexOf('What the evidence supports'), surface: (h) => has(h, /class="verdict"/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => { const p = provenance(h); return !!p && p.schema === 'prajna.provenance.v1' && Array.isArray(p.contract?.plan); } },
+    HONESTY,
   ],
   deck: [
     { id: 'VAL-NINE-BEATS', title: 'The deck carries the nine-beat arc', owner: 'compose',
@@ -42,6 +71,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /ArrowRight/) && has(h, /ArrowLeft/), surface: (h) => has(h, /addEventListener\('click'/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+    HONESTY,
   ],
   site: [
     { id: 'VAL-STRUCTURE', title: 'Nav, hero, proof section and a closing call to action are present', owner: 'build',
@@ -53,6 +83,7 @@ export const ASSERTIONS = {
       surface: (h) => has(h, /Evidence pending — supplied by the owner/) || (!has(h, /awaits your real/) && !has(h, /replace with real/i)) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+    { ...HONESTY, owner: 'build' },
   ],
   mobile: [
     { id: 'VAL-FOUR-SCREENS', title: 'Four screens are present and navigable from the tab bar', owner: 'build',
@@ -63,6 +94,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /class="phone"/), surface: (h) => has(h, /aspect-ratio/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+    { ...HONESTY, owner: 'build' },
   ],
   design: [
     { id: 'VAL-REGIONS', title: 'Every major region is drawn and labeled with its intent', owner: 'design',
@@ -81,6 +113,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => count(h, /role="img" aria-label=/g) >= 2, surface: (h) => !has(body(h), /<svg(?:(?!aria-label)[^>])*>/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
+    HONESTY,
   ],
 };
 
@@ -91,9 +124,9 @@ export function validateArtifact(desk, html, assertionIds) {
   for (const a of catalog) {
     if (!assertionIds.includes(a.id)) continue;
     for (const lane of ['scrutiny', 'surface']) {
-      let passed = false, error = null;
-      try { passed = !!a[lane](html); } catch (e) { passed = false; error = String(e.message || e).slice(0, 80); }
-      rows.push({ id: a.id, lane, passed, error });
+      let passed = false, error = null, detail = null;
+      try { const out = a[lane](html); if (out && typeof out === 'object') { passed = !!out.ok; detail = out.detail || null; } else passed = !!out; } catch (e) { passed = false; error = String(e.message || e).slice(0, 80); }
+      rows.push({ id: a.id, lane, passed, error, detail });
     }
   }
   return rows;

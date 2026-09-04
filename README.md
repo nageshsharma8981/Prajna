@@ -325,3 +325,19 @@ prajna run website "A landing page for a Bengaluru coffee roaster" --auto --out 
   `get <artifact-id>` cover the rest. The session file under
   `~/.config/prajna` holds the workspace URL and the server-minted session
   cookie only — never the access code, never a provider key.
+
+## v0.15 — The honesty lane (2026-09-04)
+
+A new assertion on every content desk, `VAL-FIGURES-SOURCED`: in a
+live-authored deliverable, every figure (percentages, money, counts with units,
+ratios, n=) must trace to the goal or to a retrieved source's text. The
+scrutiny lane is strict; the surface lane forgives figures the text itself
+labels illustrative — so a labelled example produces dissent, not a silent
+pass. Verdicts now carry a detail string (which figures, why) that appears on
+the tape and in the decision prompt.
+
+On **patch**, a live author revises its own draft against the gate's finding
+(the house never edits authored text); the revision is logged with model,
+size and latency, then both lanes run again. If the seat cannot revise, the
+draft stands and the gate says so. Scripted substance is house-labelled sample
+and is not figure-checked.

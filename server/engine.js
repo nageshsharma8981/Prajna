@@ -614,7 +614,7 @@ function runValidation(m, notify, runner) {
   const round = (m.validations?.length || 0) + 1;
   for (const lane of ['scrutiny', 'surface']) {
     const laneRows = rows.filter((r) => r.lane === lane);
-    pushEvent(m, { type: 'validate.lane', lane, round, verdicts: laneRows.map((r) => ({ id: r.id, passed: r.passed, error: r.error })) , note: `${lane} lane: ${laneRows.filter((r) => r.passed).length}/${laneRows.length} assertions pass` }, notify);
+    pushEvent(m, { type: 'validate.lane', lane, round, verdicts: laneRows.map((r) => ({ id: r.id, passed: r.passed, error: r.error, detail: r.detail })) , note: `${lane} lane: ${laneRows.filter((r) => r.passed).length}/${laneRows.length} assertions pass` }, notify);
   }
   const gate = evaluateGate(ids, rows);
   m.validations = [...(m.validations || []), { round, rows, gate }];
@@ -634,7 +634,7 @@ function runValidation(m, notify, runner) {
   const patchable = alreadyPatched.length < openAfterRisk.length;
   raiseAttention(m, notify, {
     kind: 'gate', assertions: openAfterRisk,
-    prompt: `The gate did not clear: ${openAfterRisk.map((id) => `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}`).join('; ')}. ${alreadyPatched.length ? `A patch was already applied to ${alreadyPatched.join(', ')} and did not clear it. ` : ''}${patchable ? 'Patch the artifact and re-validate, accept the risk on the record, or stop?' : 'Accept the risk on the record, or stop?'}`,
+    prompt: `The gate did not clear: ${openAfterRisk.map((id) => { const d = rows.find((r) => r.id === id && !r.passed && r.detail)?.detail; return `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}${d ? ` (${d})` : ''}`; }).join('; ')}. ${alreadyPatched.length ? `A patch was already applied to ${alreadyPatched.join(', ')} and did not clear it. ` : ''}${patchable ? 'Patch the artifact and re-validate, accept the risk on the record, or stop?' : 'Accept the risk on the record, or stop?'}`,
     options: patchable ? ['patch', 'accept-risk', 'stop-run'] : ['accept-risk', 'stop-run'],
   });
   store.flushMissions();
@@ -843,6 +843,20 @@ export async function decideAttention(missionId, requestId, decision, justificat
       // the patch applied, then both lanes run again.
       m.patches = [...new Set([...(m.patches || []), ...req.assertions])];
       m.status = 'LIVE';
+      // A live author revises its own draft against the gate's findings; the
+      // house never silently edits authored text.
+      if (req.assertions.includes('VAL-FIGURES-SOURCED') && m.authored?.live) {
+        const live = liveSeat(m.lead);
+        const finding = (m.validations?.at(-1)?.rows || []).find((r) => r.id === 'VAL-FIGURES-SOURCED' && !r.passed && r.detail)?.detail || 'unsupported figures';
+        if (live) {
+          try {
+            m.authored = await authorContent(m, live, { revise: finding });
+            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: true, detail: `${m.authored.model} revised its draft against the gate finding (${finding}) — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
+          } catch (e) {
+            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: false, detail: `${live.model.name} could not revise (${String(e.message || e).slice(0, 120)}) — the draft stands and the gate will say so` }, notify);
+          }
+        }
+      }
       pushEvent(m, { type: 'artifact.patched', assertions: req.assertions, note: `Patch applied for ${req.assertions.join(', ')} — artifact regenerated, re-validating.` }, notify);
       if (m.artifactId) {
         const { html } = GENERATORS[m.desk](m);
