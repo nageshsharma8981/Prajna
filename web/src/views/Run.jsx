@@ -449,6 +449,7 @@ export default function Run({ id }) {
             <div className="ticket-tally">
               <div className="cell"><span className="k">Estimate</span><span className="v">{mission.contract.estimate} cr</span></div>
               <div className="cell"><span className="k">Settled</span><span className="v">{mission.spent.toFixed(1)} cr</span></div>
+              {(() => { const saved = mission.contract.plan.reduce((a, p) => a + ((p.seats || []).filter((x) => x.live).length * (p.housePer || 0)), 0); return saved > 0 ? <div className="cell"><span className="k">Saved by your keys</span><span className="v">{saved.toFixed(1)} cr</span></div> : null; })()}
             </div>
           </div>
         </aside>

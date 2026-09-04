@@ -168,7 +168,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     if (p.tool !== 'council') return p;
     const per = Math.round((p.cost / seatsAll.length) * 10) / 10;
     const seats = seatsAll.map((id) => ({ id, name: modelById(id).name, live: !!liveSeat(id), cost: liveSeat(id) ? 0 : per }));
-    return { ...p, seats, cost: Math.round(seats.reduce((a, x) => a + x.cost, 0) * 10) / 10 };
+    return { ...p, seats, housePer: per, cost: Math.round(seats.reduce((a, x) => a + x.cost, 0) * 10) / 10 };
   });
 
   // Queued connectors append an external delivery step after the last step.

@@ -35,6 +35,7 @@ export default function Account({ page }) {
   const liveAuthored = filled.filter((m) => m.authored?.live).length;
   const estAcc = filled.filter((m) => m.settlement && m.contract?.estimate);
   const variance = estAcc.length ? estAcc.reduce((a, m) => a + (m.settlement.settled - m.contract.estimate) / m.contract.estimate, 0) / estAcc.length : null;
+  const savedByKeys = s.missions.reduce((a, m) => a + (m.contract?.plan || []).reduce((b, p) => b + ((p.seats || []).filter((x) => x.live).length * (p.housePer || 0)), 0), 0);
   const byDesk = Object.values(s.missions.reduce((acc, m) => { const k = m.deskName; acc[k] ||= { desk: k, n: 0, done: 0, spent: 0 }; acc[k].n++; if (m.status === 'FILLED') acc[k].done++; acc[k].spent += m.spent || 0; return acc; }, {}));
 
   return (
@@ -89,7 +90,7 @@ export default function Account({ page }) {
             </div>
             <h2 className="h2 section-gap">Quality — from the ledger</h2>
             <div className="stat-grid">
-              {[['Gate cleared first time', pct(firstTime, gated.length)], ['Patched before delivery', pct(patched, filled.length)], ['Accepted risks on record', risks], ['Live-authored', pct(liveAuthored, filled.length)], ['Estimate variance', variance == null ? '—' : `${variance >= 0 ? '+' : ''}${Math.round(variance * 100)}%`], ['Delivered', `${done}/${s.missions.length}`]].map(([k, v]) => (
+              {[['Gate cleared first time', pct(firstTime, gated.length)], ['Patched before delivery', pct(patched, filled.length)], ['Accepted risks on record', risks], ['Live-authored', pct(liveAuthored, filled.length)], ['Estimate variance', variance == null ? '—' : `${variance >= 0 ? '+' : ''}${Math.round(variance * 100)}%`], ['Saved by your keys', `${savedByKeys.toFixed(0)} cr`]].map(([k, v]) => (
                 <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>
               ))}
             </div>

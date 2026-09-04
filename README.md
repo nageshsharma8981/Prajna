@@ -501,3 +501,10 @@ typing "decide" or a serial filters to them.
 An unstamped ticket now shows seat health: each seat marked live on your key
 or house voice, a plain sentence about what that means for the substance, and
 a link to load the missing provider key. No surprises after stamping.
+
+## v0.33 — What your keys save (2026-09-04)
+
+The panel step records the house price per seat; a live seat is priced at 0.
+The ticket tally shows "Saved by your keys" for any run with live seats, and
+the dashboard totals it across the board — the value of bringing your own
+keys, in house credits, from the ledger.
