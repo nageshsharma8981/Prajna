@@ -20,6 +20,7 @@ import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { costHistory, historyLine } from './history.js';
+import { weeklyReview } from './review.js';
 import { search } from './search.js';
 import { docxFromArtifact, pptxFromArtifact, xlsxFromMission } from './office.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
@@ -512,6 +513,11 @@ async function handle(req, res) {
   }
   // The cheap question: has anything changed? A tab asks this, not for the
   // whole workspace, and pulls the workspace only when the answer moves.
+  if (p === '/api/review' && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const weeks = Math.max(1, Math.min(8, Number(url.searchParams.get('weeks')) || 1));
+    return json(res, 200, weeklyReview({ weeks }));
+  }
   if (p === '/api/history' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const h = costHistory({ desk: url.searchParams.get('desk') || 'brief', depth: url.searchParams.get('depth') || null, variant: url.searchParams.get('variant') || null });
@@ -1672,6 +1678,19 @@ rehydrate(notify);
 scheduleDigest();
 scheduleHouseCheck();
 scheduleBackups();
+// The weekly review: Mondays at 08:00 UTC, to the webhook if one is set.
+setInterval(() => {
+  try {
+    const now = new Date();
+    if (now.getUTCDay() !== 1 || now.getUTCHours() !== 8) return;
+    const day = now.toISOString().slice(0, 10);
+    if (ws().lastReviewDay === day) return;
+    ws().lastReviewDay = day; flushWs();
+    const r = weeklyReview({ weeks: 1 });
+    console.log(`prajna: weekly review, ${r.now.delivered} delivered, ${r.now.settled} cr settled`);
+    fireHook('review.weekly', { review: r.now, before: r.before, text: r.text });
+  } catch (e) { console.error('prajna: weekly review,', e.message); }
+}, 10 * 60 * 1000).unref();
 scheduleStandingOrders(() => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify }));
 seedTestTokens();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

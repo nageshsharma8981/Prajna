@@ -1321,3 +1321,28 @@ test('a delivery can be taken further, and the next ticket argues from it', asyn
   assert.match(refused.j.error, /Only a delivered mission/);
   assert.equal((await post(`/api/missions/${from.id}/next`, { deskId: 'nosuchdesk' })).status, 400);
 });
+
+test('the weekly review says how the house is doing, against the week before', async () => {
+  const r = await api('/api/review');
+  assert.equal(r.status, 200);
+  assert.equal(r.j.weeks, 1);
+  assert.ok(r.j.now && r.j.before, 'both periods are counted');
+  assert.match(r.j.text, /^Prajñā weekly review: \d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}/);
+  // Every figure must be arithmetic over the record for that window.
+  const b = (await api('/api/bootstrap')).j;
+  const since = Date.now() - 7 * 86400000;
+  const inWindow = b.missions.filter((m) => (m.filledAt || m.launchedAt || m.createdAt || 0) >= since);
+  assert.equal(r.j.now.started, inWindow.length);
+  assert.equal(r.j.now.delivered, inWindow.filter((m) => m.status === 'FILLED').length);
+  const costs = inWindow.filter((m) => m.status === 'FILLED').map((m) => m.settlement?.settled ?? m.spent);
+  assert.equal(r.j.now.settled, Math.round(costs.reduce((a, c) => a + c, 0) * 10) / 10);
+  if (r.j.now.gated) assert.equal(r.j.now.firstTimeRate, Math.round((r.j.now.firstTime / r.j.now.gated) * 100));
+  assert.ok(!r.j.text.includes('NaN') && !r.j.text.includes('undefined'), r.j.text.slice(0, 200));
+  // A week with nothing before it is not compared with silence.
+  if (r.j.before.started === 0) assert.match(r.j.text, /nothing yet to compare against/);
+  else assert.match(r.j.text, /set beside the week before it/);
+  const four = await api('/api/review?weeks=4');
+  assert.equal(four.j.weeks, 4);
+  assert.ok(four.j.now.started >= r.j.now.started, 'a longer window holds at least as much');
+  assert.equal((await api('/api/review?weeks=99')).j.weeks, 8, 'the window is bounded');
+});

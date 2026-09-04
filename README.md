@@ -1476,3 +1476,18 @@ its own delivery already on the table as an owner source, text and all,
 so the deck argues from the brief rather than from the prompt. It
 arrives as an unstamped ticket like any other, priced and explained
 before anything runs, and it says what it came from and links back.
+
+## v1.21: The weekly review (2026-09-05)
+
+The digest says what happened yesterday. This says how the house is
+doing: delivered and stopped, credits settled and the middle delivery,
+how many cleared the gate first time and how many needed a patch, how
+many runs hit their ceiling, who wrote the substance, what the standing
+orders did, whether any cited evidence has died and who accepted the
+house rules. Each figure sits beside the same figure for the week
+before, so a number that moved says so.
+
+It is counted, never modelled, and a week whose predecessor was empty is
+not compared with silence: the house says there is nothing yet to
+compare against. Read it under Settings, and it goes to your address
+every Monday morning if you have given the house one.

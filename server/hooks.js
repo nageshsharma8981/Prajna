@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { store } from './store.js';
 import { ws, flushWs } from './workspace.js';
 
-export const HOOK_EVENTS = ['decision.needed', 'run.delivered', 'run.stopped', 'limit.refused', 'housecheck.failed', 'house.entered'];
+export const HOOK_EVENTS = ['decision.needed', 'run.delivered', 'run.stopped', 'limit.refused', 'housecheck.failed', 'house.entered', 'review.weekly'];
 const MS = 5000;
 let secret = null; // memory only, never written to disk, never returned to the browser
 
