@@ -473,3 +473,12 @@ opens the run (or the board when several wait), and the top bar carries a
 bell. Browser notifications are opt-in under Settings, stored per browser,
 and fire only when the tab is in the background. `prajna watch` rings the
 terminal bell and prints the prompt, the options and the run URL.
+
+## v0.29 — Housekeeping (2026-09-04)
+
+`POST /api/housekeeping {minutes, apply}` lists — and with `apply`, settles —
+what the board has stopped caring about: unstamped tickets older than the
+window are voided, runs paused on a decision nobody has taken for that long
+are stopped, reserves are released, and every action lands on the tape as
+such. Dry run by default. The Tickets & runs page has a Housekeeping control
+with a confirm step; the CLI has `prajna sweep [--minutes 60] [--apply]`.

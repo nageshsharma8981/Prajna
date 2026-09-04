@@ -1391,3 +1391,8 @@ abbr.cite { cursor: help; }
 .badge-n { margin-left: auto; font-family: var(--led-font); font-weight: 700; color: var(--led); background: var(--led-bg); border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.8rem; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--led); box-shadow: 0 0 8px var(--led); display: inline-block; animation: flapflip 1.2s linear infinite; }
 .bell { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid color-mix(in srgb, var(--led) 50%, var(--line)); border-radius: 999px; padding: 0.3rem 0.7rem; font-family: var(--led-font); font-weight: 700; color: var(--led); text-decoration: none; font-size: 0.85rem; }
+
+.housekeeping { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 0.7rem 1rem; margin: 0.6rem 0 1rem; font-size: 0.86rem; color: var(--bone-dim); }
+.hk-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.hk-plan p { margin: 0.6rem 0 0.3rem; } .hk-plan ul { margin: 0; padding-left: 1.1rem; font-family: var(--mono); font-size: 0.74rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.hk-actions { display: flex; gap: 0.6rem; margin-top: 0.6rem; }

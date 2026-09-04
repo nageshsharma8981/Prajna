@@ -69,6 +69,46 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
   );
 }
 
+// Housekeeping: settle what the board has stopped caring about, with a
+// dry run first so nothing is voided or stopped unseen.
+function Housekeeping() {
+  const s = useStore();
+  const [plan, setPlan] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState(null);
+  const call = async (apply) => {
+    setBusy(true); setNote(null);
+    try {
+      const r = await fetch('/api/housekeeping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ minutes: 60, apply }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Refused.');
+      if (apply) { setNote(j.note); setPlan(null); s.refresh(); } else setPlan(j);
+    } catch (e) { setNote(e.message); } finally { setBusy(false); }
+  };
+  const stuckCount = s.missions.filter((m) => m.status.startsWith('PAUSED')).length;
+  const staleCount = s.missions.filter((m) => m.status === 'OPEN').length;
+  if (!stuckCount && !staleCount && !note) return null;
+  return (
+    <div className="housekeeping" role="group" aria-label="Housekeeping">
+      <div className="hk-row">
+        <span><b>Housekeeping.</b> {staleCount} unstamped ticket{staleCount === 1 ? '' : 's'} and {stuckCount} run{stuckCount === 1 ? '' : 's'} paused on a decision are on the board.</span>
+        {!plan && <button className="btn-quiet" onClick={() => call(false)} disabled={busy}>Show what is older than an hour</button>}
+      </div>
+      {plan && (
+        <div className="hk-plan">
+          <p>{plan.stale.length} unstamped ticket{plan.stale.length === 1 ? '' : 's'} would be voided; {plan.stuck.length} paused run{plan.stuck.length === 1 ? '' : 's'} would be stopped with reserves released. Everything lands on the tape.</p>
+          <ul>{[...plan.stale.map((m) => `${m.serial} · ${m.subject} (void)`), ...plan.stuck.map((m) => `${m.serial} · ${m.subject} (stop · ${m.kind})`)].slice(0, 12).map((t) => <li key={t}>{t}</li>)}</ul>
+          <div className="hk-actions">
+            <button className="btn-quiet" onClick={() => setPlan(null)} disabled={busy}>Leave them</button>
+            {(plan.stale.length + plan.stuck.length) > 0 && <button className="btn-stamp attn-btn" onClick={() => call(true)} disabled={busy}>Void and stop them</button>}
+          </div>
+        </div>
+      )}
+      {note && <p role="status" className="conn-note">{note}</p>}
+    </div>
+  );
+}
+
 export default function Floor() {
   const s = useStore();
   const [goal, setGoal] = useState('');
@@ -205,6 +245,7 @@ export default function Floor() {
         State the outcome you want. The house writes a ticket — the plan and the price —
         before a single credit is spent. Nothing runs until you stamp it.
       </p>
+      <Housekeeping />
 
       {!ticket && (
         <section className="orderpad fade-up" aria-label="Order pad">

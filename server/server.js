@@ -337,6 +337,24 @@ async function handle(req, res) {
     return json(res, 200, { events: (m.events || []).filter((e) => (e.seq || 0) > after) });
   }
 
+  // Housekeeping: settle what the board has stopped caring about. Unstamped
+  // tickets older than the window are voided; runs paused on a decision
+  // nobody has taken for that long are stopped, releasing their reserve.
+  // Every action lands on the tape as such. Dry run by default.
+  if (p === '/api/housekeeping' && req.method === 'POST') {
+    const body = await readBody(req);
+    const minutes = Math.max(5, Math.min(60 * 24 * 30, Number(body.minutes) || 60));
+    const cutoff = Date.now() - minutes * 60000;
+    const stale = store.missions().filter((m) => m.status === 'OPEN' && (m.createdAt || 0) < cutoff);
+    const stuck = store.missions().filter((m) => m.status.startsWith('PAUSED') && (m.attention || []).some((a) => !a.decision && (a.raisedAt || 0) < cutoff));
+    const plan = { minutes, stale: stale.map((m) => ({ id: m.id, serial: m.serial, subject: m.subject })), stuck: stuck.map((m) => ({ id: m.id, serial: m.serial, subject: m.subject, kind: (m.attention || []).find((a) => !a.decision)?.kind })) };
+    if (!body.apply) return json(res, 200, { ...plan, dryRun: true });
+    let voided = 0, stopped = 0;
+    for (const m of stale) { if (voidTicket(m.id, notify)) voided++; }
+    for (const m of stuck) { const r = killMission(m.id, notify); if (r && !r.error) stopped++; }
+    return json(res, 200, { ...plan, dryRun: false, voided, stopped, note: `Housekeeping: ${voided} unstamped ticket(s) voided, ${stopped} paused run(s) stopped — reserves released, everything on the tape.` });
+  }
+
   const voidMatch = p.match(/^\/api\/missions\/([\w]+)\/void$/);
   if (voidMatch && req.method === 'POST') {
     const m = voidTicket(voidMatch[1], notify);

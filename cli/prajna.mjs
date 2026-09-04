@@ -9,6 +9,7 @@
 //   prajna get <artifact-id> [--out dir]
 //   prajna bundle <mission-id> [--out dir]   the whole record in one HTML file
 //   prajna watch                       ring when a run needs a decision
+//   prajna sweep [--minutes 60] [--apply]   void stale tickets, stop runs stuck on a decision
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted — never the access code, never a provider key).
@@ -160,6 +161,16 @@ async function watch() {
     await sleep(5000);
   }
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, get: async () => save(need(), positional[0]) };
+async function sweep() {
+  // Housekeeping: void stale unstamped tickets and stop runs paused on a
+  // decision nobody has taken. Dry run unless --apply.
+  const cfg = need(); const minutes = Number(flag('minutes')) || 60;
+  const r = await post(cfg, '/api/housekeeping', { minutes, apply: !!flag('apply') });
+  console.log(bold(`Older than ${r.minutes} min:`), `${r.stale.length} unstamped ticket(s), ${r.stuck.length} run(s) paused on a decision`);
+  for (const m of r.stale) console.log(`   ${dim('stale')} ${m.serial}  ${m.subject}`);
+  for (const m of r.stuck) console.log(`   ${amber('stuck')} ${m.serial}  ${m.subject} ${dim(m.kind)}`);
+  console.log(r.dryRun ? dim('Dry run — add --apply to void and stop them (reserves released, all on the tape).') : green(r.note));
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });
