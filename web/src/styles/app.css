@@ -1408,3 +1408,10 @@ abbr.cite { cursor: help; }
 
 .palette-item.decide .k { background: var(--led); color: #171102; }
 .palette-item.decide .t { color: var(--led); }
+
+.seat-health { margin-top: 0.7rem; border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.8rem; font-size: 0.8rem; color: var(--bone-dim); }
+.seat-health .k { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
+.seat-list { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.4rem 0; }
+.seat-pill { font-family: var(--mono); font-size: 0.66rem; border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.15rem 0.55rem; }
+.seat-pill.live { border-color: color-mix(in srgb, var(--green) 55%, var(--line-strong)); color: var(--green); }
+.seat-health p { margin: 0.2rem 0 0; line-height: 1.45; }

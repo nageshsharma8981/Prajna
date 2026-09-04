@@ -495,3 +495,9 @@ key. Dismissed per browser; Get Help brings it back (`/?welcome=1`).
 Pending decisions sit at the top of the ⌘K palette — serial, kind and the
 prompt — so a run waiting on you is one keystroke away from anywhere, and
 typing "decide" or a serial filters to them.
+
+## v0.32 — Seats at stamping (2026-09-04)
+
+An unstamped ticket now shows seat health: each seat marked live on your key
+or house voice, a plain sentence about what that means for the substance, and
+a link to load the missing provider key. No surprises after stamping.

@@ -389,6 +389,22 @@ export default function Run({ id }) {
                 </li>
               ))}
             </ol>
+            {mission.status === 'OPEN' && (() => {
+              // Seat health before stamping: which seats will really be live.
+              const models = store.models || [];
+              const seats = [mission.lead, ...(mission.advisers || [])].map((id) => models.find((m) => m.id === id) || { id, name: id, live: false });
+              const lead = seats[0];
+              const missing = [...new Set(seats.filter((x) => !x.live && x.provider).map((x) => x.provider))];
+              return (
+                <div className="seat-health" role="group" aria-label="Seat health">
+                  <span className="k">Seats at stamping</span>
+                  <div className="seat-list">{seats.map((x, i) => <span key={x.id} className={`seat-pill${x.live ? ' live' : ''}`}>{x.name}{i === 0 ? ' · lead' : ''} — {x.live ? 'live on your key' : 'house voice'}</span>)}</div>
+                  {!lead?.live && <p>The lead is not live, so the substance will be house-scripted sample material and labelled as such. {lead?.provider ? <>Load {/^[aeiou]/i.test((store.providers || {})[lead.provider]?.label || lead.provider) ? 'an' : 'a'} <Link to="/keys">{(store.providers || {})[lead.provider]?.label || lead.provider} key</Link> to make {lead.name} write it.</> : null}</p>}
+                  {lead?.live && missing.length > 0 && <p>{seats.filter((x) => !x.live).length} adviser seat{seats.filter((x) => !x.live).length === 1 ? '' : 's'} will speak in the house voice; <Link to="/keys">load a {missing.map((pv) => (store.providers || {})[pv]?.label || pv).join(' or ')} key</Link> to make them live.</p>}
+                  {lead?.live && missing.length === 0 && <p>Every seat is live: positions, critiques and the substance itself run on your own keys, priced at 0 house credits.</p>}
+                </div>
+              );
+            })()}
             {mission.contract.why && (
               <details className="plan-why">
                 <summary>Why this plan</summary>
