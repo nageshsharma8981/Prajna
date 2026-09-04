@@ -5,8 +5,8 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
-const IMAGE_MODELS = ['House procedural (local)', 'GPT Image (needs OpenAI key)', 'Imagen (needs Google key)'];
-const VIDEO_MODELS = ['House motion (local, CSS)', 'Veo (needs Google key)'];
+const IMAGE_MODELS = [{ name: 'House procedural (local)', provider: null }, { name: 'GPT Image — your OpenAI key', provider: 'openai', modelId: 'gpt-image-1' }, { name: 'Gemini image — your Google key', provider: 'google', modelId: 'gemini-2.5-flash-image' }];
+const VIDEO_MODELS = [{ name: 'House motion (local, SVG)', provider: null }, { name: 'Veo — not wired yet', provider: 'veo' }];
 const STYLES = ['Poster', 'Infographic', 'Abstract', 'Storyboard'];
 
 function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -38,11 +38,28 @@ export default function Media() {
   const [style, setStyle] = useState('Poster');
   const [model, setModel] = useState(0);
   const [outs, setOuts] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [hosted, setHosted] = useState(null); // { url, media }
   const enabled = !!(s.tools || {}).media;
   const svg = useMemo(() => (outs[0] ? generate(outs[0].prompt, outs[0].style, outs[0].motion) : null), [outs]);
+  const keyed = (prov) => !!(s.keys || {})[prov];
   if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening…</p></div>;
   const models = tab === 'image' ? IMAGE_MODELS : VIDEO_MODELS;
-  const make = () => { if (!prompt.trim()) return; setOuts([{ prompt, style, motion: tab === 'video', at: Date.now() }, ...outs].slice(0, 6)); };
+  const make = async () => {
+    if (!prompt.trim()) return;
+    const m = models[model];
+    setErr(null);
+    if (!m.provider) { setHosted(null); setOuts([{ prompt, style, motion: tab === 'video', at: Date.now() }, ...outs].slice(0, 6)); return; }
+    if (m.provider === 'veo') { setErr('Video generation on hosted models is not wired yet — the local motion engine is the honest option today.'); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/media/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: `${prompt}${style ? ` — ${style.toLowerCase()} style` : ''}`, provider: m.provider, modelId: m.modelId }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Refused.');
+      setHosted(j); s.refresh();
+    } catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
   const download = () => { if (!svg) return; const b = new Blob([svg], { type: 'image/svg+xml' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'prajna-media.svg'; a.click(); URL.revokeObjectURL(u); };
   return (
     <div className="page">
@@ -54,13 +71,16 @@ export default function Media() {
         <div className="media-form">
           <textarea className="goal-input" rows={3} placeholder={tab === 'image' ? 'A poster for a night market under paper lanterns…' : 'Slow drift over an amber city grid at dusk…'} value={prompt} onChange={(e) => setPrompt(e.target.value)} aria-label="Media prompt" />
           <div className="samples">{STYLES.map((x) => <button key={x} className={`sample-chip${style === x ? ' on' : ''}`} onClick={() => setStyle(x)}>{x}</button>)}</div>
-          <label className="lbl">Model<select className="key-input" value={model} onChange={(e) => setModel(Number(e.target.value))}>{models.map((m, i) => <option key={m} value={i}>{m}</option>)}</select></label>
-          {model > 0 && <p className="conn-note">This model needs a provider key. Until it is loaded, generation falls back to the local engine and says so.</p>}
-          <button className="btn-stamp" onClick={make} disabled={!prompt.trim()}>Generate</button>
+          <label className="lbl">Model<select className="key-input" value={model} onChange={(e) => setModel(Number(e.target.value))}>{models.map((m, i) => <option key={m.name} value={i}>{m.name}{m.provider && m.provider !== 'veo' ? (keyed(m.provider) ? ' · key loaded' : ' · no key') : ''}</option>)}</select></label>
+          {model > 0 && models[model].provider !== 'veo' && !keyed(models[model].provider) && <p className="conn-note">This model needs a {models[model].provider === 'openai' ? 'OpenAI' : 'Google'} key under <Link to="/keys">Your keys</Link>. Nothing is generated until one is loaded — no silent fallback.</p>}
+          {err && <p role="alert" className="key-err">{err}</p>}
+          <button className="btn-stamp" onClick={make} disabled={!prompt.trim() || busy}>{busy ? 'Generating…' : 'Generate'}</button>
         </div>
         <div className="media-out">
-          {svg ? <div className="media-frame" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="media-frame empty">Your generation appears here.</div>}
+          {hosted ? <div className="media-frame"><img src={hosted.url} alt={hosted.media.prompt} style={{ display: 'block', width: '100%' }} /></div> : svg ? <div className="media-frame" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="media-frame empty">Your generation appears here.</div>}
+          {hosted && <p className="conn-hint" style={{ marginTop: '0.5rem' }}>{hosted.media.model} on your {hosted.media.provider === 'openai' ? 'OpenAI' : 'Google'} key · {(hosted.media.bytes / 1024).toFixed(0)} KB · {(hosted.media.ms / 1000).toFixed(1)}s · <a href={hosted.url} download>download</a></p>}
           {svg && <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.7rem' }}><button className="btn-quiet" onClick={download}>Download SVG</button><span className="conn-hint">local procedural engine · seed from your prompt · labeled synthetic</span></div>}
+          {(s.media || []).length > 0 && <div className="media-history" aria-label="Hosted generations">{(s.media || []).slice(0, 8).map((m) => <button key={m.id} className="media-thumb" title={m.prompt} onClick={() => setHosted({ url: `/api/media/${m.id}`, media: m })}><img src={`/api/media/${m.id}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></button>)}</div>}
           {outs.length > 1 && <div className="media-history">{outs.slice(1).map((o) => <button key={o.at} className="media-thumb" onClick={() => setOuts([o, ...outs.filter((x) => x !== o)])} dangerouslySetInnerHTML={{ __html: generate(o.prompt, o.style, false) }} />)}</div>}
         </div>
       </div>

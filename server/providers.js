@@ -29,6 +29,38 @@ export async function braveSearch({ key, baseUrl, q, count = 5 }) {
   return (j.web?.results || []).map((x) => ({ title: x.title, url: x.url, description: String(x.description || '').replace(/<[^>]+>/g, ''), age: x.age || x.page_age || null }));
 }
 
+// Hosted image generation on the user's own key. OpenAI-compatible hosts
+// (gpt-image-1 by default) and Gemini image models. Returns bytes + mime.
+export async function generateImage({ provider, key, baseUrl, modelId, prompt, size = '1024x1024' }) {
+  if (!key) throw new Error('No key on file for that provider.');
+  if (provider === 'openai') {
+    const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const r = await withTimeout(fetch(`${base}/images/generations`, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: modelId || 'gpt-image-1', prompt, n: 1, size }),
+    }), 120000, 'Image generation');
+    const j = await readJson(r);
+    if (!r.ok) throw new Error(j?.error?.message || j?.raw || `HTTP ${r.status}`);
+    const d = j.data?.[0] || {};
+    if (d.b64_json) return { bytes: Buffer.from(d.b64_json, 'base64'), mime: 'image/png', model: modelId || 'gpt-image-1' };
+    if (d.url) { const img = await withTimeout(fetch(d.url), 60000, 'Image download'); return { bytes: Buffer.from(await img.arrayBuffer()), mime: img.headers.get('content-type') || 'image/png', model: modelId || 'gpt-image-1' }; }
+    throw new Error('The provider returned no image.');
+  }
+  if (provider === 'google') {
+    const model = modelId || 'gemini-2.5-flash-image';
+    const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }),
+    }), 120000, 'Gemini image');
+    const j = await readJson(r);
+    if (!r.ok) throw new Error(j?.error?.message || `Gemini ${r.status}`);
+    const part = (j.candidates?.[0]?.content?.parts || []).find((p) => p.inlineData?.data);
+    if (!part) throw new Error('Gemini returned no image part.');
+    return { bytes: Buffer.from(part.inlineData.data, 'base64'), mime: part.inlineData.mimeType || 'image/png', model };
+  }
+  throw new Error(`${PROVIDERS[provider]?.label || provider} does not generate images.`);
+}
+
 export const PROVIDERS = {
   anthropic: {
     label: 'Anthropic',

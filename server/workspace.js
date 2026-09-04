@@ -112,9 +112,11 @@ function ensure() {
       language: 'en',
       plan: 'free',
       invoices: [],
+      media: [],
       boards: [],
     };
   }
+  if (!st.ws.media) st.ws.media = [];
   return st.ws;
 }
 export function ws() { return ensure(); }
@@ -157,6 +159,6 @@ export function publicWs() {
   return {
     chats: w.chats.map(({ messages, ...c }) => ({ ...c, messageCount: messages.length, last: messages[messages.length - 1]?.text?.slice(0, 80) || '' })),
     projects: w.projects, plugins: w.plugins, tools: w.tools, mcp: w.mcp,
-    profile: w.profile, personalization: w.personalization, language: w.language, plan: w.plan, invoices: w.invoices, boards: w.boards,
+    profile: w.profile, personalization: w.personalization, language: w.language, plan: w.plan, invoices: w.invoices, boards: w.boards, media: w.media.slice(0, 48),
   };
 }

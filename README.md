@@ -292,3 +292,13 @@ holds the streaming adapters.
 ```bash
 railway variables --service prajna --set PRAJNA_ACCESS_CODE=your-code
 ```
+
+## v0.13 — Hosted media on your own key (2026-09-04)
+
+The media studio now generates real images on the user's own OpenAI-compatible
+key (`gpt-image-1`) or Google key (`gemini-2.5-flash-image`) through
+`POST /api/media/generate`. Bytes are kept under the data directory and served
+from `/api/media/:id`; the record (prompt, provider, model, size, latency) is on
+the workspace ledger and can be deleted. No key → an honest refusal, never a
+silent fallback. The local procedural engine remains the keyless option; hosted
+video is not wired and the page says so.

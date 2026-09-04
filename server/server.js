@@ -11,7 +11,10 @@ import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
-import { callModel, streamModel } from './providers.js';
+import { callModel, streamModel, generateImage } from './providers.js';
+import { DATA_DIR } from './store.js';
+const MEDIA_DIR = path.join(DATA_DIR, 'media');
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 bindCustomModels(() => store.customModels());
 import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, forkMission, DIMENSIONS } from './engine.js';
@@ -357,6 +360,44 @@ async function handle(req, res) {
   if (missionMatch) {
     const m = store.mission(missionMatch[1]);
     return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
+  }
+
+  // ---- Media studio: hosted generation on the user's own key; bytes kept under the data dir ----
+  if (p === '/api/media/generate' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const prompt = String(body.prompt || '').trim().slice(0, 2000);
+    const provider = String(body.provider || 'openai');
+    if (!prompt) return json(res, 400, { error: 'Describe the image first.' });
+    const k = store.keyFor(provider);
+    if (!k) return json(res, 400, { error: `No ${PROVIDERS[provider]?.label || provider} key in memory — load one under Your keys. Nothing was generated.` });
+    const started = Date.now();
+    try {
+      const out = await generateImage({ provider, key: k.key, baseUrl: k.baseUrl, modelId: String(body.modelId || '').trim() || undefined, prompt, size: /^\d{3,4}x\d{3,4}$/.test(String(body.size || '')) ? body.size : undefined });
+      const id = crypto.randomBytes(8).toString('hex');
+      const ext = out.mime.includes('jpeg') ? 'jpg' : out.mime.includes('webp') ? 'webp' : 'png';
+      fs.writeFileSync(path.join(MEDIA_DIR, `${id}.${ext}`), out.bytes);
+      const rec = { id, ext, mime: out.mime, prompt, provider, model: out.model, bytes: out.bytes.length, ms: Date.now() - started, createdAt: Date.now() };
+      ws().media.unshift(rec); ws().media = ws().media.slice(0, 200); flushWs();
+      return json(res, 200, { ok: true, media: rec, url: `/api/media/${id}` });
+    } catch (e) {
+      return json(res, 400, { error: `${PROVIDERS[provider]?.label || provider} refused: ${String(e.message || e).slice(0, 220)}` });
+    }
+  }
+  const mediaGet = p.match(/^\/api\/media\/([a-f0-9]{16})$/);
+  if (mediaGet) {
+    const rec = ws().media.find((m) => m.id === mediaGet[1]);
+    if (!rec) return json(res, 404, { error: 'Not on the books.' });
+    if (req.method === 'DELETE') {
+      ws().media = ws().media.filter((m) => m.id !== rec.id); flushWs();
+      try { fs.unlinkSync(path.join(MEDIA_DIR, `${rec.id}.${rec.ext}`)); } catch { /* already gone */ }
+      return json(res, 200, { ok: true });
+    }
+    try {
+      const bytes = fs.readFileSync(path.join(MEDIA_DIR, `${rec.id}.${rec.ext}`));
+      res.writeHead(200, { 'content-type': rec.mime, 'cache-control': 'private, max-age=31536000, immutable', 'content-length': bytes.length });
+      return res.end(bytes);
+    } catch { return json(res, 404, { error: 'The file is gone from the data directory.' }); }
   }
 
   const shareMatch = p.match(/^\/api\/artifacts\/([\w]+)\/share$/);
