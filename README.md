@@ -489,3 +489,9 @@ A fresh workspace opens with a welcome: the three steps (ask for an outcome,
 watch it run, take the delivery with its evidence), a one-minute sample that
 writes and runs a fast research ticket into a new chat, and a link to load a
 key. Dismissed per browser; Get Help brings it back (`/?welcome=1`).
+
+## v0.31 — Decisions in the palette (2026-09-04)
+
+Pending decisions sit at the top of the ⌘K palette — serial, kind and the
+prompt — so a run waiting on you is one keystroke away from anywhere, and
+typing "decide" or a serial filters to them.

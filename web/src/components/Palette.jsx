@@ -21,6 +21,8 @@ export default function Palette({ onClose }) {
 
   const items = useMemo(() => {
     const base = [
+      // Runs waiting on a decision come first — one keystroke from anywhere.
+      ...(s.pending || []).map((d) => ({ k: 'DECIDE', t: `${d.serial} · ${d.kind} — ${d.prompt.slice(0, 90)}`, to: `/run/${d.id}`, decide: true })),
       { k: 'GO', t: 'New chat', to: '/' },
       { k: 'GO', t: 'Missions — tickets & runs', to: '/missions' },
       { k: 'GO', t: 'Boards', to: '/boards' },
@@ -38,7 +40,7 @@ export default function Palette({ onClose }) {
     ];
     if (!q.trim()) return base.slice(0, 12);
     const needle = q.toLowerCase();
-    return base.filter((i) => `${i.k} ${i.t}`.toLowerCase().includes(needle)).slice(0, 12);
+    return base.filter((i) => `${i.k} ${i.decide ? 'decision needed decide' : ''} ${i.t}`.toLowerCase().includes(needle)).slice(0, 12);
   }, [q, s]);
 
   useEffect(() => setSel(0), [q]);
@@ -101,7 +103,7 @@ export default function Palette({ onClose }) {
               role="option"
               aria-selected={i === sel}
               tabIndex={-1}
-              className={`palette-item${i === sel ? ' sel' : ''}`}
+              className={`palette-item${i === sel ? ' sel' : ''}${item.decide ? ' decide' : ''}`}
               onMouseEnter={() => setSel(i)}
               onClick={() => go(item)}
             >
