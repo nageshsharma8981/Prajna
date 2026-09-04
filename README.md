@@ -556,3 +556,10 @@ decisions, sources, settlement and the embedded artifact — can be shared at a
 public, `noindex`, revocable link (`/r/<token>`) from the run view, alongside
 the download. Unstamped tickets have no record to share. The profile page
 nudges for a name while the house does not know one.
+
+## v0.39 — Status history (2026-09-04)
+
+The status page and `/api/health` carry seven days of history: runs started,
+delivered and stopped per UTC day, and the incidents the house records about
+itself — retrieval failures and live seats that could not author. Nothing is
+inferred; every count comes from the mission ledger.

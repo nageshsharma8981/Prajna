@@ -30,6 +30,21 @@ function health() {
     node: process.version, dataWritable, memoryMb: Math.round(process.memoryUsage().rss / 1048576),
     missions: { live: ms.filter((m) => m.status === 'LIVE').length, paused: ms.filter((m) => m.status.startsWith('PAUSED')).length, delivered: ms.filter((m) => m.status === 'FILLED').length, total: ms.length },
     lastDeliveryAt: last?.filledAt || null,
+    // Seven days of history, oldest first: what started, what was delivered,
+    // what was stopped, and the incidents the house records about itself —
+    // retrieval failures and live seats that could not author.
+    days: Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - (6 - i));
+      const from = d.getTime(), to = from + 86400000;
+      const inDay = (t) => t >= from && t < to;
+      return {
+        date: d.toISOString().slice(0, 10),
+        started: ms.filter((m) => inDay(m.launchedAt || 0)).length,
+        delivered: ms.filter((m) => m.status === 'FILLED' && inDay(m.filledAt || 0)).length,
+        stopped: ms.filter((m) => m.status === 'KILLED' && !m.voidedBeforeRun && inDay(m.filledAt || m.launchedAt || 0)).length,
+        incidents: ms.filter((m) => inDay(m.launchedAt || 0) && ((m.retrieval && m.retrieval.ok === false) || (m.authored && m.authored.live === false))).length,
+      };
+    }),
   };
 }
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
@@ -249,6 +264,9 @@ async function handle(req, res) {
 <div><span class="k">Data directory</span><b>${h.dataWritable ? 'writable' : 'READ-ONLY'}</b></div>
 <div><span class="k">Memory</span><b>${h.memoryMb} MB</b></div>
 </div>
+<h2 style="font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#9a9583;margin:1.6rem 0 .5rem">Last seven days · UTC</h2>
+<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#9a9583;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase"><th style="text-align:left;padding:.3rem 0">Day</th><th style="text-align:right">Started</th><th style="text-align:right">Delivered</th><th style="text-align:right">Stopped</th><th style="text-align:right">Incidents</th></tr></thead><tbody>${h.days.map((d) => `<tr style="border-top:1px solid #2a2f2a"><td style="padding:.35rem 0">${d.date}</td><td style="text-align:right">${d.started}</td><td style="text-align:right">${d.delivered}</td><td style="text-align:right">${d.stopped}</td><td style="text-align:right;color:${d.incidents ? '#ffb300' : 'inherit'}">${d.incidents}</td></tr>`).join('')}</tbody></table>
+<p class="note">An incident is a retrieval failure or a live seat that could not author — recorded on the tape, never hidden.</p>
 <p class="note">Machine-readable: <a href="/api/health">/api/health</a>. Nothing here is secret; keys and tokens never leave memory. <a href="/">Open the workspace</a>.</p>
 </div></body></html>`;
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, page);
