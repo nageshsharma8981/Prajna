@@ -39,6 +39,35 @@ function releases() {
   }
   return out.reverse();
 }
+// The house check: what the owner can run to know the house is sound.
+// Every row is a real test against disk, ledger, tokens and links.
+async function houseCheck() {
+  const rows = [];
+  const add = (id, ok, detail) => rows.push({ id, ok: !!ok, detail });
+  try { fs.accessSync(DATA_DIR, fs.constants.W_OK); add('data-dir', true, `${DATA_DIR} is writable`); } catch { add('data-dir', false, `${DATA_DIR} is not writable`); }
+  const ms = store.missions();
+  const archived = ms.filter((m) => m.eventsArchived);
+  const missingTapes = archived.filter((m) => !store.tape(m.id));
+  add('tapes', missingTapes.length === 0, `${archived.length} archived tape(s), ${missingTapes.length} missing${missingTapes.length ? `: ${missingTapes.slice(0, 5).map((m) => m.serial).join(', ')}` : ''}`);
+  const arts = store.artifacts();
+  const missingHtml = arts.filter((a) => !store.artifactHtml(a.id));
+  add('artifacts', missingHtml.length === 0, `${arts.length} artifact(s), ${missingHtml.length} without a file${missingHtml.length ? `: ${missingHtml.slice(0, 5).map((a) => a.serial).join(', ')}` : ''}`);
+  const inflight = ms.filter((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
+  const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
+  const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
+  add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
+  const c = ws().consent;
+  add('consent', !!c && c.version === LEGAL.version, c ? `house rules ${c.version} accepted ${new Date(c.acceptedAt).toISOString().slice(0, 16)} UTC` : 'house rules not yet accepted');
+  for (const [prov, tok] of Object.entries(store.state.tokens)) {
+    try { const who = await OAUTH_PROVIDERS[prov].identity(tok.token); add(`token-${prov}`, true, `${prov}: token answers as ${who}`); }
+    catch (e) { add(`token-${prov}`, false, `${prov}: token refused (${String(e.message || e).slice(0, 80)}), reconnect on the Connectors page`); }
+  }
+  const last = ms.flatMap((m) => (m.deliveries || []).filter((d) => d.ok && d.link && !d.linkRevokedAt)).sort((a, b) => b.at - a.at)[0];
+  if (last) { try { const r = await fetch(last.link); add('last-delivery-link', r.ok, `${last.link} → ${r.status}`); } catch (e) { add('last-delivery-link', false, `${last.link} unreachable (${e.message})`); } }
+  const result = { at: Date.now(), version: VERSION, ok: rows.filter((r) => r.ok).length, total: rows.length, rows };
+  ws().lastHouseCheck = { at: result.at, ok: result.ok, total: result.total }; flushWs();
+  return result;
+}
 function health() {
   const ms = store.missions();
   const last = ms.filter((m) => m.status === 'FILLED').sort((a, b) => (b.filledAt || 0) - (a.filledAt || 0))[0];
@@ -49,6 +78,7 @@ function health() {
     node: process.version, dataWritable, memoryMb: Math.round(process.memoryUsage().rss / 1048576),
     missions: { live: ms.filter((m) => m.status === 'LIVE').length, paused: ms.filter((m) => m.status.startsWith('PAUSED')).length, delivered: ms.filter((m) => m.status === 'FILLED').length, total: ms.length },
     lastDeliveryAt: last?.filledAt || null,
+    lastHouseCheck: ws().lastHouseCheck || null,
     // Seven days of history, oldest first: what started, what was delivered,
     // what was stopped, and the incidents the house records about itself,
     // retrieval failures and live models that could not author.
@@ -268,6 +298,7 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
   if (p === '/api/health') {
     if (limited(ipOf(req), 'health', 120, 60000)) return json(res, 429, { ok: false, error: 'Too many requests.' });
     return json(res, 200, health());
@@ -286,6 +317,7 @@ async function handle(req, res) {
 <div><span class="k">Last delivery</span><b>${h.lastDeliveryAt ? new Date(h.lastDeliveryAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '–'}</b></div>
 <div><span class="k">Data directory</span><b>${h.dataWritable ? 'writable' : 'READ-ONLY'}</b></div>
 <div><span class="k">Memory</span><b>${h.memoryMb} MB</b></div>
+<div><span class="k">Last house check</span><b>${h.lastHouseCheck ? `${h.lastHouseCheck.ok} of ${h.lastHouseCheck.total} ok, ${new Date(h.lastHouseCheck.at).toISOString().replace('T', ' ').slice(0, 16)} UTC` : 'not run yet'}</b></div>
 </div>
 <h2 style="font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#9a9583;margin:1.6rem 0 .5rem">Last seven days · UTC</h2>
 <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#9a9583;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase"><th style="text-align:left;padding:.3rem 0">Day</th><th style="text-align:right">Started</th><th style="text-align:right">Delivered</th><th style="text-align:right">Stopped</th><th style="text-align:right">Incidents</th></tr></thead><tbody>${h.days.map((d) => `<tr style="border-top:1px solid #2a2f2a"><td style="padding:.35rem 0">${d.date}</td><td style="text-align:right">${d.started}</td><td style="text-align:right">${d.delivered}</td><td style="text-align:right">${d.stopped}</td><td style="text-align:right;color:${d.incidents ? '#ffb300' : 'inherit'}">${d.incidents}</td></tr>`).join('')}</tbody></table>

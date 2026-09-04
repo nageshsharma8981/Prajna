@@ -807,3 +807,12 @@ fetches every path the app depends on, the shell, logo, marks, favicon,
 fonts, health, session, legal pages and status, plus the hashed bundle the
 shell references, and fails on any wrong status or content type. Run after
 every deploy; it would have caught the missing logo the moment it happened.
+
+## v0.66: The house check (2026-09-04)
+
+Settings → House check runs real tests and shows every row: the data
+directory is writable, every archived tape and every artifact file exists,
+the reserve equals the in-flight ceilings, the house rules are accepted at
+the current version, each connected token still answers, and the last
+delivered public link resolves. The status page shows when it last ran and
+how many rows passed. `POST /api/housecheck`.
