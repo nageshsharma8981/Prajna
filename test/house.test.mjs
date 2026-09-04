@@ -477,6 +477,8 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     const leadModel = await post('/api/models', { name: 'Flaky Lead', provider: 'openai', modelId: 'flaky-1', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` });
     const standIn = await post('/api/models', { name: 'Steady Adviser', provider: 'openai', modelId: 'steady-1', baseUrl: `http://127.0.0.1:${good.address().port}/v1` });
     assert.equal(leadModel.status, 200); assert.equal(standIn.status, 200);
+    // Standing instructions must reach both the writer and the judge.
+    assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: 'British English throughout. Name the customer before the product.' }) })).status, 200);
     const w = await post('/api/missions', { goal: 'Fallback test: should we open a second roastery in Mysore?', deskId: 'brief', depth: 'fast', lead: leadModel.j.id, advisers: [standIn.j.id] });
     assert.equal(w.status, 200, JSON.stringify(w.j));
     assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
@@ -496,6 +498,12 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     assert.ok(tape.some((d) => /Flaky Lead could not author/.test(d)), tape.join(' | '));
     assert.ok(tape.some((d) => /stepped in after Flaky Lead refused/.test(d)), tape.join(' | '));
     // The adviser asked for a revision, and the model that wrote the draft answered it.
+    const authorPrompts = seen.filter((p) => !/CRITIQUE the draft/.test(p));
+    const critiquePrompts = seen.filter((p) => /CRITIQUE the draft/.test(p));
+    assert.ok(authorPrompts.every((p) => /Name the customer before the product/.test(p)), 'the writer was given the standing instructions');
+    assert.ok(critiquePrompts.length && critiquePrompts.every((p) => /judge the draft against them too/.test(p)), 'the adviser judges against them too');
+    assert.equal(m.houseBrief?.chars, 65, JSON.stringify(m.houseBrief));
+    assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: '' }) })).status, 200);
     const critique = (m.critiques || []).find((c) => c.verdict === 'revise');
     assert.ok(critique, JSON.stringify(m.critiques));
     const revised = (m.events || []).find((e) => e.label === 'revise');

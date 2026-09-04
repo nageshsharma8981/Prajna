@@ -4,6 +4,11 @@
 // provenance block records who wrote what, and the validator lanes gate it
 // exactly as they gate scripted output. No key → scripted substance, labeled.
 import { callModel, takeUsage } from './providers.js';
+import { ws } from './workspace.js';
+
+// Standing instructions from the owner: in force for every delivery, quoted
+// to the author and to the advisers who judge it.
+const houseBrief = () => String(ws().houseBrief || '').trim().slice(0, 2000);
 import { dataSummary } from './data.js';
 
 const SHAPES = {
@@ -33,7 +38,8 @@ export function authorPrompt(mission) {
   const positions = (mission.events || []).filter((e) => e.type === 'council.position' && e.text).map((e) => `- ${e.model || e.seat}: ${e.text}`).join('\n');
   const lin = mission.lineage || {};
   const feedback = (lin.feedback || []).length ? `This is version ${lin.version}, superseding ${lin.parentSerial}. The owner's notes on the previous version, address every one:\n${lin.feedback.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n${lin.previousDraft ? `Previous draft (JSON) to revise, keeping what was not criticised:\n${JSON.stringify(lin.previousDraft).slice(0, 5000)}\n` : ''}` : '';
-  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, a contract-first agent workspace.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${feedback}${data ? `Data on the table (the charts plot exactly this; describe what it shows, do not invent other figures):\n${data}` : ''}${sources ? `Sources on the table, owner-supplied attachments first, then retrieved (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes, describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
+  const standing = houseBrief();
+  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, a contract-first agent workspace.${standing ? `\nThe owner's standing instructions for every delivery in this house, follow them unless the goal contradicts them, and never at the cost of honesty about evidence:\n${standing}\n` : ''}\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${feedback}${data ? `Data on the table (the charts plot exactly this; describe what it shows, do not invent other figures):\n${data}` : ''}${sources ? `Sources on the table, owner-supplied attachments first, then retrieved (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes, describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
 }
 
 export function parseAuthored(text) {
@@ -56,7 +62,8 @@ export async function authorContent(mission, live, { revise } = {}) {
 // Adviser critique: a live adviser reads the lead's draft before the gate and
 // says pass or revise, with concrete issues. Strict JSON, like authoring.
 export function critiquePrompt(mission, adviser) {
-  return `You are ${adviser.name}, an adviser on the review panel for a ${mission.deskName.toLowerCase()} mission in Prajñā.\nGoal: "${mission.goal}"\nThe lead author's draft (JSON):\n${JSON.stringify(mission.authored.content).slice(0, 6000)}\n${(mission.sources || []).length ? `Retrieved sources: ${mission.sources.map((s, i) => `[${i + 1}] ${s.title}`).join('; ')}\n` : ''}CRITIQUE the draft against the goal only: unsupported claims, invented figures, missing dissent, weak or generic copy, anything a skeptical reader would refuse. Be specific and short.\nReply with ONLY one JSON object: {"verdict":"pass"|"revise","issues":["<one concrete issue, ≤25 words>", … 0 to 4]}`;
+  const standing = houseBrief();
+  return `You are ${adviser.name}, an adviser on the review panel for a ${mission.deskName.toLowerCase()} mission in Prajñā.${standing ? `\nThe owner's standing instructions for every delivery here, judge the draft against them too:\n${standing}\n` : ''}\nGoal: "${mission.goal}"\nThe lead author's draft (JSON):\n${JSON.stringify(mission.authored.content).slice(0, 6000)}\n${(mission.sources || []).length ? `Retrieved sources: ${mission.sources.map((s, i) => `[${i + 1}] ${s.title}`).join('; ')}\n` : ''}CRITIQUE the draft against the goal only: unsupported claims, invented figures, missing dissent, weak or generic copy, anything a skeptical reader would refuse. Be specific and short.\nReply with ONLY one JSON object: {"verdict":"pass"|"revise","issues":["<one concrete issue, ≤25 words>", … 0 to 4]}`;
 }
 export async function critiqueContent(mission, live) {
   const started = Date.now();

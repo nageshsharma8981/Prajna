@@ -29,6 +29,7 @@ function provenanceObject(mission) {
     deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, link: d.link || null, linkOk: d.linkOk ?? null, linkRevokedAt: d.linkRevokedAt || null, error: d.error || null })),
     dissent: mission.dissent || null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
+    houseBrief: mission.houseBrief || null,
     keyUse: mission.keyUse || null,
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null, steppedIn: mission.authored.steppedIn || null } : null,
     seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),

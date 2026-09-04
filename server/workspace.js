@@ -109,6 +109,7 @@ function ensure() {
       mcp: [],
       profile: { name: '', email: '', handle: '', bio: '', avatar: 'P' },
       personalization: { tone: 'calm and precise', defaultModel: 'opus', defaultAdvisers: ['gpt', 'deepseek'], theme: 'night' },
+      houseBrief: '',
       language: 'en',
       plan: 'free',
       invoices: [],

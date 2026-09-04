@@ -754,6 +754,7 @@ async function applyEvent(m, ev, notify, runner) {
         for (const seat of bench) {
           try {
             m.authored = await authorContent(m, seat);
+            { const hb = String(ws().houseBrief || '').trim(); if (hb) m.houseBrief = { at: Date.now(), chars: hb.length }; }
             if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[seat.model.name] = m.keyUse.models[seat.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else if (m.authored.live) { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
             if (refused.length) { m.authored.steppedIn = { after: refused.map((r) => r.name), lead: modelById(m.lead).name }; }
             pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it${refused.length ? ` · stepped in after ${refused.map((r) => `${r.name} refused (${r.error})`).join('; ')}` : ''}` }, notify);

@@ -1239,3 +1239,13 @@ call on your own key that went uncounted; it is counted now. A test
 drives the whole loop, one model refusing, another writing, an adviser
 demanding a change and the writer making it, and checks the token
 account to the exact figure: three calls, nothing double counted.
+
+## v1.3: House instructions (2026-09-04)
+
+Standing guidance the whole house follows, set once under Settings: your
+style, the words you use and refuse, what a reader here always needs. It
+is quoted to the model that writes and to the advisers who judge the
+draft, so a critique can hold the writer to it, and it is explicitly
+subordinate to honesty about evidence. Every run written while it stands
+records that it was in force, and says so on the run page and in the
+artifact's provenance. Two thousand characters, cleared by emptying it.

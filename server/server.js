@@ -537,6 +537,13 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // ---- Backups: run now, list, download, restore ----
+  if (p === '/api/housebrief' && req.method === 'PUT') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    const text = String(body.text || '').trim().slice(0, 2000);
+    ws().houseBrief = text; flushWs();
+    return json(res, 200, { houseBrief: text, chars: text.length });
+  }
   if (p === '/api/hooks' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const body = await readBody(req);
@@ -647,6 +654,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       backups: listBackups().slice(0, 5),
       limits: limits(),
       hooks: hookState(),
+      houseBrief: ws().houseBrief || '',
       evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),
