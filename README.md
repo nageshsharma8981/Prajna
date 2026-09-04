@@ -581,3 +581,13 @@ Get Help opens with one honest list: what the house does today and what it
 does not do yet — scripted substance without a key, sample chart series,
 no hosted video, demo billing, one workspace per house, memory-only keys and
 tokens, and which connectors are live versus catalogue entries.
+
+## v0.42 — Your data on the analysis desk (2026-09-04)
+
+Attach a CSV to an analysis mission and the charts plot it: the first numeric
+column is the series (labelled by the first text column), a second text
+column becomes the segment breakdown, and the ingest step says on the tape
+exactly what it parsed — rows, columns, series and segments. The live author
+and the panel get the numbers in their prompt; the artifact names the file
+and carries the profile in provenance (`data`). No CSV → the house sample
+series, labelled as such, as before.

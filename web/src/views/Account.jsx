@@ -203,7 +203,7 @@ export default function Account({ page }) {
                 </ul></div>
                 <div><span className="k">Does not, yet</span><ul>
                   <li>Without a key, the substance of every delivery is house-scripted sample material — labelled, never hidden.</li>
-                  <li>Charts plot sample series until a data connector is wired; the reading and caveats can be live, the numbers are not.</li>
+                  <li>Charts plot sample series unless you attach a CSV to an analysis mission; data connectors (Sheets, Stripe) are not wired yet.</li>
                   <li>Video generation on hosted models is not wired; images are, on your OpenAI or Google key.</li>
                   <li>Billing is demo: top-ups and plans are ledger lines, nothing is charged.</li>
                   <li>One workspace per house: the access code opens it; there are no separate user accounts.</li>

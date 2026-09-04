@@ -4,6 +4,7 @@
 // provenance block records who wrote what, and the validator lanes gate it
 // exactly as they gate scripted output. No key → scripted substance, labeled.
 import { callModel } from './providers.js';
+import { dataSummary } from './data.js';
 
 const SHAPES = {
   brief: `{"stand":"<one-sentence stance for the lede>","verdict":"<2-3 sentences: the recommendation, stated before any evidence>","claims":[{"text":"<lead claim>","grade":"A|B|C","detail":"<1-2 sentences of support>","src":<number of the retrieved source this claim rests on, or 0 if none>,"source":{"title":"<if src is 0: the kind of source this would rest on, described honestly>","kind":"primary|analysis|field|press"}}, … exactly 3 to 5 claims],"refuted":["<claim commonly made that did not survive grading>", … 3],"moves":[{"move":"","commitment":"","reversibility":"High|Medium|Low","buys":""}, … 3],"tripwires":"<the two signals that should change the decision>","dissent":{"seat":"<name of the dissenting adviser>","text":"<the strongest recorded disagreement, 2-3 sentences>"}}`,
@@ -28,10 +29,11 @@ export const shapeFor = (mission) => (mission.variant === 'design' ? 'design' : 
 export function authorPrompt(mission) {
   const shape = SHAPES[shapeFor(mission)];
   const sources = (mission.sources || []).map((s, i) => `[${i + 1}] ${s.title} — ${s.url}\n    ${s.extract}`).join('\n');
+  const data = mission.data ? `${dataSummary(mission.data)}\n` : '';
   const positions = (mission.events || []).filter((e) => e.type === 'council.position' && e.text).map((e) => `- ${e.model || e.seat}: ${e.text}`).join('\n');
   const lin = mission.lineage || {};
   const feedback = (lin.feedback || []).length ? `This is version ${lin.version}, superseding ${lin.parentSerial}. The owner's notes on the previous version — address every one:\n${lin.feedback.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n${lin.previousDraft ? `Previous draft (JSON) to revise, keeping what was not criticised:\n${JSON.stringify(lin.previousDraft).slice(0, 5000)}\n` : ''}` : '';
-  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, an outcome exchange.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${feedback}${sources ? `Sources on the table — owner-supplied attachments first, then retrieved (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes — describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
+  return `You are the lead author on a ${mission.deskName.toLowerCase()} mission in Prajñā, an outcome exchange.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${feedback}${data ? `Data on the table (the charts plot exactly this; describe what it shows, do not invent other figures):\n${data}` : ''}${sources ? `Sources on the table — owner-supplied attachments first, then retrieved (cite by number; do not claim anything they do not support):\n${sources}\n` : ''}${positions ? `Panel positions to honour or answer:\n${positions}\n` : ''}Rules: write specifically for this goal, in plain confident prose. Never invent numbers, customers, results or quotes — describe what real proof would look like or write "evidence pending". No preamble, no markdown fences.\nReply with ONLY one JSON object of exactly this shape:\n${shape}`;
 }
 
 export function parseAuthored(text) {

@@ -23,6 +23,7 @@ function provenanceObject(mission) {
     schema: 'prajna.provenance.v1',
     mode: mission.authored?.live ? 'live' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
     retrieval: mission.retrieval ? { ...mission.retrieval, sources: (mission.sources || []).map((s) => ({ id: s.id, title: s.title, url: s.url, engine: s.engine || null, retrieved: s.retrieved, extract: (s.extract || '').slice(0, s.engine === 'attachment' ? 4000 : 700) })) } : null,
+    data: mission.data ? { name: mission.data.name, rows: mission.data.rows, columns: mission.data.columns, series: mission.data.series?.column || null, segments: mission.data.segments?.column || null } : null,
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,
@@ -349,18 +350,27 @@ ${why ? `  <div><h3><em>${why[0].k}</em> — ${why[0].h}</h3><p>${why[0].p}</p><
 export function analysisArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
-  // Deterministic sample series from the mission serial so re-runs differ.
+  // Owner data when a CSV was attached; otherwise a deterministic sample
+  // series from the mission serial, labelled as such.
+  const D = mission.data && mission.data.series ? mission.data : null;
   const seedNum = [...mission.serial].reduce((a, c) => a + c.charCodeAt(0), 0);
-  const series = Array.from({ length: 12 }, (_, i) => {
+  const series = D ? D.series.points.map((p) => p.value) : Array.from({ length: 12 }, (_, i) => {
     const base = 42 + ((seedNum * (i + 3)) % 23);
     return Math.round(base + Math.sin(i / 1.7 + seedNum) * 9 + i * 2.1);
   });
-  const max = Math.max(...series) * 1.15;
-  const pts = series.map((v, i) => `${(i / 11) * 560},${180 - (v / max) * 180}`).join(' ');
-  const bars = series.slice(4).map((v, i) => {
-    const h = (v / max) * 140;
-    return `<rect x="${i * 68 + 8}" y="${150 - h}" width="44" height="${h}" rx="3" fill="${i === 5 ? '#b0472f' : '#28463a'}"/>
-<text x="${i * 68 + 30}" y="168" text-anchor="middle" font-size="11" fill="#77837b">P${i + 5}</text>`;
+  const labels = D ? D.series.points.map((p) => p.label || '') : series.map((_, i) => `P${i + 1}`);
+  const n = series.length;
+  const max = Math.max(...series.map((v) => Math.abs(v)), 1) * 1.15;
+  const pts = series.map((v, i) => `${(i / Math.max(1, n - 1)) * 560},${180 - (Math.max(0, v) / max) * 180}`).join(' ');
+  const barItems = D && D.segments && D.segments.items.length >= 5
+    ? D.segments.items.slice(0, 8).map((s) => ({ name: s.name, value: s.value }))
+    : series.slice(-8).map((v, i) => ({ name: labels[n - Math.min(8, n) + i] || `P${i + 1}`, value: v }));
+  const bmax = Math.max(...barItems.map((b) => Math.abs(b.value)), 1) * 1.15;
+  const outlier = barItems.reduce((best, b, i) => (Math.abs(b.value - (barItems.reduce((a, x) => a + x.value, 0) / barItems.length)) > Math.abs(barItems[best].value - (barItems.reduce((a, x) => a + x.value, 0) / barItems.length)) ? i : best), 0);
+  const bars = barItems.map((b, i) => {
+    const h = (Math.max(0, b.value) / bmax) * 140;
+    return `<rect x="${i * 68 + 8}" y="${150 - h}" width="44" height="${h}" rx="3" fill="${i === outlier ? '#b0472f' : '#28463a'}"/>
+<text x="${i * 68 + 30}" y="168" text-anchor="middle" font-size="11" fill="#77837b">${esc(String(b.name).slice(0, 8))}</text>`;
   }).join('');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -385,23 +395,23 @@ svg{width:100%;height:auto;display:block}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
-<p class="docline">Prajñā analysis · ${esc(mission.serial)} · sample data, marked</p>
+<p class="docline">Prajñā analysis · ${esc(mission.serial)} · ${D ? `data: ${esc(D.name)}, ${D.rows} rows` : 'sample data, marked'}</p>
 <p class="read">${authored(mission) ? esc(str(authored(mission).read)) : 'The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong — the driver is mix shift, not performance. Everything below defends that paragraph.'}</p>
 <div class="grid">
-  <div class="panel"><h2>The trend · 12 periods (sample)</h2>
+  <div class="panel"><h2>${D ? `${esc(D.series.column)} · ${n} points${D.series.labelColumn ? ` by ${esc(D.series.labelColumn)}` : ''}` : 'The trend · 12 periods (sample)'}</h2>
     <svg viewBox="0 0 560 190" role="img" aria-label="12-period trend line, rising with a dip mid-series">
       <polyline points="${pts}" fill="none" stroke="#28463a" stroke-width="3" stroke-linejoin="round"/>
-      ${series.map((v, i) => `<circle cx="${(i / 11) * 560}" cy="${180 - (v / max) * 180}" r="3.5" fill="#28463a"/>`).join('')}
+      ${series.map((v, i) => `<circle cx="${(i / Math.max(1, n - 1)) * 560}" cy="${180 - (Math.max(0, v) / max) * 180}" r="3.5" fill="#28463a"><title>${esc(labels[i] || '')} ${v}</title></circle>`).join('')}
     </svg>
     <p class="headline">${authored(mission) ? esc(str(authored(mission).trend)) : 'Up and to the right — but the slope <b>halves</b> after period 8. The topline hides it; the segments below explain it.'}</p>
   </div>
-  <div class="panel"><h2>By segment · latest 8 (sample)</h2>
+  <div class="panel"><h2>${D && D.segments && D.segments.items.length >= 5 ? `By ${esc(D.segments.column)} · ${barItems.length} segments` : D ? `Latest ${barItems.length} points` : 'By segment · latest 8 (sample)'}</h2>
     <svg viewBox="0 0 560 175" role="img" aria-label="Segment bar chart with one outlier segment highlighted">${bars}</svg>
     <p class="headline">${authored(mission) ? esc(str(authored(mission).segment)) : 'One segment (<b>highlighted</b>) moves opposite to the rest. Remove it and the story reverses. That is the finding.'}</p>
   </div>
 </div>
 <div class="caveat"><b>Caveats attached, as promised</b><br>
-${authored(mission) ? esc(str(authored(mission).caveat)) + ' The plotted series is illustrative demonstration data — wire a connector (Sheets, Stripe, Linear) to run this on your real numbers.' : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data — wire a connector (Sheets, Stripe, Linear) to run this on your real numbers.'}</div>
+${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data — attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live seat reads your numbers.` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data — attach a CSV to run this on your real numbers.')}</div>
 ${provenance(mission)}
 </div></body></html>`;
   return { title: `${subject} — Analysis`, kind: 'analysis', html };

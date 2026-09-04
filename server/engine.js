@@ -18,6 +18,7 @@ import { retrieve } from './retrieve.js';
 import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
+import { looksLikeCsv, profileCsv, dataSummary } from './data.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -221,6 +222,8 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     // Owner-supplied sources: text attachments are on the table from the
     // start — citable, and their figures count as sourced.
     attachments: (attachments || []).map((d) => ({ name: d.name, chars: d.text.length })),
+    // Owner data: the first CSV attached to an analysis mission is the data the charts plot.
+    data: desk.id === 'analysis' ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
     sources: (attachments || []).map((d, i) => ({ id: `src-${i + 1}`, title: d.name, url: null, kind: 'owner', engine: 'attachment', retrieved: new Date().toISOString().slice(0, 10), extract: d.text.replace(/\s+/g, ' ').trim().slice(0, 4000) })),
     connected: [...(queuedConnectors || [])],
     patches: [],
@@ -609,6 +612,17 @@ async function applyEvent(m, ev, notify, runner) {
         m.sources = [];
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}) — recorded; the brief carries no retrieved reading` }, notify);
       }
+      return 'ok';
+    }
+  }
+
+  // Ingest: the analysis desk says what data it is working from.
+  if (ev.type === 'step.status' && ev.status === 'LIVE') {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'ingest' && !m.ingested) {
+      m.ingested = true;
+      pushEvent(m, record, notify);
+      pushEvent(m, { type: 'log', stepId: step.id, label: 'ingest', live: !!m.data, detail: m.data ? `${m.data.name}: ${m.data.notes.join(' · ')} — the charts plot this, not sample data` : 'no CSV attached — the charts plot the house sample series, labelled as such' }, notify);
       return 'ok';
     }
   }
