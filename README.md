@@ -302,3 +302,26 @@ from `/api/media/:id`; the record (prompt, provider, model, size, latency) is on
 the workspace ledger and can be deleted. No key → an honest refusal, never a
 silent fallback. The local procedural engine remains the keyless option; hosted
 video is not wired and the page says so.
+
+## v0.14 — Community showcase and the CLI (2026-09-04)
+
+- **Community showcase.** Any fully delivered, unvoided artifact can be
+  submitted from Factory → Assets. It goes public at its share link with the
+  provenance block intact, the showcase card shows the run mode and how many
+  assertions sealed, anyone can clone the prompt into a chat, and the house
+  grants 200 credits (a demo grant, recorded on the ledger). Withdraw any time.
+- **CLI.** `cli/prajna.mjs`, zero dependencies, Node 22+. `npm link` in the
+  repo installs the `prajna` command:
+
+```bash
+prajna login https://www.prajñā.com --code <access-code>
+prajna run research "Should we enter the EU home-battery market?" --fast
+prajna run website "A landing page for a Bengaluru coffee roaster" --auto --out ./deliveries
+```
+
+  `run` streams the tape, stops at every decision the house raises (or takes
+  the first option with `--auto`, on the record with that justification), and
+  saves the delivered artifact. `status`, `tape <mission-id>`, `artifacts` and
+  `get <artifact-id>` cover the rest. The session file under
+  `~/.config/prajna` holds the workspace URL and the server-minted session
+  cookie only — never the access code, never a provider key.

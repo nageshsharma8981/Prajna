@@ -362,6 +362,35 @@ async function handle(req, res) {
     return m ? json(res, 200, pub(m)) : json(res, 404, { error: 'Mission not found.' });
   }
 
+  // ---- Community showcase: a delivered artifact, submitted with its provenance, becomes public ----
+  if (p === '/api/showcase' && req.method === 'POST') {
+    const body = await readBody(req);
+    const a = store.artifact(String(body.artifactId || ''));
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const m = store.mission(a.missionId);
+    if (!m || m.status !== 'FILLED' || a.partial || a.voided) return json(res, 400, { error: 'Only a fully delivered, unvoided artifact can be submitted.' });
+    const w = ws();
+    if (w.showcase.some((x) => x.artifactId === a.id)) return json(res, 400, { error: 'Already on the showcase.' });
+    const shareToken = a.shareToken || crypto.randomBytes(16).toString('hex');
+    store.refreshArtifact(a.id, { shareToken, sharedAt: a.sharedAt || Date.now() }, store.artifactHtml(a.id));
+    const entry = {
+      id: `sc_${crypto.randomBytes(4).toString('hex')}`, artifactId: a.id, title: a.title.replace(/^VOID · /, ''), kind: a.kind, desk: a.desk, serial: a.serial,
+      prompt: m.goal, mode: Object.entries({ website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' }).find(([, d]) => d === m.desk)?.[0] || 'chat',
+      by: w.profile.handle || w.profile.name, blurb: String(body.blurb || '').slice(0, 240), shareToken, submittedAt: Date.now(),
+      provenance: { mode: m.authored?.live ? 'live' : (m.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted', sealed: (m.contract.assertions || []).filter((x) => x.status === 'SEALED').length, assertions: (m.contract.assertions || []).length, patches: (m.patches || []).length, acceptedRisks: (m.acceptedRisks || []).length },
+      grant: 200,
+    };
+    w.showcase.unshift(entry);
+    store.workspace().credits += entry.grant; store.flushWorkspace?.();
+    flushWs();
+    return json(res, 200, { ok: true, entry, path: `/s/${shareToken}`, granted: entry.grant });
+  }
+  const scDel = p.match(/^\/api\/showcase\/(sc_[a-f0-9]+)$/);
+  if (scDel && req.method === 'DELETE') {
+    const w = ws(); w.showcase = w.showcase.filter((x) => x.id !== scDel[1]); flushWs();
+    return json(res, 200, { ok: true });
+  }
+
   // ---- Media studio: hosted generation on the user's own key; bytes kept under the data dir ----
   if (p === '/api/media/generate' && req.method === 'POST') {
     const body = await readBody(req);
