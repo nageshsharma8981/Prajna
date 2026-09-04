@@ -1,21 +1,93 @@
-# Prajñā: The Outcome Exchange
+# Prajñā
 
-An agent workspace where every request becomes a **mission with a visible contract**:
-the agent states the deliverable, the plan, and the price *before* running, executes
-in the open, every step, tool call, and model deliberation streamed live, and ends
-with a tangible, versioned artifact.
+A contract-first agent workspace. Every request becomes a ticket that states the
+deliverable, the plan and the price before anything runs; the run happens in the
+open, every step, cost and model position on a tape; and every run ends in a
+versioned artifact that carries its own evidence. Live at
+[www.prajñā.com](https://www.xn--praj-jqa0h.com).
 
-Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
+Built as a direct answer to chat-with-a-spinner agent platforms such as Zenith,
+first cloned feature for feature, then taken further. Seventy releases in a day,
+each one verified on a side instance before it shipped; the list is below and on
+the site's release-notes page.
 
-## The three refusals (the UVP)
+## What the house guarantees
 
-1. **Contract before action.** The house writes an order ticket, full plan, credit
-   estimate, hard ceiling, and nothing runs until you stamp it.
-2. **Work in the open.** The run deck streams the tape live: tool calls, the model
-   panel's positions, challenges, verdict, and recorded dissent, never erased.
-3. **Artifacts, not answers.** Every mission ends in a versioned artifact in the
-   Artifacts list (decision brief, deck, landing page, analysis) with provenance and cost
-   stamped on it. A mission that ends in prose has failed.
+- **Contract before action.** The ticket shows the plan, the estimate and a hard
+  ceiling, with a "why this plan" and per-step pricing. Nothing runs until you
+  stamp it; the ceiling is a reservation that settles and releases on the ledger.
+- **Work in the open.** The tape streams every step, tool call, model position,
+  critique, gate verdict and cost, with a monotonic sequence and replay.
+- **Artifacts, not answers.** Every run ends in a versioned artifact with
+  provenance stamped in: who wrote what, which sources, what was sealed, what
+  you decided, what it cost. Dissent is carried into the deliverable, not erased.
+- **Honesty lanes.** Validators check that figures are sourced, references are
+  cited only, verdicts come first, dissent is recorded; an unverifiable claim
+  fails the gate, and every patch is on the record.
+- **Decisions with justification.** A ceiling raise, a gap accepted, a gate
+  overridden: each needs a written reason that travels with the artifact.
+- **Delivery that is checked.** Connected apps put what they know on the table
+  and receive the delivery with a public link the house verifies, revokes on
+  request and re-sends on amendment; the handover block shows where everything
+  went.
+- **Standing orders.** A delivered ticket repeats daily or weekly under a
+  monthly cap; each run is a new version that says what changed since the last.
+- **A house that looks after itself.** A daily house check with repair, daily
+  backups kept seven deep, take-your-data export, restore, and erase; a status
+  page and a regression suite the deploy refuses to skip.
+- **Keys are never saved.** Bring your own keys and OAuth apps; they live in
+  memory only, masked in the API, gone on restart.
+- **Rules first.** Terms, Privacy and GDPR, and an AI disclaimer must be
+  accepted before the workspace does anything; the export and erasure they
+  promise exist.
+
+## Against Zenith, in one table
+
+| | Zenith | Prajñā |
+|---|---|---|
+| Before a run | a prompt | a ticket: plan, estimate, ceiling, why |
+| During a run | a spinner and a summary | the tape: every step, cost, position, verdict |
+| After a run | an answer in chat | a versioned artifact with provenance and settlement |
+| Disagreement among models | invisible | recorded and carried into the deliverable |
+| Budget | none visible | reserved, settled, released, on a ledger you can read |
+| Recurrence | scheduled tasks | standing orders with a monthly cap and a since-last-run delta |
+| Your data | in their account | export, restore, erase and daily backups in your own house |
+| Keys | stored | never written to disk |
+
+## Run it, test it, ship it
+
+```bash
+npm run build            # installs web deps and builds the SPA
+npm start                # http://localhost:3005
+npm test                 # thirteen tests on a fresh instance, about half a minute
+npm run check -- https://www.xn--praj-jqa0h.com   # post-deploy self-check
+```
+
+Environment: `PORT`, `PRAJNA_DATA_DIR`, `PRAJNA_PUBLIC_URL`, `PRAJNA_ACCESS_CODE`
+(optional lock), `PRAJNA_API_BASE_<PROVIDER>` (test overrides). Deploys go to
+Railway with `railway up --service prajna`; each release is tagged.
+
+The CLI (`cli/prajna.mjs`, `npx prajna`) covers login, run, status, tape,
+artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair,
+export, import, backup and backups.
+
+## Architecture
+
+- `server/`: a zero-dependency Node 22 HTTP server. REST plus SSE streaming,
+  JSON files under `data/` written atomically, the mission engine with a
+  persisted run script that survives restarts, validators, live authoring
+  through your own keys, connectors, legal, export and backups.
+- `web/`: React 19 with Vite, a hand-written router and store, one stylesheet
+  as the design system, self-hosted fonts, lazy views.
+- `test/`: `node --test`, no framework, boots the real server.
+
+## The world
+
+Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,
+colour-coded paper tickets, mono tape logs. Dark "night hall" default; "day
+desk" light theme. Full keyboard operation with a ⌘K palette.
+
+## Releases
 
 ## v0.2: the contract made mechanical
 
@@ -139,47 +211,6 @@ mechanisms without copying code:
   artifact's provenance carries every verdict.
 - **Performance:** gzip on every text response, immutable caching for hashed
   assets, and a lean bootstrap that no longer ships event ledgers to the boards.
-
-## The world
-
-Trading floor / Solari board: split-flap lettering, amber LED dot-matrix telemetry,
-color-coded paper order tickets, mono tape logs. Dark "night hall" default; "day
-desk" light theme. Full keyboard operation with a ⌘K palette.
-
-## Run it
-
-```bash
-cd web && npm install && npx vite build && cd ..
-node server/server.js        # http://localhost:3005
-```
-
-Dev loop: `cd web && npm run dev` (Vite on 5205, proxying /api to 3005).
-
-## Architecture
-
-- `server/`, zero-dependency Node HTTP server: REST + SSE streaming, JSON-file
-  persistence in `data/` (gitignored), mission engine, artifact generators.
-- `web/`, React 19 + Vite SPA, hand-written CSS design system in
-  `src/styles/app.css`, self-hosted variable fonts (Archivo, Doto, Spline Sans Mono).
-- Demo mode ships scripted runs that produce real artifacts; the engine has a seam
-  for live model calls when `ANTHROPIC_API_KEY` is present (future work).
-
-## Rollback
-
-Every release is tagged; `stable-v0.1` is a frozen branch of the reviewed v0.1 baseline.
-
-```bash
-git checkout v0.1.0          # inspect the baseline
-git reset --hard v0.1.0      # roll main back to it (then: git push --force-with-lease)
-```
-
-Or run the old version side-by-side without touching main:
-
-```bash
-git worktree add ../prajna-v0.1 v0.1.0
-```
-
-Data note: `data/` is gitignored runtime state; deleting it reseeds the demo workspace.
 
 ## Deploy (Railway)
 
@@ -928,3 +959,11 @@ than 36 hours or unreadable. Settings lists them with Download and
 Restore (typed REPLACE); backups survive an erase, so a mistaken erase has
 a way back. `prajna backup`, `prajna backups`. A test writes one, checks
 its health, erases the house and restores from it.
+
+## v0.78: The front page tells the truth (2026-09-04)
+
+The README opens with what the house is after seventy releases, what it
+guarantees, how it stands against Zenith in one table, and how to run,
+test and ship it; the stale sections on running, architecture and rollback
+are gone. The last traces of "outcome exchange" left the stylesheet, the
+author prompt, the retrieval user agent and the CLI header.

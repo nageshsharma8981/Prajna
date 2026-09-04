@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Prajñā CLI: the outcome exchange from a terminal. Zero dependencies.
+// Prajñā CLI: the house from a terminal. Zero dependencies.
 //
 //   prajna login <workspace-url> [--code <access-code>]
 //   prajna run <website|mobile|deck|research|analysis> "<goal>" [--fast] [--design] [--auto] [--out dir]

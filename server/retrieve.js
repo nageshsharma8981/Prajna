@@ -9,7 +9,7 @@ import { braveSearch } from './providers.js';
 import { ws } from './workspace.js';
 
 const TIMEOUT_MS = 9000;
-const UA = 'Prajna/0.11 (outcome exchange; research desk retrieval)';
+const UA = 'Prajna/0.11 (contract-first agent workspace; research desk retrieval)';
 
 async function get(url) {
   const ctl = new AbortController();
