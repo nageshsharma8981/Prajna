@@ -329,6 +329,7 @@ export default function Run({ id }) {
         {(filled || killed) && !mission.voidedBeforeRun && (
           <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
         )}
+        {mission.status !== 'OPEN' && <a className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} href={`/api/missions/${mission.id}/bundle?download=1`} title="One self-contained file: contract, tape, decisions, validation, sources, settlement, the artifact, and the machine-readable record">Audit bundle</a>}
         {mission.lineage && <span className="lineage-tag">v{mission.lineage.version} · amends {mission.lineage.parentSerial}</span>}
         {(live || paused) && confirmStop && (
           <span className="stop-confirm" role="group" aria-label="Confirm stop">

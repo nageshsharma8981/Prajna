@@ -7,6 +7,7 @@
 //   prajna tape <mission-id>           the event ledger
 //   prajna artifacts                   delivered artifacts
 //   prajna get <artifact-id> [--out dir]
+//   prajna bundle <mission-id> [--out dir]   the whole record in one HTML file
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted — never the access code, never a provider key).
@@ -131,6 +132,17 @@ async function artifacts() {
   for (const a of boot.artifacts || []) console.log(`${a.id}  ${a.serial}  ${a.kind.padEnd(9)} v${a.version}  ${a.title}`);
 }
 
-const CMDS = { login, run, status, tape, artifacts, get: async () => save(need(), positional[0]) };
+async function bundle() {
+  const cfg = need(); const id = positional[0];
+  if (!id) { console.error('Usage: prajna bundle <mission-id> [--out dir]'); process.exit(2); }
+  const r = await fetch(`${cfg.workspace}/api/missions/${id}/bundle`, { headers: cfg.cookie ? { cookie: cfg.cookie } : {} });
+  if (!r.ok) throw new Error(`Bundle ${id}: HTTP ${r.status}`);
+  const m = await api(cfg, `/api/missions/${id}`);
+  const outDir = flag('out') || '.'; fs.mkdirSync(String(outDir), { recursive: true });
+  const file = path.join(String(outDir), `${m.serial}-audit-bundle.html`);
+  fs.writeFileSync(file, await r.text());
+  console.log(green('Saved'), file, dim(`(${m.events?.length || 0} events, artifact ${m.artifactId ? 'embedded' : 'none'})`));
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

@@ -405,3 +405,14 @@ hits, encyclopedia entries — with engine, link and retrieval date, updating
 live as the sweep lands. Numbered references in panel positions and adviser
 critiques resolve to those sources on the tape: `[3]` links to source 3, or
 names the owner attachment it points to.
+
+## v0.22 — The audit bundle (2026-09-04)
+
+`GET /api/missions/:id/bundle` (add `?download=1`, or `?format=json`) returns
+one self-contained HTML file carrying a mission's whole record: goal, panel,
+mode, contract with per-step cost and rationale, definition of done with both
+lanes' verdicts, every human decision with its justification, sources on the
+table, adviser critiques, the full tape, settlement, the delivered artifact
+embedded in a sandboxed frame, and the machine-readable record
+(`prajna.bundle.v1`). The run view has an "Audit bundle" button; the CLI has
+`prajna bundle <mission-id>`.

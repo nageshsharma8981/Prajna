@@ -13,6 +13,7 @@ import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redire
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
 import { callModel, streamModel, generateImage } from './providers.js';
 import { DATA_DIR } from './store.js';
+import { auditBundle } from './bundle.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
@@ -428,6 +429,20 @@ async function handle(req, res) {
       res.writeHead(200, { 'content-type': rec.mime, 'cache-control': 'private, max-age=31536000, immutable', 'content-length': bytes.length });
       return res.end(bytes);
     } catch { return json(res, 404, { error: 'The file is gone from the data directory.' }); }
+  }
+
+  // Audit bundle: the whole record of a mission in one file, for handover.
+  const bundleMatch = p.match(/^\/api\/missions\/([\w]+)\/bundle$/);
+  if (bundleMatch) {
+    const m = store.mission(bundleMatch[1]);
+    if (!m) return json(res, 404, { error: 'Mission not found.' });
+    const a = m.artifactId ? store.artifact(m.artifactId) : null;
+    const html = m.artifactId ? store.artifactHtml(m.artifactId) : null;
+    if (url.searchParams.get('format') === 'json') return json(res, 200, { schema: 'prajna.bundle.v1', exportedAt: Date.now(), mission: pub(m), artifact: a || null, artifactHtml: html });
+    const name = `${m.serial}-audit-bundle.html`;
+    const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' };
+    if (url.searchParams.get('download') === '1') headers['content-disposition'] = `attachment; filename="${name}"`;
+    return sendCompressed(req, res, 200, headers, auditBundle(pub(m), a, html));
   }
 
   const planMatch = p.match(/^\/api\/missions\/([\w]+)\/plan$/);
