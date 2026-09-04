@@ -18,6 +18,8 @@ import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
+import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS } from './connect.js';
+import { extractText } from './docs.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
 let VERSION = '0.0.0';
@@ -232,6 +234,9 @@ function connectedConnectors() {
   return CONNECTOR_CATALOG.filter((c) => c.provider && store.token(c.provider)).map((c) => c.id);
 }
 
+// The Claude Skills plugin is what puts skill steps on tickets.
+function skillsInstalled() { return (ws().plugins || []).includes('claude-skills') ? connectorState().skills : []; }
+
 function connectorState() {
   if (!store.state.connectors) {
     store.state.connectors = { connected: ['gdrive'], skills: SKILLS.filter((s) => s.install === 'installed').map((s) => s.id) };
@@ -367,6 +372,8 @@ async function handle(req, res) {
       models: allModels().map((m) => ({ ...m, live: !!store.keyFor(m.provider), custom: String(m.id).startsWith('c_') })),
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
       legalVersion: LEGAL.version,
+      connectorTargets: connectorTargets(),
+      deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTOR_CATALOG.map((c) => {
@@ -398,7 +405,7 @@ async function handle(req, res) {
     if (badAdviser) return json(res, 400, { error: `Unknown adviser model "${String(badAdviser).slice(0, 40)}".` });
     const lead = modelById(body.lead).id;
     const advisers = rawAdvisers.map((a) => modelById(a).id).slice(0, 4);
-    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null });
+    const mission = writeContract({ goal, deskId: body.deskId || 'brief', lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: body.chatId || null });
     return json(res, 200, pub(mission));
   }
 
@@ -408,7 +415,7 @@ async function handle(req, res) {
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
     const feedback = Array.isArray(body.feedback) ? body.feedback : [];
-    const m = forkMission(forkMatch[1], { goal, feedback, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors() });
+    const m = forkMission(forkMatch[1], { goal, feedback, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors() });
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     return json(res, 200, pub(m));
   }
@@ -687,7 +694,7 @@ async function handle(req, res) {
   const startMissionFromChat = (c, mode, goal, seatId) => {
     const lead = modelById(seatId || ws().personalization.defaultModel).id;
     const advisers = (ws().personalization.defaultAdvisers || []).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-    const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id });
+    const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id });
     if (store.workspace().credits < mission.contract.ceiling) return { mission, text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ceiling ${mission.contract.ceiling}) but the house holds only ${store.workspace().credits.toFixed(0)} credits, top up before stamping.`, kind: 'ticket' };
     launchMission(mission.id, notify);
     return { mission, text: `Started ${mission.deskName.replace(' desk', '')} mission ${mission.serial} from this conversation: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}).`, kind: 'run' };
@@ -753,13 +760,23 @@ async function handle(req, res) {
     const text = String(body.text || '').trim().slice(0, 4000);
     if (!text) return json(res, 400, { error: 'Say something first.' });
     const mode = String(body.mode || c.mode || 'chat');
-    const docs = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).filter((a) => a && typeof a === 'object' && typeof a.text === 'string' && a.text.trim()).map((a) => ({ name: String(a.name || 'attachment').slice(0, 120), text: String(a.text).slice(0, 200000) }));
+    const docsPlugin = (ws().plugins || []).includes('documents');
+    const docs = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => {
+      if (!a || typeof a !== 'object') return null;
+      const name = String(a.name || 'attachment').slice(0, 120);
+      if (typeof a.text === 'string' && a.text.trim()) return { name, text: String(a.text).slice(0, 200000) };
+      if (typeof a.base64 === 'string' && /\.(docx|pptx|xlsx)$/i.test(name)) {
+        if (!docsPlugin) return null; // recorded by name only; the Documents plugin reads these
+        try { const text = extractText(name, Buffer.from(a.base64, 'base64')); return text ? { name, text } : null; } catch { return null; }
+      }
+      return null;
+    }).filter(Boolean);
     addMessage(c.id, { role: 'user', text, mode, attachments: (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map((a) => (typeof a === 'string' ? a : String(a?.name || 'attachment').slice(0, 120))) });
     const MODE_DESK = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
     if (MODE_DESK[mode]) {
       const lead = modelById(body.lead || ws().personalization.defaultModel).id;
       const advisers = (Array.isArray(body.advisers) ? body.advisers : ws().personalization.defaultAdvisers).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
-      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs });
+      const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs });
       const credits = store.workspace().credits;
       if (credits < mission.contract.ceiling) {
         const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits, top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });
@@ -799,6 +816,14 @@ async function handle(req, res) {
     if (!proj) return json(res, 404, { error: 'Project not found.' });
     if (req.method === 'DELETE') { if (proj.id === 'p_default') return json(res, 400, { error: 'The default project cannot be deleted.' }); w.projects = w.projects.filter((x) => x.id !== proj.id); flushWs(); return json(res, 200, { ok: true }); }
     const body = await readBody(req); proj.name = String(body.name || proj.name).slice(0, 60); flushWs(); return json(res, 200, proj);
+  }
+  const targetMatch = p.match(/^\/api\/connectors\/([\w-]+)\/target$/);
+  if (targetMatch && req.method === 'PATCH') {
+    const body = await readBody(req);
+    const t = connectorTargets(); const v = String(body.target || '').trim().slice(0, 200);
+    if (v) t[targetMatch[1]] = v; else delete t[targetMatch[1]];
+    flushWs();
+    return json(res, 200, { ok: true, targets: t });
   }
   const pluginMatch = p.match(/^\/api\/plugins\/([\w-]+)\/toggle$/);
   if (pluginMatch && req.method === 'POST') {
@@ -1027,4 +1052,5 @@ async function handle(req, res) {
 rehydrate(notify);
 { const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
 scheduleDigest();
+seedTestTokens();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

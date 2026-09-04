@@ -22,7 +22,7 @@ export default function Plugins() {
             <article key={p.id} className={`plugin-card${on ? ' on' : ''}`}>
               <header><b>{p.name}</b><span className="by">by {p.by}</span></header>
               <p>{p.what}</p>
-              <p className="effect">{p.effect}</p>
+              <p className="effect"><span className={`badge ${/^Wired/.test(p.effect) ? 'live' : ''}`}>{/^Wired/.test(p.effect) ? 'WIRED' : 'INTENT'}</span> {p.effect}</p>
               <button className={`toggle-btn${on ? ' on' : ''}`} onClick={() => toggle(p.id)} aria-pressed={on}>{on ? 'Enabled' : 'Enable'}</button>
             </article>
           );

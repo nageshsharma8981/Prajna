@@ -15,13 +15,13 @@ export const DECK_TEMPLATES = [
 ];
 
 export const PLUGINS = [
-  { id: 'claude-skills', name: 'Claude Skills', by: 'Anthropic', what: 'Load skill packs into missions as standing procedures.', effect: 'Skills page becomes active for every desk.' },
-  { id: 'codex-delegate', name: 'Codex delegate', by: 'OpenAI', what: 'Delegate build steps to a coding agent and keep control of the contract.', effect: 'Website and Mobile App build steps run as a delegated sub-mission on the tape.' },
-  { id: 'code-interpreter', name: 'Code interpreter', by: 'House', what: 'Run computations over attached data during analysis.', effect: 'Analysis desk gains a compute step.' },
-  { id: 'web-search', name: 'Web search', by: 'House', what: 'Search the open web for research missions.', effect: 'Research desk sweeps live sources when a search key is present.' },
-  { id: 'browser', name: 'Browser', by: 'House', what: 'Drive a real browser to read pages and verify surfaces.', effect: 'Surface validators can render pages.' },
-  { id: 'documents', name: 'Documents', by: 'House', what: 'Read and write PDF, Word, Excel and PowerPoint files.', effect: 'Attachments become evidence; decks export to .pptx.' },
-  { id: 'claude-code', name: 'Claude Code coordination', by: 'Anthropic', what: 'Coordinate long engineering work from a terminal session.', effect: 'Factory CLI can attach a workspace.' },
+  { id: 'claude-skills', name: 'Claude Skills', by: 'Anthropic', what: 'Load skill packs into missions as standing procedures.', effect: 'Wired: installed skills add their steps (cite guard, steelman, deck doctor, copy cutter, accessibility audit, chart smith) to every ticket. Off, tickets carry only the core steps.' },
+  { id: 'codex-delegate', name: 'Codex delegate', by: 'OpenAI', what: 'Delegate build steps to a coding agent and keep control of the contract.', effect: 'Not wired yet: toggling records the intent; build steps still run in the house.' },
+  { id: 'code-interpreter', name: 'Code interpreter', by: 'House', what: 'Run computations over attached data during analysis.', effect: 'Wired: the analyze step computes change, peak, trough, mean, spread and top segment over an attached CSV, on the tape and in the artifact.' },
+  { id: 'web-search', name: 'Web search', by: 'House', what: 'Search the open web for research missions.', effect: 'Wired: with a Brave Search key loaded, the research sweep reads the live web; off, only the open encyclopedia.' },
+  { id: 'browser', name: 'Browser', by: 'House', what: 'Drive a real browser to read pages and verify surfaces.', effect: 'Not wired yet: the house has no headless browser; toggling records the intent.' },
+  { id: 'documents', name: 'Documents', by: 'House', what: 'Read and write PDF, Word, Excel and PowerPoint files.', effect: 'Wired: attached Word, PowerPoint and Excel files are read as evidence (text only). Export to .pptx is not wired yet.' },
+  { id: 'claude-code', name: 'Claude Code coordination', by: 'Anthropic', what: 'Coordinate long engineering work from a terminal session.', effect: 'Not wired yet: the prajna CLI already attaches a workspace; this toggle records the intent to coordinate a coding session.' },
 ];
 
 export const TOOLS = [

@@ -29,7 +29,7 @@ export const shapeFor = (mission) => (mission.variant === 'design' ? 'design' : 
 export function authorPrompt(mission) {
   const shape = SHAPES[shapeFor(mission)];
   const sources = (mission.sources || []).map((s, i) => `[${i + 1}] ${s.title}, ${s.url}\n    ${s.extract}`).join('\n');
-  const data = mission.data ? `${dataSummary(mission.data)}\n` : '';
+  const data = mission.data ? `${dataSummary(mission.data)}${mission.computed && !mission.computed.none ? ` Computed: change first to last ${mission.computed.growthPct == null ? 'n/a' : `${mission.computed.growthPct}%`}, peak ${mission.computed.peak}, trough ${mission.computed.trough}, mean ${mission.computed.mean}, sd ${mission.computed.sd}${mission.computed.topSegment ? `, top segment ${mission.computed.topSegment}` : ''}.` : ''}\n` : '';
   const positions = (mission.events || []).filter((e) => e.type === 'council.position' && e.text).map((e) => `- ${e.model || e.seat}: ${e.text}`).join('\n');
   const lin = mission.lineage || {};
   const feedback = (lin.feedback || []).length ? `This is version ${lin.version}, superseding ${lin.parentSerial}. The owner's notes on the previous version, address every one:\n${lin.feedback.map((f, i) => `${i + 1}. ${f}`).join('\n')}\n${lin.previousDraft ? `Previous draft (JSON) to revise, keeping what was not criticised:\n${JSON.stringify(lin.previousDraft).slice(0, 5000)}\n` : ''}` : '';

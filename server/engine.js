@@ -19,6 +19,8 @@ import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
 import { looksLikeCsv, profileCsv, dataSummary } from './data.js';
+import { gather, deliver, DELIVERABLE_CONNECTORS } from './connect.js';
+import { ws } from './workspace.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -97,6 +99,7 @@ const CONNECTOR_STEPS = {
   slack: { title: 'Post the delivery to Slack (queued connector)', tool: 'connector-post', cost: 2 },
   notion: { title: 'Publish the artifact to Notion (queued connector)', tool: 'connector-post', cost: 2 },
   gmail: { title: 'Draft a delivery email in Gmail (queued connector)', tool: 'connector-post', cost: 2 },
+  github: { title: 'Open a delivery issue on GitHub (queued connector)', tool: 'connector-post', cost: 2 },
 };
 
 // Acceptance dimensions per desk, the panel gate votes on these.
@@ -395,7 +398,7 @@ const TOOL_LINES = {
   ingest: [['load', '12 periods × 8 segments loaded (sample set)'], ['profile', 'no gaps · 2 outliers flagged for inspection']],
   analyze: [['decompose', 'topline split by segment and cohort'], ['test', 'mix-shift hypothesis vs performance: mix shift wins'], ['residual', 'one segment moves opposite, isolated']],
   'chart-smith': [['form', 'line + segment bars chosen · dual axis refused'], ['annotate', 'the finding is drawn on the chart, not beside it']],
-  'connector-post': [['compose', 'delivery summary drafted with artifact link'], ['post', 'simulated post, connector is queued intent, live OAuth wiring pending']],
+  'connector-post': [['compose', 'delivery summary drafted with the artifact link']],
   design: [['layout', 'grid, hierarchy and spacing decided before any pixel'], ['states', 'empty, loading, error and success states drawn'], ['annotate', 'every region labeled with its intent']],
 };
 
@@ -565,12 +568,17 @@ async function applyEvent(m, ev, notify, runner) {
   }
 
   if (ev.type === 'log' && ev.connector) {
+    // A connected app puts what it knows about the goal on the sources table.
     try {
-      const text = await evidenceFor(ev.connector);
-      record.detail = text ? `${text} · live` : `${ev.connector}: no live token in memory, reconnect on the Connectors page`;
-      record.live = !!text;
+      const { sources, note } = await gather(ev.connector, m.goal);
+      const owned = (m.sources || []).filter((s) => s.engine === 'attachment');
+      const rest = (m.sources || []).filter((s) => s.engine !== 'attachment');
+      m.sources = [...owned, ...rest, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
+      record.detail = `${note} · live`;
+      record.live = true;
+      record.count = sources.length;
     } catch (e) {
-      record.detail = `${ev.connector}: live read failed (${String(e.message || e).slice(0, 120)}), recorded, not hidden`;
+      record.detail = `${ev.connector}: live read failed (${String(e.message || e).slice(0, 140)}), recorded, not hidden`;
       record.live = false;
     }
   }
@@ -604,13 +612,59 @@ async function applyEvent(m, ev, notify, runner) {
         const started = Date.now();
         const { query, sources, engines } = await retrieve(m.goal);
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
-        const owned = (m.sources || []).filter((s) => s.engine === 'attachment');
+        const owned = (m.sources || []).filter((s) => s.engine === 'attachment' || s.engine === 'connector');
         m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}”, the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
         m.sources = [];
         pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}), recorded; the brief carries no retrieved reading` }, notify);
+      }
+      return 'ok';
+    }
+  }
+
+  // Delivery through a connected app, after the approval checkpoint: a real
+  // post, page, draft or issue with its id on the tape.
+  if (ev.type === 'step.status' && ev.status === 'LIVE') {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'connector-post' && step.connector && !(m.deliveries || []).some((d) => d.stepId === step.id)) {
+      pushEvent(m, record, notify);
+      const link = `${process.env.PRAJNA_PUBLIC_URL || ''}/artifact/${m.artifactId || ''}`.replace(/^\/artifact/, '/artifact');
+      let rec;
+      try {
+        const r = await deliver(step.connector, m, link);
+        rec = { stepId: step.id, connector: step.connector, ok: true, id: r.id, url: r.url, where: r.where, at: Date.now() };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'deliver', live: true, detail: `${r.where}: delivered${r.id ? ` (${r.id})` : ''}${r.url ? ` ${r.url}` : ''}` }, notify);
+      } catch (e) {
+        rec = { stepId: step.id, connector: step.connector, ok: false, error: String(e.message || e).slice(0, 200), at: Date.now() };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'deliver', live: false, detail: `${step.connector}: delivery failed (${rec.error}), recorded, not hidden` }, notify);
+      }
+      m.deliveries = [...(m.deliveries || []), rec];
+      return 'ok';
+    }
+  }
+
+  // Code interpreter plugin: real computation over the owner's data at the
+  // analyze step; the facts go on the tape, into the author's prompt and the
+  // artifact's caveats.
+  if (ev.type === 'step.status' && ev.status === 'LIVE') {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'analyze' && !m.computed && (ws().plugins || []).includes('code-interpreter')) {
+      pushEvent(m, record, notify);
+      if (m.data && m.data.series) {
+        const pts = m.data.series.points; const v = pts.map((p) => p.value);
+        const first = v[0], last = v.at(-1);
+        const growth = first ? Math.round(((last - first) / Math.abs(first)) * 1000) / 10 : null;
+        const peak = pts.reduce((a, p) => (p.value > a.value ? p : a), pts[0]); const trough = pts.reduce((a, p) => (p.value < a.value ? p : a), pts[0]);
+        const mean = v.reduce((a, b) => a + b, 0) / v.length;
+        const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
+        const top = m.data.segments?.items?.[0]; const total = (m.data.segments?.items || []).reduce((a, s) => a + s.value, 0);
+        m.computed = { growthPct: growth, peak: peak ? `${peak.label || ''} ${peak.value}`.trim() : null, trough: trough ? `${trough.label || ''} ${trough.value}`.trim() : null, mean: Math.round(mean * 100) / 100, sd: Math.round(sd * 100) / 100, topSegment: top ? `${top.name} ${Math.round((top.value / (total || 1)) * 1000) / 10}%` : null, n: v.length };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'compute', live: true, detail: `code interpreter: ${m.computed.n} points of ${m.data.series.column}; change first to last ${growth == null ? 'n/a' : `${growth > 0 ? '+' : ''}${growth}%`}; peak ${m.computed.peak}; trough ${m.computed.trough}; mean ${m.computed.mean}, sd ${m.computed.sd}${top ? `; top segment ${m.computed.topSegment}` : ''}` }, notify);
+      } else {
+        m.computed = { none: true };
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'compute', live: false, detail: 'code interpreter: no CSV attached, nothing to compute; the sample series is not computed over' }, notify);
       }
       return 'ok';
     }

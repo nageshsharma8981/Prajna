@@ -71,6 +71,16 @@ export default function Connectors() {
       <section className="section-gap">
         <h2 className="h2">Connected accounts</h2>
         <div className="dashed">{connected.length === 0 ? 'No connected accounts yet.' : connected.map((c) => <span key={c.id} className="conn-unwired-chip"><b>{c.name}</b> · {c.account}</span>)}</div>
+        {connected.length > 0 && (
+          <div className="targets">
+            <p className="sub">What a connected app does on a mission: at the first step it puts what it knows about the goal on the sources table; at the delivery step, after your approval, it delivers. Set where.</p>
+            {connected.filter((c) => (s.deliverableConnectors || []).includes(c.id)).map((c) => (
+              <label key={c.id} className="target-row"><b>{c.name}</b><span>{c.id === 'slack' ? 'channel id (blank: first channel the app is in)' : c.id === 'notion' ? 'parent page id' : c.id === 'github' ? 'owner/repo' : 'draft goes to the email on your profile'}</span>
+                {c.id !== 'gmail' && <input className="key-input" defaultValue={(s.connectorTargets || {})[c.id] || ''} placeholder={c.id === 'slack' ? 'C0123ABCD' : c.id === 'notion' ? 'page id' : 'owner/repo'} onBlur={async (e) => { await fetch(`/api/connectors/${c.id}/target`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target: e.target.value }) }); s.refresh(); }} aria-label={`${c.name} delivery target`} />}
+              </label>
+            ))}
+          </div>
+        )}
       </section>
 
       {Object.entries(byCat).map(([category, items]) => (

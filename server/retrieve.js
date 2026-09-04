@@ -6,6 +6,7 @@
 // from them. Failures are reported per engine, not hidden.
 import { store } from './store.js';
 import { braveSearch } from './providers.js';
+import { ws } from './workspace.js';
 
 const TIMEOUT_MS = 9000;
 const UA = 'Prajna/0.11 (outcome exchange; research desk retrieval)';
@@ -42,6 +43,7 @@ async function wikipedia(q, limit, retrieved) {
 async function brave(q, limit, retrieved) {
   const k = store.keyFor('brave');
   if (!k) return null; // no key: engine not attempted
+  if (!(ws().plugins || []).includes('web-search')) return null; // plugin off: the key is not used
   const hits = await braveSearch({ key: k.key, baseUrl: k.baseUrl, q, count: limit });
   return hits.map((h) => ({ title: h.title, url: h.url, kind: 'web', engine: 'brave', retrieved, age: h.age, extract: h.description.slice(0, 700) })).filter((s) => s.title && s.url);
 }

@@ -23,8 +23,10 @@ function provenanceObject(mission) {
     schema: 'prajna.provenance.v1',
     mode: mission.authored?.live ? 'live' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
     retrieval: mission.retrieval ? { ...mission.retrieval, sources: (mission.sources || []).map((s) => ({ id: s.id, title: s.title, url: s.url, engine: s.engine || null, retrieved: s.retrieved, extract: (s.extract || '').slice(0, s.engine === 'attachment' ? 4000 : 700) })) } : null,
+    computed: mission.computed && !mission.computed.none ? mission.computed : null,
     data: mission.data ? { name: mission.data.name, rows: mission.data.rows, columns: mission.data.columns, series: mission.data.series?.column || null, segments: mission.data.segments?.column || null } : null,
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
+    deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, error: d.error || null })),
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,
     seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),
@@ -418,7 +420,7 @@ ${PROV_CSS}
   </div>
 </div>
 <div class="caveat"><b>Caveats attached, as promised</b><br>
-${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data, attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live model reads your numbers.` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data, attach a CSV to run this on your real numbers.')}</div>
+${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data, attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live model reads your numbers.${mission.computed && !mission.computed.none ? ` Computed by the code interpreter: change first to last ${mission.computed.growthPct == null ? 'n/a' : `${mission.computed.growthPct}%`}, peak ${esc(mission.computed.peak)}, trough ${esc(mission.computed.trough)}, mean ${mission.computed.mean}, sd ${mission.computed.sd}${mission.computed.topSegment ? `, top segment ${esc(mission.computed.topSegment)}` : ''}.` : ''}` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data, attach a CSV to run this on your real numbers.')}</div>
 ${provenance(mission)}
 </div></body></html>`;
   return { title: `${subject}, Analysis`, kind: 'analysis', html };

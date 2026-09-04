@@ -675,3 +675,24 @@ acceptance is recorded with version, time, name if given, address and agent.
 A new version asks again. The CLI has "prajna accept". These documents were
 drafted without legal counsel and should be reviewed by one before relying on
 them.
+
+## v0.52: Connectors and plugins that do the work (2026-09-04)
+
+A connected app now does two real things on a mission. At the first step it
+gathers what it knows about the goal onto the sources table: Gmail messages
+(subject, sender, date, snippet), Drive files with the text of Google Docs,
+Calendar events, Slack messages, Notion pages with their text, GitHub issues.
+At the delivery step, after your approval, it delivers: a Slack post to the
+channel you set, a Notion page under the parent you set, a Gmail draft to
+your profile email, a GitHub issue in the repository you set, each with its
+id or URL on the tape, in provenance ("deliveries") and in the narrative.
+Targets are set on the Connectors page. Plugins now name their real effect
+and carry a WIRED or INTENT badge: Claude Skills puts skill steps on tickets
+(off removes them); Web search makes the sweep use a Brave key; Code
+interpreter computes change, peak, trough, mean, spread and top segment over
+an attached CSV at the analyze step; Documents reads attached Word,
+PowerPoint and Excel files as evidence. Codex delegate, Browser and Claude
+Code coordination record intent only, and say so. For tests, API hosts can
+be redirected with PRAJNA_API_BASE_<PROVIDER> and tokens seeded with
+PRAJNA_TEST_TOKENS; neither is set in production. Set PRAJNA_PUBLIC_URL on
+the host so delivered links point at the public address.

@@ -187,7 +187,7 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
           aria-label="Message"
         />
         {attachments.length > 0 && (
-          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip" title={a.text ? `${a.text.length} characters read, on the table as an owner source` : 'name only, not a text file, so its contents are not read'}>{a.name}{a.text ? '' : ' (name only)'} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a.name}`}>×</button></span>)}</div>
+          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip" title={a.text ? `${a.text.length} characters read, on the table as an owner source` : a.base64 ? 'document attached; the Documents plugin reads it as evidence' : 'name only, not a text file, so its contents are not read'}>{a.name}{a.text || a.base64 ? '' : ' (name only)'} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a.name}`}>×</button></span>)}</div>
         )}
         <div className="composer-bar">
           <button className="ic" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files"><ClipIcon /></button>
@@ -197,6 +197,8 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
             const files = Array.from(e.target.files).slice(0, 8);
             const read = await Promise.all(files.map((f) => new Promise((res) => {
               const textish = /^text\/|json|csv|html|markdown/.test(f.type) || /\.(txt|md|csv|json|html?)$/i.test(f.name);
+              const officey = /\.(docx|pptx|xlsx)$/i.test(f.name);
+              if (officey && f.size <= 3000000) { const r2 = new FileReader(); r2.onload = () => res({ name: f.name, base64: String(r2.result || '').split(',')[1] || '' }); r2.onerror = () => res({ name: f.name }); r2.readAsDataURL(f); return; }
               if (!textish || f.size > 400000) return res({ name: f.name });
               const r = new FileReader(); r.onload = () => res({ name: f.name, text: String(r.result || '').slice(0, 200000) }); r.onerror = () => res({ name: f.name }); r.readAsText(f);
             })));

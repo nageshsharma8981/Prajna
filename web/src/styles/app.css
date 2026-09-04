@@ -1489,3 +1489,9 @@ abbr.cite { cursor: help; }
 .disclaimer a { color: var(--bone-dim); }
 
 .consent-card .logo-img { align-self: flex-start; height: 44px; width: auto; }
+
+.targets { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.target-row { display: grid; grid-template-columns: 8rem 1fr; gap: 0.3rem 0.8rem; align-items: center; font-size: 0.84rem; }
+.target-row span { grid-column: 2; color: var(--bone-faint); font-size: 0.74rem; }
+.target-row .key-input { grid-column: 2; max-width: 24rem; }
+.plugin-card .effect .badge { margin-right: 0.3rem; }

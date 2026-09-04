@@ -10,7 +10,7 @@ const withTimeout = (p, label) => Promise.race([p, new Promise((_, r) => setTime
 export const OAUTH_PROVIDERS = {
   google: {
     label: 'Google',
-    covers: ['gmail', 'gdrive', 'gcal', 'sheets', 'youtube'],
+    covers: ['gmail', 'gdrive', 'gdocs', 'gcal', 'sheets', 'youtube'],
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     scopes: ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
