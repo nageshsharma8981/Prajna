@@ -137,6 +137,7 @@ export default function Account({ page }) {
         {p === 'subscription' && (
           <>
             <h1 className="pg-title">Subscription</h1>
+            <div className="digest"><span className="k">What a credit is</span><p>A house credit is the unit every ticket is priced in. The ticket states an estimate and a ceiling (estimate plus a quarter); stamping reserves the ceiling, the run settles what it actually used, and the rest is released. Nothing beyond the ceiling is spent without your decision. Seats on your own keys are priced at zero, so bringing keys lowers every ticket. Every movement is on the credit ledger under Payment &amp; Invoices.</p></div>
             <p className="lede">Current plan: <b>{(s.planTiers || []).find((t) => t.id === s.plan)?.name}</b> · {w.credits.toFixed(0)} credits available.</p>
             <div className="plan-grid">
               {(s.planTiers || []).map((t) => (
@@ -155,6 +156,13 @@ export default function Account({ page }) {
           <>
             <h1 className="pg-title">Payment &amp; invoices</h1>
             <p className="lede">Payment methods and invoices. Billing is in demo mode until a payment provider is wired — nothing is charged.</p>
+            <div className="board section-gap"><div className="board-title"><span className="brd-sm">Top up</span><span className="count">{w.credits.toFixed(0)} cr</span></div>
+              <div className="topup">{[100, 250, 500, 1000, 2500, 5000].map((n) => <button key={n} className="toggle-btn" onClick={async () => { setErr(null); setMsg(null); const r = await fetch('/api/credits/topup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ amount: n }) }); const j = await r.json().catch(() => ({})); if (!r.ok) setErr(j.error || 'Refused.'); else setMsg(`${n} credits added — demo billing, nothing charged. Balance ${j.credits.toFixed(0)} cr.`); s.refresh(); }}>+{n}</button>)}<span className="conn-hint">Demo top-ups: an honest ledger line, no card, no charge.</span></div>
+            </div>
+            <div className="board section-gap"><div className="board-title"><span className="brd-sm">Credit ledger</span><span className="count">{(s.ledger || []).length}</span></div><div className="board-rows">
+              {(s.ledger || []).length === 0 && <div className="board-empty">No movements yet. Stamping a ticket reserves its ceiling; closing a run settles and releases.</div>}
+              {(s.ledger || []).slice(0, 40).map((l) => <div key={l.id} className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': l.delta >= 0 ? 'var(--green)' : 'var(--flap-ink)' }}>{l.kind.toUpperCase().slice(0, 3)}</span><span className="what"><b>{l.note}</b><span>{new Date(l.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{l.serial ? ` · ${l.serial}` : ''} · balance {l.balanceAfter.toFixed(0)} cr · reserved {l.reservedAfter.toFixed(0)} cr</span></span><span className="num">{l.delta >= 0 ? '+' : ''}{l.delta.toFixed(1)} cr</span></div>)}
+            </div></div>
             <div className="board section-gap"><div className="board-title"><span className="brd-sm">Invoices</span><span className="count">{(s.invoices || []).length}</span></div><div className="board-rows">
               {(s.invoices || []).length === 0 && <div className="board-empty">No invoices yet.</div>}
               {(s.invoices || []).map((i) => <div key={i.id} className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>INV</span><span className="what"><b>{i.plan} plan</b><span>{new Date(i.at).toLocaleDateString('en-GB')} · {i.status}</span></span><span className="num">${i.amount} {i.currency}</span></div>)}

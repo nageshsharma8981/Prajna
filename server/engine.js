@@ -17,6 +17,7 @@ import { authorContent, critiqueContent } from './author.js';
 import { retrieve } from './retrieve.js';
 import { narrateRun } from './narrate.js';
 import { addMessage } from './workspace.js';
+import { record as ledger } from './ledger.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -522,6 +523,7 @@ function settle(m, notify) {
     released: Math.round((m.contract.ceiling - m.spent) * 10) / 10,
   };
   store.releaseReserve(m.settlement.released);
+  ledger('settle', -m.settlement.settled, `${m.serial} settled ${m.settlement.settled} cr against a ${m.settlement.reserved} cr reserve; ${m.settlement.released} cr released`, { missionId: m.id, serial: m.serial, released: m.settlement.released });
   pushEvent(m, { type: 'settlement', ...m.settlement }, notify);
   // The artifact of record carries the FINAL provenance: settlement, review
   // verdict, and every human decision. Regenerate it now that they exist.
@@ -804,6 +806,7 @@ export function launchMission(missionId, notify) {
   const mission = store.mission(missionId);
   if (!mission || mission.status !== 'OPEN') return null;
   if (!store.reserveCredits(mission.contract.ceiling)) return null;
+  ledger('reserve', -mission.contract.ceiling, `${mission.serial} stamped — ceiling reserved`, { missionId: mission.id, serial: mission.serial });
   mission.status = 'LIVE';
   mission.launchedAt = Date.now();
   if (mission.eventSeq === undefined) mission.eventSeq = 0;
@@ -925,6 +928,7 @@ export async function decideAttention(missionId, requestId, decision, justificat
     if (!store.reserveCredits(raisedCeiling - m.contract.ceiling)) {
       return { error: `House credits cannot fund the raised ceiling (${raisedCeiling}cr). Abort with the partial artifact, or top up first.` };
     }
+    ledger('reserve', -(raisedCeiling - m.contract.ceiling), `${m.serial} ceiling raised ${m.contract.ceiling} → ${raisedCeiling} cr — extra reserve taken`, { missionId: m.id, serial: m.serial });
   }
 
   req.decision = decision;

@@ -523,3 +523,12 @@ paused, deliveries, last delivery time, data-directory health and memory.
 `/api/health` is the machine-readable form. Both stay reachable when the
 house is locked, and are rate-limited like the other public routes. Linked
 from Settings.
+
+## v0.36 — The credit ledger (2026-09-04)
+
+Every movement of house credits is now a line the owner can read back:
+reserve on stamping, settlement and release on closing, ceiling raises, plan
+grants, showcase grants and top-ups — each with the balance and reserve after
+it. Payment & Invoices shows the ledger and offers demo top-ups (an honest
+line, no charge); Subscription opens with a plain explanation of what a
+credit is and how estimate, ceiling, settlement and live seats relate.

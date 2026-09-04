@@ -15,6 +15,7 @@ import { callModel, streamModel, generateImage } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
 import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
+import { record as ledger } from './ledger.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
 let VERSION = '0.0.0';
@@ -460,6 +461,7 @@ async function handle(req, res) {
     w.showcase.unshift(entry);
     store.workspace().credits += entry.grant; store.flushWorkspace?.();
     flushWs();
+    ledger('grant', entry.grant, `Showcase submission ${a.serial} — ${entry.grant} cr house grant (demo)`, { artifactId: a.id });
     return json(res, 200, { ok: true, entry, path: `/s/${shareToken}`, granted: entry.grant });
   }
   const scDel = p.match(/^\/api\/showcase\/(sc_[a-f0-9]+)$/);
@@ -752,6 +754,18 @@ async function handle(req, res) {
     const body = await readBody(req); const w = ws();
     if (/^[a-z]{2}(-[A-Z]{2})?$/.test(String(body.language || ''))) w.language = body.language; flushWs(); return json(res, 200, { language: w.language });
   }
+  // Top-up: demo billing, an honest ledger line, nothing charged.
+  if (p === '/api/credits/topup' && req.method === 'POST') {
+    const body = await readBody(req);
+    const amount = Math.round(Number(body.amount) || 0);
+    if (![100, 250, 500, 1000, 2500, 5000].includes(amount)) return json(res, 400, { error: 'Top-ups come in 100, 250, 500, 1000, 2500 or 5000 credits.' });
+    store.workspace().credits = Math.round((store.workspace().credits + amount) * 10) / 10; store.flushWorkspace();
+    const w = ws();
+    w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: Math.round(amount / 100 * 2 * 100) / 100, currency: 'USD', plan: `Top-up ${amount} cr`, status: 'demo — no payment collected' }); flushWs();
+    const line = ledger('topup', amount, `Top-up of ${amount} cr (demo billing, no payment collected)`);
+    return json(res, 200, { ok: true, credits: store.workspace().credits, line });
+  }
+
   if (p === '/api/plan' && req.method === 'PATCH') {
     const body = await readBody(req); const w = ws();
     const tier = PLAN_TIERS.find((t) => t.id === body.plan);
@@ -761,6 +775,7 @@ async function handle(req, res) {
       if (tier.price > 0) {
         w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: tier.price, currency: 'USD', plan: tier.name, status: 'demo — no payment collected' });
         store.workspace().credits = Math.round((store.workspace().credits + tier.credits) * 10) / 10; store.flushWorkspace();
+        ledger('grant', tier.credits, `${tier.name} plan — ${tier.credits} cr granted (demo billing, no payment collected)`);
       }
       flushWs();
     }
