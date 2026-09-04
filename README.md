@@ -629,3 +629,12 @@ media, artifacts, compare, releases, skills, keys — now load on demand, which
 takes the first script from 104 KB to 76 KB gzipped; the home, chat and
 sidebar stay in the first chunk. In the composer, Escape closes whichever
 overlay is open — model picker, depth menu, council, templates.
+
+## v0.48 — Ten at once (2026-09-04)
+
+Verified under load: nine missions launched together (a tenth was refused
+because the house could not fund its ceiling — the right answer), all nine
+delivered, and afterwards the reserve returned exactly to its starting value,
+the spent delta equalled the sum of the nine settlements, every tape was
+archived, every narrative written, and the ledger held two lines per mission
+plus one per ceiling raise. No code changed; this is the record of the check.
