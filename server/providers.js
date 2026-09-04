@@ -63,6 +63,71 @@ export const PROVIDERS = {
   },
 };
 
+// Streaming variants: same adapters, token deltas delivered to onDelta as
+// they arrive. Returns the full text. A 90s wall clock bounds the stream.
+async function readSse(r, onEvent) {
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
+      try { onEvent(JSON.parse(data)); } catch { /* keep-alive or partial */ }
+    }
+  }
+}
+
+const STREAMERS = {
+  async anthropic({ key, modelId, prompt, maxTokens, onDelta, signal }) {
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal,
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: modelId, max_tokens: maxTokens, stream: true, messages: [{ role: 'user', content: prompt }] }) });
+    if (!r.ok) throw new Error((await readJson(r))?.error?.message || `Anthropic ${r.status}`);
+    let text = '';
+    await readSse(r, (e) => { const d = e.type === 'content_block_delta' ? e.delta?.text : ''; if (d) { text += d; onDelta(d); } });
+    return text;
+  },
+  async openai({ key, modelId, prompt, baseUrl, maxTokens, onDelta, signal }) {
+    const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const r = await fetch(`${base}/chat/completions`, { method: 'POST', signal,
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: modelId, max_tokens: maxTokens, stream: true, messages: [{ role: 'user', content: prompt }] }) });
+    if (!r.ok) throw new Error((await readJson(r))?.error?.message || `HTTP ${r.status}`);
+    let text = '';
+    await readSse(r, (e) => { const d = e.choices?.[0]?.delta?.content; if (d) { text += d; onDelta(d); } });
+    return text;
+  },
+  async google({ key, modelId, prompt, maxTokens, onDelta, signal }) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, { method: 'POST', signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens } }) });
+    if (!r.ok) throw new Error((await readJson(r))?.error?.message || `Gemini ${r.status}`);
+    let text = '';
+    await readSse(r, (e) => { const d = (e.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join(''); if (d) { text += d; onDelta(d); } });
+    return text;
+  },
+};
+
+export async function streamModel({ provider, key, baseUrl, modelId, prompt, maxTokens = 900, onDelta = () => {} }) {
+  const p = PROVIDERS[provider];
+  if (!p) throw new Error(`Unknown provider "${provider}".`);
+  if (!key) throw new Error(`No key on file for ${p.label}.`);
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 90000);
+  try {
+    const text = await STREAMERS[provider]({ key, baseUrl, modelId, prompt, maxTokens, onDelta, signal: ctl.signal });
+    if (!text) throw new Error(`${p.label} returned an empty reply.`);
+    return text;
+  } finally { clearTimeout(t); }
+}
+
 export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTokens }) {
   const p = PROVIDERS[provider];
   if (!p) throw new Error(`Unknown provider "${provider}".`);

@@ -48,6 +48,7 @@ export default function Chat({ id }) {
   const s = useStore();
   const [chat, setChat] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [draft, setDraft] = useState(null); // streaming assistant reply in flight
   const endRef = useRef(null);
 
   const load = async () => {
@@ -55,10 +56,44 @@ export default function Chat({ id }) {
     if (!r.ok) { setMissing(true); return; }
     setChat(await r.json());
   };
-  useEffect(() => { setChat(null); setMissing(false); load(); }, [id]); // eslint-disable-line
-  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [chat?.messages?.length]);
+  useEffect(() => { setChat(null); setMissing(false); setDraft(null); load(); }, [id]); // eslint-disable-line
+  // A chat handed off from Home carries its first message here so the reply
+  // streams into the thread instead of blocking the navigation.
+  useEffect(() => {
+    if (!chat) return;
+    const key = `prajna-pending-${id}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    sessionStorage.removeItem(key);
+    try { send(JSON.parse(raw)); } catch { /* ignore */ }
+  }, [chat?.id]); // eslint-disable-line
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }); }, [chat?.messages?.length, draft?.text?.length]);
+
+  const stream = async (payload) => {
+    setChat((c) => ({ ...c, messages: [...c.messages, { id: `tmp-${Date.now()}`, role: 'user', text: payload.text, attachments: payload.attachments || [] }] }));
+    setDraft({ text: '', model: payload.leadName || null });
+    const r = await fetch(`/api/chats/${id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); setDraft(null); throw new Error(j.error || 'The house refused the message.'); }
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = (block.match(/^event: (.*)$/m) || [])[1]; const data = (block.match(/^data: (.*)$/m) || [])[1];
+        if (!ev || !data) continue;
+        const d = JSON.parse(data);
+        if (ev === 'delta') setDraft((x) => ({ ...(x || {}), text: ((x && x.text) || '') + d.text }));
+        if (ev === 'done') { setDraft(null); setChat(d.chat); }
+      }
+    }
+    s.refresh();
+  };
 
   const send = async (payload) => {
+    if (payload.mode === 'chat') return stream(payload);
     const r = await fetch(`/api/chats/${id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'The house refused the message.');
@@ -87,6 +122,12 @@ export default function Chat({ id }) {
               )}
             </div>
           ))}
+          {draft && (
+            <div className="msg assistant"><div className="answer">
+              <div className="answer-meta">{draft.text ? 'streaming · live on your key' : 'thinking…'}</div>
+              <p>{draft.text}<span className="cursor" aria-hidden="true">▍</span></p>
+            </div></div>
+          )}
           <div ref={endRef} />
         </div>
       </div>

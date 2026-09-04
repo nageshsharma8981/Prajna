@@ -10,7 +10,7 @@ import { PROVIDERS, testKey, maskKey } from './providers.js';
 import { liveSeat } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS } from './workspace.js';
-import { callModel } from './providers.js';
+import { callModel, streamModel } from './providers.js';
 
 bindCustomModels(() => store.customModels());
 import { writeContract, launchMission, killMission, voidTicket, decideAttention, rehydrate, forkMission, DIMENSIONS } from './engine.js';
@@ -325,6 +325,35 @@ async function handle(req, res) {
     if (req.method === 'DELETE') { deleteChat(c.id); return json(res, 200, { ok: true }); }
     if (req.method === 'PATCH') { const body = await readBody(req); return json(res, 200, renameChat(c.id, body.title || c.title)); }
     return json(res, 200, c);
+  }
+  // Streaming plain chat: SSE deltas as the live seat speaks, then the saved
+  // message. Without a live seat the house answers honestly in one event.
+  const chatStreamMatch = p.match(/^\/api\/chats\/([\w]+)\/stream$/);
+  if (chatStreamMatch && req.method === 'POST') {
+    const c = getChat(chatStreamMatch[1]);
+    if (!c) return json(res, 404, { error: 'Chat not found.' });
+    const body = await readBody(req);
+    if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
+    const text = String(body.text || '').trim().slice(0, 4000);
+    if (!text) return json(res, 400, { error: 'Say something first.' });
+    addMessage(c.id, { role: 'user', text, mode: 'chat', attachments: Array.isArray(body.attachments) ? body.attachments.slice(0, 8) : [] });
+    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
+    const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const seatId = body.lead || ws().personalization.defaultModel;
+    const live = liveSeat(seatId);
+    let reply, kind = 'text';
+    if (live) {
+      try {
+        const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        kind = 'live';
+      } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
+    } else {
+      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+    }
+    const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
+    emit('done', { message: m, chat: getChat(c.id) });
+    return res.end();
   }
   const msgMatch = p.match(/^\/api\/chats\/([\w]+)\/messages$/);
   if (msgMatch && req.method === 'POST') {

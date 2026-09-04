@@ -247,3 +247,19 @@ were reading the house's own provenance footer as part of the deliverable.
 Validators now scan the deliverable body only.
 
 `server/author.js` holds the per-desk shapes and the authoring call.
+
+## v0.10 — Streaming chat and real retrieval (2026-09-04)
+
+- **Streaming replies.** Plain chat now streams token by token from the live
+  seat over SSE (`POST /api/chats/:id/stream`), for Anthropic, OpenAI-compatible
+  and Gemini keys alike. The first message from the home composer is handed
+  to the thread so the reply streams there instead of blocking navigation.
+- **Real sources for the research desk.** The sweep step retrieves real,
+  linked, dated sources from the open Wikipedia API — no key needed. A live
+  author cites them by number and the references table links them; the
+  scripted brief lists them under "Retrieved reading — not cited" because its
+  sample claims were not derived from them. Retrieval success, count and
+  latency go on the tape and into the provenance block (`retrieval`).
+
+`server/retrieve.js` holds the retriever; `streamModel` in `server/providers.js`
+holds the streaming adapters.

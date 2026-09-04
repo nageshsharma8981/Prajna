@@ -15,6 +15,13 @@ export default function Home() {
   const send = async (payload) => {
     const r = await fetch('/api/chats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: payload.mode, title: payload.text.slice(0, 60) }) });
     const chat = await r.json();
+    if (payload.mode === 'chat') {
+      // Hand the first message to the thread so the reply streams there.
+      sessionStorage.setItem(`prajna-pending-${chat.id}`, JSON.stringify(payload));
+      await s.refresh();
+      navigate(`/c/${chat.id}`);
+      return;
+    }
     const r2 = await fetch(`/api/chats/${chat.id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await r2.json().catch(() => ({}));
     if (!r2.ok) throw new Error(j.error || 'The house refused the message.');

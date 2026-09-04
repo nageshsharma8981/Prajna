@@ -22,6 +22,7 @@ function provenanceObject(mission) {
   return {
     schema: 'prajna.provenance.v1',
     mode: mission.authored?.live ? 'live' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
+    retrieval: mission.retrieval ? { ...mission.retrieval, sources: (mission.sources || []).map((s) => ({ id: s.id, title: s.title, url: s.url, retrieved: s.retrieved })) } : null,
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,
     seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),
     serial: mission.serial,
@@ -116,7 +117,8 @@ export function briefArtifact(mission) {
   // without a ref fails the artifact build. Sources are illustrative samples.
   const A = authored(mission);
   const today = new Date().toISOString().slice(0, 10);
-  const SOURCES = A ? Object.fromEntries(A.claims.slice(0, 5).map((c, i) => [`src-${i + 1}`, { title: str(c.source?.title, 'Source class stated by the lead model'), kind: str(c.source?.kind, 'analysis'), retrieved: today }])) : {
+  const R = mission.sources || [];
+  const SOURCES = A ? Object.fromEntries(A.claims.slice(0, 5).map((c, i) => { const r = R[Number(c.src) - 1]; return [`src-${i + 1}`, r ? { title: r.title, url: r.url, kind: r.kind, retrieved: r.retrieved } : { title: str(c.source?.title, 'Source class stated by the lead model — not retrieved'), kind: str(c.source?.kind, 'analysis'), retrieved: today }]; })) : {
     'src-1': { title: 'Sector regulatory filing digest (sample)', kind: 'primary', retrieved: '2026-09-03' },
     'src-2': { title: 'Independent market-size analysis, methodology visible (sample)', kind: 'analysis', retrieved: '2026-09-03' },
     'src-3': { title: 'Incumbent annual report, segment notes (sample)', kind: 'primary', retrieved: '2026-09-03' },
@@ -135,7 +137,7 @@ export function briefArtifact(mission) {
   const claimsHtml = CLAIMS.map((c) => `<p><strong class="claim" data-ref="${c.ref}" data-snippet="${esc(c.snippet)}">${esc(c.text)}</strong><span class="grade g${c.grade}">${c.grade}</span><a class="refmark" href="#${c.ref}">[${c.ref.replace('src-', '')}]</a> ${esc(c.detail)}</p>`).join('\n');
   const referencesHtml = citedRefs.map((r) => {
     const s = SOURCES[r];
-    return `<tr id="${r}"><td>[${r.replace('src-', '')}]</td><td>${esc(s.title)}</td><td>${esc(s.kind)}</td><td>${esc(s.retrieved)}</td></tr>`;
+    return `<tr id="${r}"><td>[${r.replace('src-', '')}]</td><td>${s.url ? `<a href="${esc(s.url)}" rel="noreferrer">${esc(s.title)}</a>` : esc(s.title)}</td><td>${esc(s.kind)}</td><td>${esc(s.retrieved)}</td></tr>`;
   }).join('\n');
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -191,10 +193,13 @@ ${A ? `<p>${esc(str(A.tripwires, 'Tripwires were not stated by the lead model �
 ${A ? esc(str(A.dissent?.text, 'The lead model recorded no dissent. That absence is itself on the record.')) : "One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months."}</div>
 
 <h2>5 · References — cited sources only</h2>
-<p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? 'Source classes were stated by the lead model; no document was fetched — treat each as a pointer to verify, not a verified citation.' : 'All entries are illustrative samples in this demonstration run.'}</p>
+<p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? (R.length ? 'Linked entries were retrieved by the house at the sweep step and cited by the lead model; unlinked entries are source classes the model named without a retrieved document.' : 'Source classes were stated by the lead model; no document was fetched — treat each as a pointer to verify, not a verified citation.') : 'All entries are illustrative samples in this demonstration run.'}</p>
 <table><thead><tr><th>Ref</th><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>
 ${referencesHtml}
 </tbody></table>
+${!A && R.length ? `<h2>6 · Retrieved reading — not cited</h2>
+<p>The house retrieved these real sources at the sweep step. The claims above are house-scripted samples and were not derived from them, so they are listed here for the reader, not cited as evidence.</p>
+<table><thead><tr><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>${R.map((r) => `<tr><td><a href="${esc(r.url)}" rel="noreferrer">${esc(r.title)}</a></td><td>${esc(r.kind)}</td><td>${esc(r.retrieved)}</td></tr>`).join('')}</tbody></table>` : ''}
 ${provenance(mission)}
 </div></body></html>`;
   return { title: `${subject} — Decision Brief`, kind: 'brief', html };

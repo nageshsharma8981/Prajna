@@ -14,6 +14,7 @@ import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
 import { authorContent } from './author.js';
+import { retrieve } from './retrieve.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -487,6 +488,27 @@ async function applyEvent(m, ev, notify, runner) {
   if (ev.type === 'step.status') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
     if (step) step.status = ev.status;
+  }
+
+  // Real retrieval: the research desk's sweep step fetches real, linked,
+  // dated sources. Recorded whether or not anyone cites them.
+  if (ev.type === 'step.status' && ev.status === 'LIVE') {
+    const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'search' && !m.retrieval) {
+      pushEvent(m, record, notify);
+      try {
+        const started = Date.now();
+        const { query, sources } = await retrieve(m.goal);
+        m.retrieval = { ok: true, query, count: sources.length, ms: Date.now() - started, at: Date.now() };
+        m.sources = sources;
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}” — the brief will say so` }, notify);
+      } catch (e) {
+        m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
+        m.sources = [];
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}) — recorded; the brief carries no retrieved reading` }, notify);
+      }
+      return 'ok';
+    }
   }
 
   // Live authoring: at the step that writes the deliverable, a live lead seat
