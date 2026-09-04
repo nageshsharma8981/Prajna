@@ -678,3 +678,26 @@ test('when the sweep finds nothing, the house offers a smaller ticket instead of
     assert.equal(next.lineage.parentId, w.j.id);
   } finally { child2.kill(); empty.close(); }
 });
+
+test('the house records who came through the door and says when the door is open', async () => {
+  const legal = (await api('/api/legal')).j;
+  const before = (await api('/api/bootstrap')).j.consentLog || [];
+  assert.equal((await post('/api/consent', { accept: true, version: legal.version, name: 'A Second Person' })).status, 200);
+  const b = (await api('/api/bootstrap')).j;
+  assert.equal(b.openHouse, true, 'this test house has no access code');
+  assert.ok(b.consentLog.length > before.length, 'the acceptance was appended, not overwritten');
+  assert.equal(b.consentLog[0].name, 'A Second Person');
+  assert.ok(b.consentLog[0].acceptedAt > 0 && b.consentLog[0].version === legal.version);
+  // Acceptances accumulate: a second one does not erase the first.
+  assert.equal((await post('/api/consent', { accept: true, version: legal.version, name: 'A Third Person' })).status, 200);
+  const b2 = (await api('/api/bootstrap')).j;
+  assert.equal(b2.consentLog[0].name, 'A Third Person');
+  assert.equal(b2.consentLog[1].name, 'A Second Person');
+  assert.equal(b2.consentLog.length, b.consentLog.length + 1);
+  const c = await post('/api/housecheck');
+  const door = c.j.rows.find((r) => r.id === 'door');
+  assert.ok(door, 'the check has a door row');
+  assert.equal(door.ok, false, 'an open door with more than one person is not ok');
+  assert.match(door.detail, /different people have accepted|anyone with the address can enter/);
+  assert.match(door.detail, /PRAJNA_ACCESS_CODE/);
+});

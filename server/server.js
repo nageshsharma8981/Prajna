@@ -66,6 +66,13 @@ async function houseCheck() {
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
   const lh = limitHealth(); add('limits', lh.ok, lh.detail);
+  const log = ws().consentLog || [];
+  const people = new Set(log.map((e) => `${e.name || ''}@${e.ip || ''}`));
+  add('door', !!ACCESS_CODE || people.size <= 1, ACCESS_CODE
+    ? `an access code is set; ${people.size} ${people.size === 1 ? 'person has' : 'people have'} accepted the house rules`
+    : people.size <= 1
+      ? 'no access code: anyone with the address can enter, spend credits and read everything here'
+      : `no access code, and ${people.size} different people have accepted the house rules: ${[...people].slice(0, 4).map((k) => k.split('@')[0] || 'unnamed').join(', ')}. Set PRAJNA_ACCESS_CODE to close the door.`);
   const eh = evidenceHealth(); if (eh) add('evidence', eh.ok, eh.detail);
   if (process.uptime() > 600 || listBackups().length) { const bh = backupHealth(); add('backups', bh.ok, bh.detail); }
   const sh = standingHealth();
@@ -453,8 +460,15 @@ async function handle(req, res) {
       const body = await readBody(req);
       if (body.accept !== true || body.version !== LEGAL.version) return json(res, 400, { error: 'Acceptance must name the current version and accept all three documents.' });
       const w = ws();
-      w.consent = { version: LEGAL.version, acceptedAt: Date.now(), name: String(body.name || w.profile?.name || '').trim().slice(0, 120) || null, ip: ipOf(req) || null, agent: String(req.headers['user-agent'] || '').slice(0, 200) };
+      const entry = { version: LEGAL.version, acceptedAt: Date.now(), name: String(body.name || w.profile?.name || '').trim().slice(0, 120) || null, ip: ipOf(req) || null, agent: String(req.headers['user-agent'] || '').slice(0, 200) };
+      w.consent = entry;
+      if (!Array.isArray(w.consentLog)) w.consentLog = [];
+      const known = w.consentLog.some((e) => e.ip === entry.ip && e.name === entry.name);
+      w.consentLog.unshift(entry);
+      if (w.consentLog.length > 50) w.consentLog.length = 50;
       flushWs();
+      console.log(`prajna: house rules accepted by ${entry.name || 'someone unnamed'} from ${entry.ip || 'an unknown address'}${known ? ' (seen before)' : ' (new)'}`);
+      if (!known) fireHook('house.entered', { who: { name: entry.name, ip: entry.ip, agent: entry.agent }, accepted: entry.version, open: !ACCESS_CODE, people: w.consentLog.length });
       return json(res, 200, { ok: true, consent: w.consent });
     }
     const c = ws().consent;
@@ -655,6 +669,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       limits: limits(),
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
+      consentLog: (ws().consentLog || []).slice(0, 12),
+      openHouse: !ACCESS_CODE,
       evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),

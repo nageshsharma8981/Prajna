@@ -1249,3 +1249,15 @@ draft, so a critique can hold the writer to it, and it is explicitly
 subordinate to honesty about evidence. Every run written while it stands
 records that it was in force, and says so on the run page and in the
 artifact's provenance. Two thousand characters, cleared by emptying it.
+
+## v1.4: Who has entered (2026-09-04)
+
+The house rules are accepted by whoever opens the workspace, and until
+now each acceptance overwrote the last, so an owner could not tell that
+anyone else had been in. Every acceptance is now recorded with the name
+given, the time, the address it came from and the version accepted, and
+Settings lists them. A person the house has not seen before raises a
+house.entered event on your webhook. The house check gains a door row
+that states plainly whether an access code is set, and fails when the
+door is open and more than one person has come through it, naming the
+environment variable that closes it.
