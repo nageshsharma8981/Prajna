@@ -16,6 +16,21 @@ import { callModel } from './providers.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { composeFor } from './compose.js';
+import { costHistory } from './history.js';
+
+// The table sets the estimate; the house's own past sets the ceiling when it
+// knows better. A ceiling too low does not save money, it stops a run and
+// asks the owner to raise it, which is worse than reserving honestly. The
+// estimate is never touched: only the room around it.
+function ceilingFor(estimate, { desk, depth, variant }) {
+  const table = Math.ceil(estimate * 1.25);
+  // Like for like first; if too few of exactly this kind have finished, ask
+  // the desk as a whole rather than pretend the narrow answer is the evidence.
+  const narrow = costHistory({ desk, depth, variant });
+  const h = narrow.enough && narrow.n >= 5 ? narrow : costHistory({ desk });
+  if (!h.enough || h.n < 5 || h.high <= table) return { ceiling: table, from: 'table' };
+  return { ceiling: Math.ceil(h.high * 1.05), from: 'history', table, n: h.n, high: h.high, median: h.median, like: h === narrow };
+}
 import { takeUsage } from './providers.js';
 
 // Tokens the owner's own provider says a call used. Counted, never estimated:
@@ -219,6 +234,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   const seatsPriced = (plan.find((p) => p.tool === 'council') || {}).seats || seatsAll.map((id) => ({ id, live: !!liveSeat(id) }));
   const why = contractWhy({ desk, depth, variant, plan, seatsAll: seatsPriced, removedSkills: [...removed].map((id) => byId[id]?.tool).filter(Boolean), connectors: [...(queuedConnectors || [])] });
   const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
+  const room = ceilingFor(estimate, { desk: desk.id, depth: depth || 'deep', variant: variant || 'build' });
   const mission = {
     id: id(),
     serial: nextSerial(),
@@ -234,7 +250,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     councilNames: seatsAll.map((m) => modelById(m).name),
     status: 'OPEN', // OPEN → LIVE → FILLED | KILLED | PAUSED_ATTENTION | PAUSED_CEILING
     contract: {
-      plan, estimate, ceiling: Math.ceil(estimate * 1.25), dimensions: DIMENSIONS[desk.id], assertions, why,
+      plan, estimate, ceiling: room.ceiling, ceilingFrom: room, dimensions: DIMENSIONS[desk.id], assertions, why,
       access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     },
     // Who asked for this. A house several people can enter should say whose
@@ -318,9 +334,10 @@ export function editPlan(missionId, steps) {
   const assertions = catalog.map((a) => ({ id: a.id, title: a.title, owner: (plan.find((p) => p.tool === a.owner) || fallbackOwner).id, status: 'PENDING' }));
   for (const p of plan) p.targets = assertions.filter((a) => a.owner === p.id).map((a) => a.id);
   const estimate = Math.round(plan.reduce((a, p) => a + p.cost, 0) * 10) / 10;
+  const room = ceilingFor(estimate, { desk: m.desk, depth: m.depth, variant: m.variant });
   const before = m.contract.plan.map((p) => p.id);
   m.contract = {
-    ...m.contract, plan, assertions, estimate, ceiling: Math.ceil(estimate * 1.25),
+    ...m.contract, plan, assertions, estimate, ceiling: room.ceiling, ceilingFrom: room,
     access: { read: plan.filter((p) => p.access === 'read').length, write: plan.filter((p) => p.access === 'write').length, external: plan.filter((p) => p.access === 'external').length },
     edited: { at: Date.now(), edits: ((m.contract.edited && m.contract.edited.edits) || 0) + 1, added: plan.filter((p) => !before.includes(p.id)).length, removed: before.filter((id) => !ids.includes(id)).length, steps: plan.length },
   };

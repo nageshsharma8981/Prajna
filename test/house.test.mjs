@@ -1199,3 +1199,30 @@ test('a ticket says what this kind of work has actually cost here', async () => 
   const empty = await api('/api/history?desk=nosuchdesk');
   assert.equal(empty.j.enough, false, 'a desk with no history says so');
 });
+
+test('the ceiling is set by what this work has really cost, not by the table alone', async () => {
+  const w = await post('/api/missions', { goal: 'Ceiling test: a fast brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200);
+  const from = w.j.contract.ceilingFrom;
+  assert.ok(from, 'a ticket says where its ceiling came from');
+  const table = Math.ceil(w.j.contract.estimate * 1.25);
+  if (from.from === 'history') {
+    // The reservation must cover what this kind has actually reached.
+    assert.ok(from.n >= 5, 'a ceiling is only moved on real evidence');
+    assert.ok(w.j.contract.ceiling >= from.high, `the ceiling covers the highest that settled: ${w.j.contract.ceiling} vs ${from.high}`);
+    assert.ok(w.j.contract.ceiling > table, 'and it is more room than the table gave');
+    assert.equal(from.table, table);
+    // Ask this house, not the one this test process happens to sit in.
+    const narrow = (await api('/api/history?desk=brief&depth=fast')).j;
+    const wide = (await api('/api/history?desk=brief')).j;
+    assert.ok([narrow.high, wide.high].includes(from.high), `the figure is one this house's record holds: ${from.high} vs ${narrow.high}/${wide.high}`);
+  } else {
+    assert.equal(w.j.contract.ceiling, table, 'without evidence the table stands');
+  }
+  // The estimate is never touched: only the room around it.
+  assert.equal(w.j.contract.estimate, Math.round(w.j.contract.plan.reduce((a, p) => a + p.cost, 0) * 10) / 10);
+  // A run that stays inside its ceiling releases the rest, so a wider ceiling
+  // costs nothing: that is why raising it on evidence is safe.
+  const filled = (await api('/api/bootstrap')).j.missions.find((m) => m.status === 'FILLED' && m.settlement);
+  if (filled) assert.equal(Math.round((filled.settlement.settled + filled.settlement.released) * 10) / 10, Math.round(filled.settlement.reserved * 10) / 10);
+});

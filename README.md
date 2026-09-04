@@ -1438,3 +1438,19 @@ Every figure is counted from delivered missions at the moment you look,
 never modelled and never cached. A ticket never counts itself. With
 fewer than three of a kind the house says it has too few to say, rather
 than quoting a range from two runs.
+
+## v1.18: The ceiling learns from the record (2026-09-05)
+
+The step table set both the estimate and the ceiling, and the record
+showed the consequence: three of six analyses hit their ceiling and had
+to be decided mid-run. A ceiling that is too low saves nothing, it stops
+the work and asks you to raise it.
+
+The estimate still comes from the plan, untouched. The ceiling now comes
+from what this kind of work has actually cost here, when at least five
+like it have finished: it covers the highest that settled, with a little
+room. Where the evidence is thin for exactly this kind, the house asks
+the desk as a whole rather than treating three runs as proof, and where
+there is no evidence at all the table stands. The ticket says which it
+used and why, and a wider ceiling costs nothing, because what a run does
+not use is released.

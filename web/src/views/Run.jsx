@@ -704,6 +704,9 @@ export default function Run({ id }) {
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <span>This ticket is written but not stamped. Nothing has run, nothing is reserved, nothing is spent.</span>
                 {mission.history?.line && <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>{mission.history.line}</span>}
+                {mission.contract?.ceilingFrom?.from === 'history' && (
+                  <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>The ceiling is {mission.contract.ceiling} rather than the {mission.contract.ceilingFrom.table} the step table gives, because {mission.contract.ceilingFrom.n} of this kind settled as high as {mission.contract.ceilingFrom.high}. Reserving honestly costs nothing: what a run does not use is released.</span>
+                )}
                 {(() => {
                   const l = store.limits || {}; const u = store.limitUsage || {}; const c = mission.contract.ceiling;
                   const says = l.ticketCeiling != null && c > l.ticketCeiling ? `A house limit stops this: no ticket may reserve more than ${l.ticketCeiling} cr, and this one's ceiling is ${c}.`
