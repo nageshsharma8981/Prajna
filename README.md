@@ -792,3 +792,10 @@ connected app, per app, newest first: the mission, when, where it landed,
 its id or link, whether it was a re-delivery, and whether the public link it
 carried still resolves or was revoked. Nothing leaves the house without a
 place it can be seen.
+
+## v0.64.1: The logo reaches the live site (2026-09-04)
+
+The deploy ignore file excluded every PNG, a rule older than the logo, so
+the live site fell back to the app shell for /logo.png and the acceptance
+screen showed a broken image on phones. Fixed; the mark, the square mark and
+the favicon now ship.
