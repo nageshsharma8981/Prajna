@@ -22,6 +22,7 @@ import { missionDelta } from './delta.js';
 import { search } from './search.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
 import { checkMission as checkEvidence, sweep as sweepEvidence, evidenceHealth } from './evidence.js';
+import { hooks, hookState, setHooks, fire as fireHook, fromMissionEvent, HOOK_EVENTS } from './hooks.js';
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
@@ -122,7 +123,7 @@ function scheduleBackups() {
 // The house checks itself a minute after boot and once a day after that;
 // failures go to the log, the digest and the Home page.
 function scheduleHouseCheck() {
-  const run = () => houseCheck().then((r) => { const bad = r.rows.filter((x) => !x.ok); if (bad.length) console.error(`prajna: house check found ${bad.length} problem(s): ${bad.map((x) => `${x.id} (${x.detail})`).join('; ')}`); else console.log(`prajna: house check ${r.ok} of ${r.total} ok`); }).catch((e) => console.error('prajna: house check failed to run,', e.message));
+  const run = () => houseCheck().then((r) => { const bad = r.rows.filter((x) => !x.ok); if (bad.length) fireHook('housecheck.failed', { failed: bad.map((x) => ({ id: x.id, detail: x.detail })), ok: r.ok, total: r.total }); if (bad.length) console.error(`prajna: house check found ${bad.length} problem(s): ${bad.map((x) => `${x.id} (${x.detail})`).join('; ')}`); else console.log(`prajna: house check ${r.ok} of ${r.total} ok`); }).catch((e) => console.error('prajna: house check failed to run,', e.message));
   setTimeout(run, 60 * 1000).unref();
   setInterval(run, 24 * 60 * 60 * 1000).unref();
 }
@@ -272,6 +273,7 @@ seed();
 
 const subscribers = new Map(); // missionId → Set<res>
 function notify(missionId, event) {
+  try { fromMissionEvent(missionId, event); } catch (e) { console.error('prajna: webhook,', e.message); }
   const subs = subscribers.get(missionId);
   if (!subs) return;
   const line = `${event.seq ? `id: ${event.seq}\n` : ''}data: ${JSON.stringify(event)}\n\n`;
@@ -390,6 +392,7 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/hooks' && req.method === 'GET') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, { hooks: hookState(), events: HOOK_EVENTS }); }
   if (p === '/api/limits' && req.method === 'GET') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, { limits: limits(), usage: limitUsage() }); }
   if (p === '/api/search' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
@@ -501,6 +504,19 @@ async function handle(req, res) {
   }
 
   // ---- Backups: run now, list, download, restore ----
+  if (p === '/api/hooks' && req.method === 'PUT') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    const r = setHooks(body || {});
+    if (r.error) return json(res, 400, { error: r.error });
+    return json(res, 200, r);
+  }
+  if (p === '/api/hooks/test' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (!hooks().url) return json(res, 400, { error: 'Give the house an address first.' });
+    const r = await fireHook('housecheck.failed', { test: true, note: 'A test from the house. Nothing is wrong.' }, { force: true });
+    return json(res, 200, { sent: !!r, ...r, log: hookState().log });
+  }
   if (p === '/api/limits' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const body = await readBody(req);
@@ -597,6 +613,7 @@ async function handle(req, res) {
       standing: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })),
       backups: listBackups().slice(0, 5),
       limits: limits(),
+      hooks: hookState(),
       evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),
@@ -680,7 +697,10 @@ async function handle(req, res) {
       return json(res, 402, { error: `House credits (${credits.toFixed(0)}) are below this ticket's ceiling (${pending.contract.ceiling}). Top up or void the ticket, nothing was spent.` });
     }
     const refused = limitRefusal(pending);
-    if (refused) return json(res, 403, { error: refused, limit: true });
+    if (refused) {
+      fireHook('limit.refused', { mission: { id: pending.id, serial: pending.serial, subject: pending.subject || pending.goal, ceiling: pending.contract?.ceiling }, reason: refused });
+      return json(res, 403, { error: refused, limit: true });
+    }
     const m = launchMission(launchMatch[1], notify);
     if (!m) return json(res, 404, { error: 'Mission not found or not open.' });
     return json(res, 200, { ok: true });

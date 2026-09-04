@@ -1101,3 +1101,14 @@ record and into the house check, so a delivery resting on a page that has
 gone says so instead of implying the evidence still stands. Read-only, a
 HEAD then a GET only if refused, never a private address, and the sweep
 stops after forty-five seconds and reports what it covered.
+
+## v0.92: Tell me elsewhere (2026-09-04)
+
+You should not have to sit in a tab to hear that a run needs a decision.
+Give the house one address under Settings and it posts a small JSON body
+when a run needs a decision, delivers, is stopped, a ticket is refused by
+a house limit, or the daily check fails. Choose which of the five you
+want. An optional signing secret is held in memory only, like every key
+here, and signs each body so your endpoint can verify it. Every attempt
+is on a short log with what the endpoint answered, one retry on failure,
+and clearing the address stops everything.

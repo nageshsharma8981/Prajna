@@ -4,6 +4,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -330,4 +332,55 @@ test('the evidence check re-visits cited addresses and catches one that has gone
   const goneRow = again.j.rows.find((r) => r.ok === false);
   assert.equal(goneRow.url, link); assert.match(goneRow.detail, /gone or refused \(404\)/);
   assert.equal((await api(`/api/missions/${w.j.id}`)).j.evidence.dead, 1, 'the finding is on the record');
+});
+
+test('house webhooks carry decisions, deliveries and refusals to an address of your own', async () => {
+  const got = [];
+  const sink = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => { got.push({ event: req.headers['x-prajna-event'], sig: req.headers['x-prajna-signature'], body: JSON.parse(body || '{}'), raw: body }); res.writeHead(204); res.end(); });
+  });
+  await new Promise((r) => sink.listen(0, '127.0.0.1', r));
+  const sinkUrl = `http://127.0.0.1:${sink.address().port}/hook`;
+  try {
+    const bad = await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: 'ftp://nope' }) });
+    assert.equal(bad.status, 400);
+    const set = await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: sinkUrl, secret: 'house-secret' }) });
+    assert.equal(set.status, 200); assert.equal(set.j.hooks.secretHeld, true);
+    assert.ok(!JSON.stringify(set.j).includes('house-secret'), 'the secret never comes back');
+
+    const t = await post('/api/hooks/test'); assert.equal(t.status, 200); assert.equal(t.j.ok, true);
+    assert.equal(got.length, 1); assert.equal(got[0].event, 'housecheck.failed');
+    const expect = `sha256=${crypto.createHmac('sha256', 'house-secret').update(got[0].raw).digest('hex')}`;
+    assert.equal(got[0].sig, expect, 'the body is signed with the secret');
+
+    assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: 1 }) })).status, 200);
+    const w = await post('/api/missions', { goal: 'Webhook test: a brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
+    assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 403);
+    assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null }) })).status, 200);
+    const refused = got.find((g) => g.event === 'limit.refused');
+    assert.ok(refused && refused.body.mission.serial === w.j.serial, JSON.stringify(got.map((g) => g.event)));
+    assert.match(refused.body.reason, /no single ticket may reserve/);
+
+    assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
+    const started = Date.now(); let m;
+    while (Date.now() - started < 120000) {
+      m = (await api(`/api/missions/${w.j.id}`)).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'continue', 'accept'].find((o) => a.options.includes(o)) || a.options[0]; await post(`/api/missions/${m.id}/attention/${a.id}`, { decision: pick, justification: `test run, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    assert.equal(m.status, 'FILLED');
+    const delivered = got.find((g) => g.event === 'run.delivered' && g.body.mission.serial === w.j.serial);
+    assert.ok(delivered, JSON.stringify(got.map((g) => g.event)));
+    assert.ok(delivered.body.settled <= delivered.body.ceiling + 0.01);
+    assert.ok(delivered.body.artifactId, 'the delivery names its artifact');
+
+    const state = (await api('/api/hooks')).j.hooks;
+    assert.ok(state.log.length >= 3 && state.log.every((l) => l.ok && l.signed), JSON.stringify(state.log.slice(0, 3)));
+    assert.equal((await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: '' }) })).status, 200);
+    const quiet = got.length;
+    await post('/api/hooks/test');
+    assert.equal(got.length, quiet, 'with no address, nothing is sent');
+  } finally { sink.close(); }
 });
