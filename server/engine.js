@@ -181,7 +181,9 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   for (const cid of queuedConnectors || []) {
     const spec = CONNECTOR_STEPS[cid];
     if (!spec) continue;
-    raw.push({ id: `s${raw.length + 1}`, ...spec, access: 'external', requiresConfirmation: true, connector: cid, dependsOn: [last.id] });
+    // Ids must not collide with kept steps of a trimmed plan (fast research keeps s1, s2, s6).
+    const nextId = `s${Math.max(0, ...raw.map((p) => Number(String(p.id).replace(/\D/g, '')) || 0)) + 1}`;
+    raw.push({ id: nextId, ...spec, access: 'external', requiresConfirmation: true, connector: cid, dependsOn: [last.id] });
   }
 
   // Definition of done: atomic, testable assertions about the deliverable.
