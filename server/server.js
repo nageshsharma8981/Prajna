@@ -464,6 +464,30 @@ async function handle(req, res) {
     if (req.method === 'PATCH') { const body = await readBody(req); return json(res, 200, renameChat(c.id, body.title || c.title)); }
     return json(res, 200, c);
   }
+  // The companion can start a mission mid-conversation: a live seat ends its
+  // reply with `PRAJNA-MISSION: <mode> | <goal>` when the user clearly asks
+  // for a deliverable; without a live seat a plain-language request is read
+  // directly. Either way the mission is written and launched on the record.
+  const MODE_DESK_ALL = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
+  const inferMode = (text) => {
+    const t = text.toLowerCase();
+    if (!/^(please\s+)?(build|make|create|design|write|draft|prepare|put together|give me|i need|i want)\b/.test(t)) return null;
+    if (/\b(landing page|website|web page|site|homepage)\b/.test(t)) return 'website';
+    if (/\b(mobile app|ios app|android app|an app\b|app prototype)/.test(t)) return 'mobile';
+    if (/\b(deck|slides|slide deck|pitch|presentation)\b/.test(t)) return 'deck';
+    if (/\b(brief|research|report|memo|should we)\b/.test(t)) return 'research';
+    if (/\b(analy[sz]e|analysis|dashboard|chart)\b/.test(t)) return 'analysis';
+    return null;
+  };
+  const startMissionFromChat = (c, mode, goal, seatId) => {
+    const lead = modelById(seatId || ws().personalization.defaultModel).id;
+    const advisers = (ws().personalization.defaultAdvisers || []).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
+    const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id });
+    if (store.workspace().credits < mission.contract.ceiling) return { mission, text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ceiling ${mission.contract.ceiling}) but the house holds only ${store.workspace().credits.toFixed(0)} credits — top up before stamping.`, kind: 'ticket' };
+    launchMission(mission.id, notify);
+    return { mission, text: `Started ${mission.deskName.replace(' desk', '')} mission ${mission.serial} from this conversation: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}).`, kind: 'run' };
+  };
+
   // Streaming plain chat: SSE deltas as the live seat speaks, then the saved
   // message. Without a live seat the house answers honestly in one event.
   const chatStreamMatch = p.match(/^\/api\/chats\/([\w]+)\/stream$/);
@@ -483,11 +507,27 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok). If — and only if — the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
+        const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
+        if (mm) {
+          reply = reply.replace(mm[0], '').trim();
+          const started = startMissionFromChat(c, mm[1].toLowerCase(), mm[2].trim().slice(0, 400), seatId);
+          const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
+          const m2 = addMessage(c.id, { role: 'assistant', text: started.text, missionId: started.mission.id, kind: started.kind });
+          emit('done', { message: m, mission: m2, chat: getChat(c.id) });
+          return res.end();
+        }
       } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
-      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+      const mode = inferMode(text);
+      if (mode) {
+        const started = startMissionFromChat(c, mode, text.slice(0, 400), seatId);
+        const m = addMessage(c.id, { role: 'assistant', text: started.text, missionId: started.mission.id, kind: started.kind });
+        emit('done', { message: m, chat: getChat(c.id) });
+        return res.end();
+      }
+      reply = `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, ask me to build a website, an app, a deck, a brief or an analysis and I will run it as a mission with a visible contract.`;
     }
     const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
     emit('done', { message: m, chat: getChat(c.id) });

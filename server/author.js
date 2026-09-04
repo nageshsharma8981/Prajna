@@ -49,6 +49,20 @@ export async function authorContent(mission, live, { revise } = {}) {
   return { live: true, model: live.model.name, modelId: live.model.modelId, chars: text.length, ms: Date.now() - started, at: Date.now(), content, revisions: (mission.authored?.revisions || 0) + (revise ? 1 : 0) };
 }
 
+// Adviser critique: a live adviser reads the lead's draft before the gate and
+// says pass or revise, with concrete issues. Strict JSON, like authoring.
+export function critiquePrompt(mission, adviser) {
+  return `You are ${adviser.name}, an adviser on the review panel for a ${mission.deskName.toLowerCase()} mission in Prajñā.\nGoal: "${mission.goal}"\nThe lead author's draft (JSON):\n${JSON.stringify(mission.authored.content).slice(0, 6000)}\n${(mission.sources || []).length ? `Retrieved sources: ${mission.sources.map((s, i) => `[${i + 1}] ${s.title}`).join('; ')}\n` : ''}CRITIQUE the draft against the goal only: unsupported claims, invented figures, missing dissent, weak or generic copy, anything a skeptical reader would refuse. Be specific and short.\nReply with ONLY one JSON object: {"verdict":"pass"|"revise","issues":["<one concrete issue, ≤25 words>", … 0 to 4]}`;
+}
+export async function critiqueContent(mission, live) {
+  const started = Date.now();
+  const text = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: critiquePrompt(mission, live.model), maxTokens: 500 });
+  const c = parseAuthored(text);
+  const verdict = c.verdict === 'revise' ? 'revise' : 'pass';
+  const issues = Array.isArray(c.issues) ? c.issues.filter((x) => typeof x === 'string').slice(0, 4).map((x) => x.slice(0, 200)) : [];
+  return { verdict, issues, model: live.model.name, modelId: live.model.modelId, ms: Date.now() - started };
+}
+
 // Generators call this: authored substance only when it is live and present.
 export const authored = (mission) => (mission.authored && mission.authored.live && mission.authored.content ? mission.authored.content : null);
 export const str = (v, d = '') => (typeof v === 'string' && v.trim() ? v.trim() : d);

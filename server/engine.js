@@ -13,7 +13,7 @@ import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
-import { authorContent } from './author.js';
+import { authorContent, critiqueContent } from './author.js';
 import { retrieve } from './retrieve.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
@@ -561,6 +561,37 @@ async function applyEvent(m, ev, notify, runner) {
   if (ev.type === 'council.gate') m.gate = { rows: ev.rows, cleared: ev.cleared };
 
   if (ev.type === 'artifact.ready') {
+    // Live advisers read the lead's draft before it becomes the artifact of
+    // record. One "revise" with issues sends the lead back once; every
+    // critique and the revision are on the tape.
+    if (m.authored?.live && !m.critiques) {
+      m.critiques = [];
+      const issues = [];
+      for (const seatId of m.advisers || []) {
+        const live = liveSeat(seatId);
+        if (!live) continue;
+        try {
+          const c = await critiqueContent(m, live);
+          m.critiques.push({ seat: seatId, ...c });
+          pushEvent(m, { type: 'council.critique', seat: seatId, model: c.model, live: true, verdict: c.verdict, issues: c.issues, text: c.verdict === 'pass' ? `${c.model}: the draft passes my read.` : `${c.model}: revise — ${c.issues.join(' · ') || 'no issues stated'}` }, notify);
+          if (c.verdict === 'revise' && c.issues.length) issues.push(...c.issues.map((x) => `${c.model}: ${x}`));
+        } catch (e) {
+          m.critiques.push({ seat: seatId, model: live.model.name, error: String(e.message || e).slice(0, 160) });
+          pushEvent(m, { type: 'council.critique', seat: seatId, model: live.model.name, live: false, verdict: 'unavailable', issues: [], text: `${live.model.name} could not critique (${String(e.message || e).slice(0, 100)}) — recorded` }, notify);
+        }
+      }
+      if (issues.length) {
+        const lead = liveSeat(m.lead);
+        if (lead) {
+          try {
+            m.authored = await authorContent(m, lead, { revise: issues.join('; ') });
+            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: true, detail: `${m.authored.model} revised the draft on adviser critique (${issues.length} issue(s)) — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
+          } catch (e) {
+            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: false, detail: `${lead.model.name} could not revise on critique (${String(e.message || e).slice(0, 100)}) — the draft stands; the gate decides` }, notify);
+          }
+        }
+      }
+    }
     const a = makeArtifact(m, notify);
     Object.assign(record, a);
   }

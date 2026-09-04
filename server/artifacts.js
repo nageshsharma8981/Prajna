@@ -23,6 +23,7 @@ function provenanceObject(mission) {
     schema: 'prajna.provenance.v1',
     mode: mission.authored?.live ? 'live' : (mission.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted',
     retrieval: mission.retrieval ? { ...mission.retrieval, sources: (mission.sources || []).map((s) => ({ id: s.id, title: s.title, url: s.url, engine: s.engine || null, retrieved: s.retrieved, extract: (s.extract || '').slice(0, 700) })) } : null,
+    critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     authored: mission.authored ? { live: !!mission.authored.live, model: mission.authored.model, modelId: mission.authored.modelId, chars: mission.authored.chars || 0, ms: mission.authored.ms || 0, error: mission.authored.error || null } : null,
     seats: (mission.seats || []).map((x) => ({ name: x.name, live: !!x.live })),
     serial: mission.serial,

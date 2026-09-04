@@ -341,3 +341,16 @@ On **patch**, a live author revises its own draft against the gate's finding
 size and latency, then both lanes run again. If the seat cannot revise, the
 draft stands and the gate says so. Scripted substance is house-labelled sample
 and is not figure-checked.
+
+## v0.16 — Advisers critique the draft; the companion starts missions (2026-09-04)
+
+- **Critique before the gate.** When the lead seat is live, every live
+  adviser reads the lead's draft and returns pass or revise with concrete
+  issues. One revise sends the lead back once, on the record (`council.critique`
+  and `revise` events on the tape; `critiques` in the provenance block). The
+  house never edits authored text itself.
+- **The companion starts missions.** In plain chat, a live seat may end its
+  reply with a `PRAJNA-MISSION: <mode> | <goal>` line when the user clearly
+  asks for a deliverable; the house strips it, writes the ticket, launches, and
+  drops the run card into the thread. Without a live seat, a plain-language
+  request ("build a pitch deck for…") is read directly and started the same way.

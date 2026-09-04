@@ -383,9 +383,9 @@ export default function Run({ id }) {
                   </div>
                 );
               }
-              if (ev.type === 'council.position' || ev.type === 'council.challenge' || ev.type === 'council.verdict') {
-                const cls = ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : '';
-                const role = ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : ev.live ? 'position · live on your key' : ev.liveError ? 'position · scripted fallback' : 'position';
+              if (ev.type === 'council.position' || ev.type === 'council.challenge' || ev.type === 'council.verdict' || ev.type === 'council.critique') {
+                const cls = ev.type === 'council.challenge' || (ev.type === 'council.critique' && ev.verdict === 'revise') ? 'challenge' : ev.type === 'council.verdict' || (ev.type === 'council.critique' && ev.verdict === 'pass') ? 'verdict' : '';
+                const role = ev.type === 'council.critique' ? (ev.live ? `critique of the draft · ${ev.verdict} · live on your key` : 'critique · unavailable') : ev.type === 'council.challenge' ? 'challenge' : ev.type === 'council.verdict' ? 'verdict' : ev.live ? 'position · live on your key' : ev.liveError ? 'position · scripted fallback' : 'position';
                 return (
                   <div key={i} className={`quote ${cls}`}>
                     <div className="who">
