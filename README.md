@@ -844,3 +844,11 @@ is skipped and the reason recorded, never silently dropped. Manage orders
 under Settings: run now, pause, resume, stop. `GET /api/standing`,
 `POST /api/missions/:id/standing`, `POST /api/standing/:id/run|pause`,
 `DELETE /api/standing/:id`.
+
+## v0.70: The CLI keeps pace (2026-09-04)
+
+`prajna repeat <mission-id|serial> [daily|weekly]` makes a delivered ticket
+a standing order; `prajna standing` lists orders and `prajna standing
+run|pause|resume|stop <order-id>` manages them. `prajna check` runs the
+house check and exits non-zero on any failing row, so it can sit in a
+cron; `prajna repair` puts right what the house can and checks again.

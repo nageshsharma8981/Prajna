@@ -11,6 +11,10 @@
 //   prajna watch                       ring when a run needs a decision
 //   prajna sweep [--minutes 60] [--apply]   void stale tickets, stop runs stuck on a decision
 //   prajna accept [--yes] [--name N]   accept the house rules (Terms, Privacy and GDPR, AI Disclaimer)
+//   prajna repeat <mission-id|serial> [daily|weekly]   make a delivered ticket a standing order
+//   prajna standing [run|pause|resume|stop <order-id>]  list or manage standing orders
+//   prajna check                       the house check: disk, tapes, artifacts, reserve, rules, tokens, last link
+//   prajna repair                      put right what the house can, then check again
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted, never the access code, never a provider key).
@@ -183,6 +187,48 @@ async function accept() {
   const r = await post(cfg, '/api/consent', { accept: true, version: legal.version, name: flag('name') || '' });
   console.log(green('Accepted'), dim(`version ${r.consent.version} at ${new Date(r.consent.acceptedAt).toISOString()}`));
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, get: async () => save(need(), positional[0]) };
+async function resolveMission(cfg, ref) {
+  if (!ref) throw new Error('Give a mission id or serial.');
+  const b = await api(cfg, '/api/bootstrap');
+  const m = b.missions.find((x) => x.id === ref || x.serial === ref || x.serial === `PJ-${ref}`);
+  if (!m) throw new Error(`No mission ${ref} on the board.`);
+  return m;
+}
+const when = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+async function repeat() {
+  const cfg = need();
+  const m = await resolveMission(cfg, positional[0]);
+  const cadence = positional[1] || 'weekly';
+  const o = await api(cfg, `/api/missions/${m.id}/standing`, { method: 'POST', body: JSON.stringify({ cadence }) });
+  console.log(`${o.serial} repeats ${o.cadence}. Order ${o.id}, next run ${when(o.nextAt)}. Each run is a new version with its own reserve; a short balance skips it and says so.`);
+}
+async function standing() {
+  const cfg = need();
+  const [sub, oid] = positional;
+  if (sub && ['run', 'pause', 'resume', 'stop'].includes(sub)) {
+    if (!oid) throw new Error(`Give the order id: prajna standing ${sub} <order-id>`);
+    if (sub === 'stop') { await api(cfg, `/api/standing/${oid}`, { method: 'DELETE' }); console.log(`Order ${oid} stopped. Past runs stay on the books.`); return; }
+    if (sub === 'run') { const r = await api(cfg, `/api/standing/${oid}/run`, { method: 'POST' }); console.log(r.run.skipped ? `Skipped: ${r.run.skipped}` : `Ran as ${r.run.serial} (${r.run.missionId})`); return; }
+    const o = await api(cfg, `/api/standing/${oid}/pause`, { method: 'POST', body: JSON.stringify({ paused: sub === 'pause' }) });
+    console.log(`Order ${o.id} ${o.paused ? 'paused' : `resumed, next run ${when(o.nextAt)}`}.`);
+    return;
+  }
+  const { orders } = await api(cfg, '/api/standing');
+  if (!orders.length) { console.log('No standing orders. Make one: prajna repeat <mission-id|serial> [daily|weekly]'); return; }
+  for (const o of orders) {
+    const last = o.runs?.[0];
+    console.log(`${o.id}  ${o.serial}  ${o.cadence.padEnd(6)}  ${o.paused ? 'paused' : `next ${when(o.nextAt)}`}  ${o.goal.slice(0, 60)}${last ? `
+    last: ${last.skipped ? `skipped, ${last.skipped}` : `ran as ${last.serial}`} at ${when(last.at)}` : ''}`);
+  }
+}
+function printCheck(c) { for (const r of c.rows) console.log(`${r.ok ? 'ok  ' : 'FAIL'} ${r.id}: ${r.detail}`); console.log(`${c.ok} of ${c.total} ok`); }
+async function check() { const c = await api(need(), '/api/housecheck', { method: 'POST' }); printCheck(c); if (c.ok < c.total) process.exitCode = 1; }
+async function repair() {
+  const r = await api(need(), '/api/housecheck/repair', { method: 'POST' });
+  if (!r.actions.length) console.log('Nothing to repair.');
+  for (const a of r.actions) console.log(`${a.ok ? 'done' : 'left'} ${a.id}: ${a.detail}`);
+  console.log('Checked again:'); printCheck(r.check); if (r.check.ok < r.check.total) process.exitCode = 1;
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

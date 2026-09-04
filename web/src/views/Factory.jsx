@@ -50,7 +50,7 @@ export default function Factory({ tab }) {
             <pre className="code">git clone https://github.com/nageshsharma8981/Prajna && cd Prajna && npm link   # installs the `prajna` command
 prajna login {location.origin}{'\n'}prajna run research "Should we enter the EU home-battery market?" --fast
 prajna run website "A landing page for a Bengaluru coffee roaster" --auto --out ./deliveries
-prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna get &lt;artifact-id&gt;</pre>
+prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna get &lt;artifact-id&gt;{'\n'}prajna repeat PJ-4516 weekly · prajna standing · prajna check · prajna repair</pre>
             <p className="conn-note">Zero dependencies, Node 22+. <code>run</code> streams the tape, stops at every decision the house raises (or takes the first option with <code>--auto</code>, on the record), and saves the delivered artifact with its provenance block. The session file holds only the workspace URL and a server-minted session cookie, never the access code, never a provider key.</p>
           </div>
         </section>
