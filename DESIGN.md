@@ -261,3 +261,6 @@ Generated artifacts (decision brief, deck, landing page, analysis) are standalon
 - **Don't** put drop shadows on LED surfaces, inset shadows on paper, or hover-lift shadows anywhere.
 - **Don't** let artifact-document styling leak into the hall or hall chrome leak into artifacts; the provenance footer is the only shared element.
 - **Don't** substitute third-party icon sets — icons are drawn in the house grammar (20 viewBox, 1.6px stroke, square caps, 17px).
+
+
+> Note (4 Sep 2026): the amber LED ticker strip under the masthead was removed at the owner's request. LED telemetry remains in the credit meter, clock, and run deck.

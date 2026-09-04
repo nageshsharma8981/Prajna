@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRoute, Link, navigate } from './lib/router.jsx';
 import { StoreProvider, useStore } from './lib/store.jsx';
 import Palette from './components/Palette.jsx';
-import Ticker from './components/Ticker.jsx';
 import SplitFlap from './components/SplitFlap.jsx';
 import { FloorIcon, LedgerIcon, SkillIcon, SeatIcon, KeyIcon, MoonIcon, SunIcon, MenuIcon, SearchIcon } from './components/icons.jsx';
 import Floor from './views/Floor.jsx';
@@ -120,7 +119,6 @@ function Masthead({ onMenu, onPalette, menuRef }) {
           <Clock />
         </div>
       </header>
-      <Ticker />
     </>
   );
 }

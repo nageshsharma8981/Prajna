@@ -321,32 +321,6 @@ a { color: inherit; }
   100% { filter: brightness(1); }
 }
 
-/* ---------------------------------- ticker -------------------------------- */
-.ticker {
-  background: var(--led-bg);
-  border-bottom: 1px solid var(--line);
-  overflow: hidden;
-  position: relative;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.55);
-}
-.ticker-track {
-  display: flex; white-space: nowrap; width: max-content;
-  font-family: var(--led-font); font-weight: 700; font-size: 0.92rem;
-  color: var(--led);
-  text-shadow: 0 0 9px rgba(255, 179, 0, 0.4);
-  animation: tickerscroll 38s linear infinite;
-}
-@keyframes tickerscroll {
-  to { transform: translateX(-50%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ticker-track { animation: none; padding-left: 1.5rem; }
-  .flap-cell.spin { animation: none; }
-}
-
 /* --------------------------------- buttons -------------------------------- */
 .btn-stamp {
   display: inline-flex; align-items: center; gap: 0.6rem;
@@ -902,18 +876,6 @@ h1.pg-title {
   font-size: 0.8rem; color: var(--bone-dim);
 }
 .ticket-error { color: var(--rose); font-size: 0.86rem; margin: 0.8rem 1.4rem 0 1.9rem; }
-
-/* ticker pause control */
-.ticker { position: relative; }
-.ticker-pause {
-  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
-  width: 22px; height: 22px; border-radius: 3px;
-  display: grid; place-items: center;
-  color: #cfae62; background: var(--led-bg);
-  border: 1px solid var(--line-strong);
-  opacity: 0.75;
-}
-.ticker-pause:hover, .ticker-pause:focus-visible { opacity: 1; color: var(--led); }
 
 /* council chip: seat button + explicit lead control */
 .model-chip { padding: 0; gap: 0; overflow: hidden; }
