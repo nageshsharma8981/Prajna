@@ -750,3 +750,11 @@ step when it does not exist yet (validation still follows and the same
 artifact is refreshed, never duplicated), and when PRAJNA_PUBLIC_URL is set
 the house fetches the link before sending and records whether it resolved,
 on the tape, in provenance and in the handover block.
+
+## v0.60: The revoke trail (2026-09-04)
+
+Revoking an artifact's public link after a connector delivered it now marks
+every such delivery on the mission with the time of revocation, records the
+revocation on the mission, carries it in provenance, and the handover block
+says the recipient's link is dead. Sharing again mints a new token; the old
+link stays dead.

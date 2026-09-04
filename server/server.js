@@ -647,8 +647,20 @@ async function handle(req, res) {
     const a = store.artifact(shareMatch[1]);
     if (!a) return json(res, 404, { error: 'Artifact not found.' });
     const token = req.method === 'POST' ? (a.shareToken || crypto.randomBytes(16).toString('hex')) : null;
+    const old = a.shareToken;
     store.refreshArtifact(a.id, { shareToken: token, sharedAt: token ? (a.sharedAt || Date.now()) : null }, store.artifactHtml(a.id));
-    return json(res, 200, { ok: true, shareToken: token, path: token ? `/s/${token}` : null });
+    // Revoking a link that a connector delivered leaves a trail: the mission
+    // records which deliveries now point at a dead link, and when.
+    let revoked = 0;
+    if (req.method === 'DELETE' && old) {
+      const m = store.mission(a.missionId);
+      if (m && (m.deliveries || []).length) {
+        for (const d of m.deliveries) if (d.link && d.link.includes(`/s/${old}`) && !d.linkRevokedAt) { d.linkRevokedAt = Date.now(); revoked++; }
+        if (revoked) { m.revocations = [...(m.revocations || []), { at: Date.now(), token: old, deliveries: revoked }]; store.flushMissions(); }
+        try { store.refreshArtifact(a.id, { shareToken: null }, GENERATORS[m.desk](store.missionFull(m.id)).html); } catch (e) { console.error('prajna: provenance refresh after revoke failed', e.message); }
+      }
+    }
+    return json(res, 200, { ok: true, shareToken: token, path: token ? `/s/${token}` : null, revokedDeliveries: revoked });
   }
 
   const artifactHtml = p.match(/^\/api\/artifacts\/([\w]+)\/html$/);
