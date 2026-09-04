@@ -16,6 +16,7 @@ import { DATA_DIR } from './store.js';
 import { auditBundle } from './bundle.js';
 import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
+import { digestText, sendMail, scheduleDigest } from './digest.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
 const STARTED_AT = Date.now();
 let VERSION = '0.0.0';
@@ -789,6 +790,7 @@ async function handle(req, res) {
     if (body.defaultModel && allModels().some((m) => m.id === body.defaultModel)) w.personalization.defaultModel = body.defaultModel;
     if (Array.isArray(body.defaultAdvisers)) w.personalization.defaultAdvisers = body.defaultAdvisers.filter((a) => allModels().some((m) => m.id === a)).slice(0, 5);
     if (body.theme === 'day' || body.theme === 'night') w.personalization.theme = body.theme;
+    if (typeof body.digestEmail === 'boolean') w.personalization.digestEmail = body.digestEmail;
     flushWs(); return json(res, 200, w.personalization);
   }
   if (p === '/api/language' && req.method === 'PATCH') {
@@ -805,6 +807,22 @@ async function handle(req, res) {
     w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: Math.round(amount / 100 * 2 * 100) / 100, currency: 'USD', plan: `Top-up ${amount} cr`, status: 'demo — no payment collected' }); flushWs();
     const line = ledger('topup', amount, `Top-up of ${amount} cr (demo billing, no payment collected)`);
     return json(res, 200, { ok: true, credits: store.workspace().credits, line });
+  }
+
+  // The daily digest: preview, or send through the owner's own Gmail.
+  if (p === '/api/digest' && req.method === 'GET') {
+    const days = Math.max(1, Math.min(30, Number(url.searchParams.get('days')) || 1));
+    return json(res, 200, { days, text: digestText({ days }), to: ws().profile.email || null, connected: !!store.token('google') });
+  }
+  if (p === '/api/digest/send' && req.method === 'POST') {
+    const body = await readBody(req);
+    const to = String(body.to || ws().profile.email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json(res, 400, { error: 'No email to send to — add one under My Profile.' });
+    const base = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(String(body.base || '')) ? body.base : undefined; // test hook, local only
+    try {
+      const r = await sendMail({ to, subject: `Prajñā digest — ${new Date().toISOString().slice(0, 10)}`, text: digestText({ days: 1 }), base });
+      return json(res, 200, { ok: true, ...r });
+    } catch (e) { return json(res, 400, { error: String(e.message || e).slice(0, 220) }); }
   }
 
   if (p === '/api/plan' && req.method === 'PATCH') {
@@ -965,4 +983,5 @@ async function handle(req, res) {
 
 rehydrate(notify);
 { const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
+scheduleDigest();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

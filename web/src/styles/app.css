@@ -1444,3 +1444,5 @@ abbr.cite { cursor: help; }
 .side .side-item.chat .del { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
 
 .side .side-item.chat { flex: 0 0 auto; min-height: auto; }
+
+.soft-banner { white-space: pre-wrap; }

@@ -563,3 +563,14 @@ The status page and `/api/health` carry seven days of history: runs started,
 delivered and stopped per UTC day, and the incidents the house records about
 itself — retrieval failures and live seats that could not author. Nothing is
 inferred; every count comes from the mission ledger.
+
+## v0.40 — The daily digest, by your own Gmail (2026-09-04)
+
+`GET /api/digest` writes the last 24 hours in plain words from the ledger —
+started, delivered, stopped, credits settled, gate-first-time, live-authored,
+runs waiting on a decision, incidents, deliveries, balance. `POST
+/api/digest/send` sends it through the owner's connected Google account
+(`gmail.send` scope added to the Google connector) to the profile email; with
+no token in memory it says so and sends nothing. Settings offers "Send now"
+and an opt-in "every morning at 08:00 UTC while the server holds a Google
+token" — tokens are memory-only, so a restart means reconnecting.

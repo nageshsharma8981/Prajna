@@ -13,7 +13,7 @@ export const OAUTH_PROVIDERS = {
     covers: ['gmail', 'gdrive', 'gcal', 'sheets', 'youtube'],
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
-    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
+    scopes: ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
     extraAuth: { access_type: 'offline', prompt: 'consent' },
     console: 'https://console.cloud.google.com/apis/credentials — OAuth client (Web application)',
     async identity(t) {
