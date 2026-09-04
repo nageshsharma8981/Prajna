@@ -347,6 +347,7 @@ ${why ? `  <div><h3><em>${why[0].k}</em>, ${why[0].h}</h3><p>${why[0].p}</p></di
   <div><h3><em>The proof</em>, one real case</h3><p>${proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.'}</p></div>
   <div><h3><em>The practice</em>, opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>`}
 </section>
+${mission.dissent ? `<aside class="carried-dissent" style="max-width:72rem;margin:0 auto;padding:1.2rem 5vw;font-size:.92rem;color:#3d4a41;border-top:1px solid #c9d3c7"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</aside>` : ''}
 <section class="final" id="join">
   <h2>${A ? esc(str(A.closing?.h, 'Be first through the door.')) : 'Be first through the door.'}</h2>
   <a class="btn" href="#">${A ? esc(str(A.closing?.cta, 'Join the waitlist')) : 'Join the waitlist'}</a>
@@ -478,6 +479,7 @@ ${s.items && s.items.length ? s.items.map((it, j) => `<div class="card"><span cl
 <button class="cta">${s.cta ? esc(s.cta) : i === 0 ? 'Do the one thing' : 'Take the action'}</button></section>`).join('')}
 <nav class="tabs">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
 </div></div>
+${mission.dissent ? `<p class="carried-dissent" style="max-width:min(390px,94vw);font-size:.82rem;color:#3e4842;border-left:3px solid var(--acc);padding-left:.8rem;margin:0"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}
 <p class="hint">Tap the tab bar, the prototype navigates. Built by Prajñā · ${A ? `content written by ${esc(mission.authored.model)}` : 'placeholder content marked for replacement'}.</p>
 <script>
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===b.dataset.go));}));

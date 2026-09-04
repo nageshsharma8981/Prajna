@@ -726,3 +726,10 @@ quoted, and a new deck assertion (VAL-DISSENT-CARRIED) fails the gate if a
 recorded dissent is missing from the deliverable. The dissent is on the
 mission record and in provenance, so the brief and the deck can no longer
 quietly drop what an adviser refused to accept.
+
+## v0.57: Every deliverable carries the dissent (2026-09-04)
+
+The landing page (above the closing call to action) and the mobile prototype
+(beneath the phone) now carry a recorded dissent, named and quoted, and the
+same assertion that guards the deck guards them: a recorded dissent that is
+missing from the deliverable fails the gate.

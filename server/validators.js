@@ -43,6 +43,11 @@ function unsupportedFigures(html, { allowLabelled = false } = {}) {
 const HONESTY = { id: 'VAL-FIGURES-SOURCED', title: 'Every figure in a live-authored deliverable traces to the goal or a retrieved source', owner: 'compose',
   scrutiny: (h) => unsupportedFigures(h), surface: (h) => unsupportedFigures(h, { allowLabelled: true }) };
 
+// A recorded dissent must travel into every deliverable, not just the brief.
+const CARRIED = (owner) => ({ id: 'VAL-DISSENT-CARRIED', title: 'The panel dissent, when one was recorded, is carried in the deliverable', owner,
+  scrutiny: (h) => { const p = provenance(h); if (!p?.dissent) return { ok: true, detail: 'no dissent was recorded' }; return has(body(h), /class="carried-dissent"/) && has(body(h), new RegExp(p.dissent.model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))) ? { ok: true, detail: `dissent by ${p.dissent.model} carried` } : { ok: false, detail: `dissent by ${p.dissent.model} missing from the deliverable` }; },
+  surface: (h) => { const p = provenance(h); if (!p?.dissent) return { ok: true, detail: 'no dissent was recorded' }; const probe = String(p.dissent.text || '').slice(0, 30).replace(/&/g, '&amp;').replace(/</g, '&lt;'); return has(body(h), probe) ? { ok: true, detail: 'dissent text present' } : { ok: false, detail: 'dissent text not present' }; } });
+
 // scrutiny lane: reads structure. surface lane: exercises behavior a user
 // would hit (runnable script, resolvable anchors, parseable audit object).
 export const ASSERTIONS = {
@@ -81,6 +86,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /<nav>/) && has(h, /class="hero"/) && has(h, /id="how"/) && has(h, /id="join"/), surface: (h) => has(h, /href="#join"/) && has(h, /href="#how"/) },
     { id: 'VAL-RESPONSIVE', title: 'The page reflows below 800px', owner: 'build',
       scrutiny: (h) => has(h, /@media\(max-width:800px\)/), surface: (h) => has(h, /grid-template-columns:1fr;/) },
+    CARRIED('build'),
     { id: 'VAL-PROOF-REAL', title: 'The proof section shows real proof, not a placeholder', owner: 'copy-cutter',
       scrutiny: (h) => !has(h, /This slot awaits your real case study/) && !has(h, /replace with real capture/i),
       surface: (h) => has(h, /Evidence pending[:,] supplied by the owner/) || (!has(h, /awaits your real/) && !has(h, /replace with real/i)) },
@@ -93,6 +99,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => count(h, /class="screen(?: on)?"/g) >= 4 && count(h, /class="tab(?: on)?"/g) >= 4, surface: (h) => has(h, /data-screen=/) && has(h, /addEventListener\('click'/) },
     { id: 'VAL-TOUCH-TARGETS', title: 'Tap targets are at least 44px', owner: 'a11y-audit',
       scrutiny: (h) => has(h, /min-height:44px/), surface: (h) => has(h, /min-width:44px/) },
+    CARRIED('build'),
     { id: 'VAL-PHONE-FRAME', title: 'The prototype renders inside a phone frame', owner: 'build',
       scrutiny: (h) => has(h, /class="phone"/), surface: (h) => has(h, /aspect-ratio/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
