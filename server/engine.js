@@ -829,10 +829,19 @@ async function applyEvent(m, ev, notify, runner) {
         }
       }
       if (issues.length) {
-        const lead = liveSeat(m.lead);
+        // Whoever actually wrote the draft answers the critique. If the lead
+        // refused earlier and an adviser stood in, asking the lead to revise
+        // work it never wrote would be the wrong model on the wrong page.
+        const wrote = m.authored?.model;
+        const bench = [m.lead, ...(m.advisers || [])].map((x) => liveSeat(x)).filter(Boolean);
+        const lead = bench.find((x) => x.model.name === wrote) || bench[0] || null;
         if (lead) {
+          const before = m.authored;
           try {
             m.authored = await authorContent(m, lead, { revise: issues.join('; ') });
+            if (before?.steppedIn) m.authored.steppedIn = before.steppedIn;
+            // The revision is a call on the owner's key like any other.
+            if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[lead.model.name] = m.keyUse.models[lead.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
             pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: true, detail: `${m.authored.model} revised the draft on adviser critique (${issues.length} issue(s)), ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
           } catch (e) {
             pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: false, detail: `${lead.model.name} could not revise on critique (${String(e.message || e).slice(0, 100)}), the draft stands; the gate decides` }, notify);

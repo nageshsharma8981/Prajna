@@ -450,10 +450,18 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
   // Two model endpoints of our own: the first refuses every call, the second
   // answers with a valid brief. The house must reach the second by itself.
   let asked = [];
+  const seen = [];
   const good = http.createServer((req, res) => {
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => {
       asked.push('good');
+      const prompt = JSON.parse(body).messages[0].content;
+      seen.push(prompt);
+      // The adviser critique and the revision that answers it, on the same endpoint.
+      if (/CRITIQUE the draft/.test(prompt)) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        return res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ verdict: 'revise', issues: ['The verdict hedges; state the recommendation outright.'] }) } }], usage: { prompt_tokens: 500, completion_tokens: 60 } }));
+      }
       const brief = { stand: 'A stand-in model wrote this brief.', verdict: 'The recommendation is to proceed carefully, stated before the evidence, in two sentences. The panel stood in for the lead.',
         claims: [1, 2, 3].map((n) => ({ text: `Claim number ${n} written by the stand-in model.`, grade: 'B', detail: `Support for claim ${n}, one sentence long.`, src: 0, source: { title: `A source class described honestly for claim ${n}`, kind: 'analysis' } })),
         refuted: [], moves: [], tripwires: 'Commit further only if the first move clears.', dissent: { seat: 'an adviser', text: 'The adviser held that the pace is optimistic.' } };
@@ -487,13 +495,21 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     const tape = (m.events || []).filter((e) => e.label === 'author').map((e) => e.detail);
     assert.ok(tape.some((d) => /Flaky Lead could not author/.test(d)), tape.join(' | '));
     assert.ok(tape.some((d) => /stepped in after Flaky Lead refused/.test(d)), tape.join(' | '));
+    // The adviser asked for a revision, and the model that wrote the draft answered it.
+    const critique = (m.critiques || []).find((c) => c.verdict === 'revise');
+    assert.ok(critique, JSON.stringify(m.critiques));
+    const revised = (m.events || []).find((e) => e.label === 'revise');
+    assert.ok(revised && /Steady Adviser revised the draft on adviser critique/.test(revised.detail), revised?.detail);
+    assert.ok(seen.some((p) => /REVISION REQUIRED/.test(p) && /The verdict hedges/.test(p)), 'the revision call carried the adviser\'s issue');
+    assert.ok(m.keyUse.calls >= 3, `write, critique and revise are all counted: ${JSON.stringify(m.keyUse)}`);
+    assert.ok(m.keyUse.models['Steady Adviser'].calls >= 2, JSON.stringify(m.keyUse.models));
     const html = await (await fetch(`${BASE}/api/artifacts/${m.artifactId}/html`)).text();
     assert.match(html, /standing in after Flaky Lead refused/);
     assert.match(html, /A stand-in model wrote this brief/);
     // What your own key was actually used for, counted from the provider's own numbers.
-    assert.ok(m.keyUse && m.keyUse.reported >= 1, JSON.stringify(m.keyUse));
-    assert.equal(m.keyUse.prompt % 1200, 0); assert.equal(m.keyUse.completion % 340, 0);
-    assert.equal(m.keyUse.calls, m.keyUse.reported, 'every counted call reported its tokens; a refusal bills nothing and is not counted');
+    // Exactly the three calls that happened: write (1200/340), critique
+    // (500/60), revise (1200/340). Nothing double counted, nothing missed.
+    assert.deepEqual({ calls: m.keyUse.calls, reported: m.keyUse.reported, prompt: m.keyUse.prompt, completion: m.keyUse.completion }, { calls: 3, reported: 3, prompt: 2900, completion: 740 }, JSON.stringify(m.keyUse));
     assert.match(html, /Your own key was called \d+ times? for this run, using [\d,]+ prompt and [\d,]+ completion tokens as reported by the provider itself/);
     assert.match(html, /the house does not guess a price/);
   } finally {

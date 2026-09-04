@@ -1226,3 +1226,16 @@ artifact, releases the unspent reserve, and leaves a smaller unstamped
 ticket in the same lineage, linked from the run you stopped. The plan
 stays a contract: the house proposes, the owner decides, and the reason
 is on the record either way.
+
+## v1.2: The model that wrote it answers the critique (2026-09-04)
+
+Two faults in the review loop, found by driving it end to end. The
+revision was always asked of the lead model, so when the lead had
+refused and an adviser stood in, the house asked one model to rewrite
+another's draft, and if the lead was gone it skipped the revision
+altogether. Now whoever actually wrote the draft answers the critique,
+and the stand-in record survives the rewrite. The revision was also a
+call on your own key that went uncounted; it is counted now. A test
+drives the whole loop, one model refusing, another writing, an adviser
+demanding a change and the writer making it, and checks the token
+account to the exact figure: three calls, nothing double counted.
