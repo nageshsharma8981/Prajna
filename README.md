@@ -649,3 +649,12 @@ interface, the artifacts, the tape and these notes became a colon, comma or
 full stop; "seat" became "model" wherever a person reads it; and the
 "Decision needed" sidebar item and bell are removed, pending decisions stay
 reachable from the run card, the board and the palette.
+
+## v0.50: Restart under load (2026-09-04)
+
+Verified: four missions launched, the server killed mid-run and started
+again. It rehydrated every in-flight mission from the persisted run script,
+all four finished, the reserve returned exactly to its starting value, the
+spent delta equalled the four settlements, every tape archived with
+contiguous sequence numbers, and every narrative was written. No code
+changed; this is the record of the check.
