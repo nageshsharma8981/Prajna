@@ -298,11 +298,27 @@ function pub(m) {
   const so = m.id ? standingFor(m.id) : null;
   return so ? { ...rest, standing: { id: so.id, cadence: so.cadence, nextAt: so.nextAt, paused: so.paused } } : rest;
 }
-// Boards never need the event ledger, the run view streams it. Bootstrap
-// carries a count instead, which keeps the payload small as history grows.
+// Boards never need the event ledger, the run view streams it, and no list
+// needs the tape, the validator rows, the authored substance, the narrative
+// or a source's full extract: the run page fetches the whole mission when it
+// opens one. Bootstrap carries what the lists actually read, so the payload
+// stops growing with the length of the house's memory.
 function lean(m) {
-  const { events, ...rest } = pub(m);
-  return { ...rest, eventCount: rest.eventCount ?? (events || []).length };
+  const { events, validations, narrative, authored, sources, critiques, evidence, gateResult, review, retrieval, dissent, keyUse, attention, contract, ...rest } = pub(m);
+  return {
+    ...rest,
+    eventCount: rest.eventCount ?? (events || []).length,
+    // Counts and verdicts the boards and the dashboard read, without the rows.
+    validations: (validations || []).map((v) => ({ round: v.round, gate: v.gate ? { cleared: !!v.gate.cleared } : null })),
+    gateResult: gateResult ? { cleared: !!gateResult.cleared } : null,
+    authored: authored ? { live: !!authored.live, composed: !!authored.composed, model: authored.model || null } : null,
+    // A source without its extract: the count, the title and the address stand.
+    sources: (sources || []).map((x) => ({ id: x.id, title: x.title, url: x.url, engine: x.engine, kind: x.kind, retrieved: x.retrieved, words: x.words })),
+    // Decisions still waiting travel whole; decided ones keep only their answer.
+    attention: (attention || []).map((a) => (a.decision ? { id: a.id, kind: a.kind, decision: a.decision, decidedAt: a.decidedAt } : a)),
+    contract: contract ? { ...contract, why: undefined, plan: (contract.plan || []).map(({ rationale, ...step }) => step) } : contract,
+    narrative: narrative ? true : null,
+  };
 }
 
 // Responses compress when the client accepts gzip (JSON payloads shrink ~8×).

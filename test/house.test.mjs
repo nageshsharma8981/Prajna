@@ -775,3 +775,26 @@ test('the pulse is cheap and moves only when the house does', async () => {
   assert.equal(typeof p3.j.pending, 'number');
   assert.equal(typeof p3.j.live, 'number');
 });
+
+test('the bootstrap carries what the lists read, not the whole memory of the house', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const m = b.missions.find((x) => x.status === 'FILLED' && x.artifactId);
+  assert.ok(m, 'a delivered mission to inspect');
+  // What the lists, boards, dashboard and compare view actually read.
+  assert.ok(m.serial && m.status && m.deskName && typeof m.spent === 'number');
+  assert.ok(m.contract?.plan?.length && m.contract.ceiling > 0, 'the plan and its ceiling travel');
+  assert.ok(Array.isArray(m.contract.assertions), 'assertions travel for the compare view');
+  assert.ok(Array.isArray(m.validations), 'validation rounds are countable');
+  if (m.validations.length) assert.ok('cleared' in (m.validations[0].gate || {}), 'each round says whether the gate cleared');
+  // What it must not carry: the tape, the rows, the substance, the extracts.
+  assert.equal(m.events, undefined, 'no event tape in a list payload');
+  assert.ok(!m.validations.some((v) => v.rows), 'no validator rows');
+  assert.ok(!m.authored || !m.authored.content, 'no authored substance');
+  assert.ok((m.sources || []).every((s) => !s.extract && !s.text), 'no source extracts');
+  assert.ok(!m.contract.plan.some((p) => p.rationale), 'no per-step rationale');
+  // The run page still gets everything when it asks for one mission.
+  const full = (await api(`/api/missions/${m.id}`)).j;
+  assert.ok(full.contract.plan.some((p) => p.rationale) || full.contract.why, 'the full mission carries the reasoning');
+  if ((full.sources || []).length) assert.ok(full.sources.some((s) => s.extract), 'the full mission carries source extracts');
+  assert.ok(JSON.stringify(m).length * 2 < JSON.stringify(full).length + 4000, `the list form is materially smaller: ${JSON.stringify(m).length} vs ${JSON.stringify(full).length}`);
+});

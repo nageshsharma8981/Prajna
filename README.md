@@ -1296,3 +1296,12 @@ live. Measured in the browser: an idle-but-busy tab went from three full
 pulls in twelve seconds to none, and a single change still refreshes it
 once. A sweep of every room found nothing else broken, and the test
 suite's own second server now keeps its own house, so it cannot race.
+
+## v1.8: The house sends what the page needs (2026-09-04)
+
+The workspace payload every tab pulls carried the whole memory of the
+house: every validator row, every authored draft, every source extract,
+the reasoning behind every plan step. None of it is read by a list, a
+board or the dashboard, and the run page fetches the full mission when it
+opens one. The payload is now 44 per cent smaller, 628 kilobytes down to
+352, and every page renders exactly as before, checked page by page.
