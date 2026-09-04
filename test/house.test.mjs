@@ -1292,3 +1292,32 @@ test('a delivery reaches a connected app, behind approval, with a link the house
     assert.equal((await fetch(link)).status, 404, 'a revoked link is gone');
   } finally { child7.kill(); slack.close(); fs.rmSync(DIR7, { recursive: true, force: true }); }
 });
+
+test('a delivery can be taken further, and the next ticket argues from it', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const from = b.missions.find((m) => m.status === 'FILLED' && m.artifactId && m.desk === 'brief');
+  assert.ok(from, 'a delivered brief to build on');
+  const next = await post(`/api/missions/${from.id}/next`, { deskId: 'deck', depth: 'fast' });
+  assert.equal(next.status, 200, JSON.stringify(next.j).slice(0, 200));
+  assert.equal(next.j.desk, 'deck');
+  assert.equal(next.j.status, 'OPEN', 'it is a ticket, not a run: nothing spent until you stamp it');
+  assert.equal(next.j.from.serial, from.serial, 'it says what it came from');
+  // The earlier delivery is on the table as an owner source, not a retelling.
+  const src = (next.j.sources || []).find((s) => s.engine === 'attachment');
+  assert.ok(src, `the delivery is on the table: ${JSON.stringify((next.j.sources || []).map((s) => s.engine))}`);
+  assert.match(src.title, new RegExp(from.serial));
+  assert.ok(src.extract.length > 200, 'with its text, so the next desk can argue from it');
+  const html = await (await fetch(`${BASE}/api/artifacts/${from.artifactId}/html`)).text();
+  // A word from the delivery's own prose, not from the stylesheet inside it.
+  const prose = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
+  const word = (prose.match(/[A-Za-z]{9,}/g) || [])[3];
+  assert.ok(word, 'the delivery has prose to carry');
+  assert.ok(src.extract.includes(word), `the text is the delivery's own: looked for “${word}”`);
+  assert.ok(next.j.attachments?.some((a) => a.name.includes(from.serial)), 'the ticket lists it');
+  // Only a delivered mission can be taken further.
+  const open = await post('/api/missions', { goal: 'Further test: an unstamped ticket', deskId: 'brief', depth: 'fast' });
+  const refused = await post(`/api/missions/${open.j.id}/next`, { deskId: 'deck' });
+  assert.equal(refused.status, 400);
+  assert.match(refused.j.error, /Only a delivered mission/);
+  assert.equal((await post(`/api/missions/${from.id}/next`, { deskId: 'nosuchdesk' })).status, 400);
+});

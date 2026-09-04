@@ -1466,3 +1466,13 @@ a public link, the house verifies that link before calling the delivery
 made, the delivery is written on the record with where it went, and
 revoking the link kills it. It passed first time, which is the outcome
 worth having and not one worth assuming.
+
+## v1.20: Take it further (2026-09-05)
+
+A delivery used to be the end of the line: to build a deck from a brief
+you started again from the goal, and the brief you had just paid for sat
+in the record unused. Now a delivered mission offers the next desk with
+its own delivery already on the table as an owner source, text and all,
+so the deck argues from the brief rather than from the prompt. It
+arrives as an unstamped ticket like any other, priced and explained
+before anything runs, and it says what it came from and links back.

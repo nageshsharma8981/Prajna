@@ -834,6 +834,37 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     return json(res, 200, pub(mission));
   }
 
+  // Take a delivery further: a new ticket at another desk with this
+  // delivery already on its table, so the second piece of work argues from
+  // the first rather than starting from the goal again.
+  const NEXT_DESK = { brief: 'deck', analysis: 'brief', deck: 'site', site: 'mobile', mobile: 'site' };
+  const nextMatch = p.match(/^\/api\/missions\/([\w]+)\/next$/);
+  if (nextMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
+    const from = store.mission(nextMatch[1]);
+    if (!from) return json(res, 404, { error: 'Mission not found.' });
+    if (from.status !== 'FILLED' || !from.artifactId) return json(res, 400, { error: 'Only a delivered mission can be taken further.' });
+    const body = await readBody(req);
+    const deskId = String(body.deskId || NEXT_DESK[from.desk] || 'brief');
+    if (!DESKS.some((d) => d.id === deskId)) return json(res, 400, { error: `Unknown desk "${deskId.slice(0, 40)}".` });
+    const art = store.artifact(from.artifactId);
+    const html = store.artifactHtml(from.artifactId) || '';
+    const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 20000);
+    if (!text) return json(res, 400, { error: 'That delivery has no text to carry forward.' });
+    const goal = String(body.goal || '').trim().slice(0, 400) || `${DESKS.find((d) => d.id === deskId).name.replace(' desk', '')} from ${from.serial}: ${from.subject || from.goal}`;
+    const mission = writeContract({
+      by: meOf(req)?.name || null, goal, deskId,
+      lead: modelById(body.lead || ws().personalization.defaultModel).id,
+      advisers: (ws().personalization.defaultAdvisers || []).map((a) => modelById(a).id).slice(0, 4),
+      installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(),
+      variant: 'build', template: null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: from.chatId || null,
+      attachments: [{ name: `${from.serial} · ${art?.title || 'the earlier delivery'}`, text }],
+    });
+    mission.from = { id: from.id, serial: from.serial, artifactId: from.artifactId, title: art?.title || null, desk: from.deskName };
+    store.flushMissions();
+    return json(res, 200, pub(mission));
+  }
+
   const forkMatch = p.match(/^\/api\/missions\/([\w]+)\/fork$/);
   if (forkMatch && req.method === 'POST') {
     if (guestGate(req, res, 'write')) return;

@@ -251,6 +251,7 @@ export default function Run({ id }) {
   }, [mission]);
   const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
   const [cadence, setCadence] = useState('weekly');
+  const [nextDesk, setNextDesk] = useState('deck');
   const [delta, setDelta] = useState(null);
   const [writing, setWriting] = useState(null);
   useEffect(() => {
@@ -342,6 +343,18 @@ export default function Run({ id }) {
         {(filled || killed) && !mission.voidedBeforeRun && (
           <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
         )}
+        {filled && mission.artifactId && !mission.voidedBeforeRun && (
+          <span className="standing-make">
+            <select className="key-input" value={nextDesk} onChange={(e) => setNextDesk(e.target.value)} aria-label="Take it further at which desk" style={{ width: 'auto', padding: '0.4rem 0.6rem' }}>
+              {[['brief', 'a brief'], ['deck', 'a deck'], ['site', 'a landing page'], ['mobile', 'an app'], ['analysis', 'an analysis']].map(([d, label]) => <option key={d} value={d}>{`Take it further: ${label}`}</option>)}
+            </select>
+            <button className="btn-quiet" disabled={busy} title="A new ticket at another desk with this delivery already on its table, so the next piece argues from this one." onClick={async () => {
+              setBusy(true); setActionError(null);
+              try { const r = await fetch(`/api/missions/${mission.id}/next`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ deskId: nextDesk }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Refused.'); await store.refresh(); navigate(`/run/${j.id}`); } catch (e) { setActionError(e.message); setBusy(false); }
+            }}>Go</button>
+          </span>
+        )}
+        {mission.from && <Link className="lineage-tag" to={`/run/${mission.from.id}`} title={`Written from ${mission.from.serial}, whose delivery is on this ticket's table`}>from {mission.from.serial}</Link>}
         {filled && !mission.voidedBeforeRun && !mission.standing && (
           <span className="standing-make">
             <select className="key-input" value={cadence} onChange={(e) => setCadence(e.target.value)} aria-label="Repeat cadence" style={{ width: 'auto', padding: '0.4rem 0.6rem' }}><option value="daily">Every day</option><option value="weekly">Every week</option></select>
