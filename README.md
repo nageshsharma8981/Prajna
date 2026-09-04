@@ -416,3 +416,14 @@ table, adviser critiques, the full tape, settlement, the delivered artifact
 embedded in a sandboxed frame, and the machine-readable record
 (`prajna.bundle.v1`). The run view has an "Audit bundle" button; the CLI has
 `prajna bundle <mission-id>`.
+
+## v0.23 — Hardening and the weekly digest (2026-09-04)
+
+- **Rate limits.** Per-address, memory-only, fixed windows: twelve access-code
+  tries per ten minutes, sixty public share-link fetches a minute, sixty
+  locked-out API calls a minute. Baseline headers on every response
+  (`nosniff`, referrer policy, permissions policy, `SAMEORIGIN` framing for
+  the app; shared artifacts remain frameable).
+- **What changed.** The dashboard opens with a seven-day digest computed from
+  the ledger: delivered vs started, credits settled, gate-first-time count,
+  live-authored count, amendments, notes left, showcase submissions.

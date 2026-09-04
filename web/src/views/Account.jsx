@@ -62,6 +62,26 @@ export default function Account({ page }) {
         {p === 'dashboard' && (
           <>
             <h1 className="pg-title">Dashboard</h1>
+            {(() => {
+              // What changed in the last seven days — read from the ledger.
+              const since = Date.now() - 7 * 86400000;
+              const recent = s.missions.filter((m) => (m.createdAt || 0) >= since);
+              const delivered = recent.filter((m) => m.status === 'FILLED');
+              const spent = delivered.reduce((a, m) => a + (m.settlement?.settled ?? m.spent ?? 0), 0);
+              const live = delivered.filter((m) => m.authored?.live).length;
+              const gatedR = delivered.filter((m) => (m.validations || []).length);
+              const firstR = gatedR.filter((m) => m.validations.length === 1 && m.validations[0].gate?.cleared).length;
+              const amended = recent.filter((m) => m.lineage).length;
+              const notes = s.artifacts.reduce((a, x) => a + (x.notes || []).filter((n) => n.at >= since).length, 0);
+              const shown = (s.showcase || []).filter((x) => x.submittedAt >= since).length;
+              const desks = Object.entries(delivered.reduce((acc, m) => { acc[m.deskName] = (acc[m.deskName] || 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]);
+              return (
+                <div className="digest">
+                  <span className="k">What changed · last 7 days</span>
+                  <p>{recent.length ? <>{delivered.length} of {recent.length} missions delivered{desks.length ? <>, most on the {desks[0][0].replace(' desk', '')} desk</> : null}, {spent.toFixed(0)} credits settled. {gatedR.length ? <>{firstR} of {gatedR.length} cleared the gate first time. </> : null}{live ? <>{live} were written by a live seat on your own key. </> : 'None were written by a live seat — load a key to make the lead author real. '}{amended ? <>{amended} were amendments of earlier versions. </> : null}{notes ? <>{notes} note{notes === 1 ? '' : 's'} left on deliveries. </> : null}{shown ? <>{shown} submitted to the community showcase.</> : null}</> : 'No missions in the last seven days. Start one from the home composer.'}</p>
+                </div>
+              );
+            })()}
             <div className="stat-grid">
               {[['Missions', s.missions.length], ['Delivered', done], ['Artifacts', s.artifacts.length], ['Credits left', w.credits.toFixed(0)], ['Reserved', w.reserved.toFixed(0)], ['Spent to date', w.spent.toFixed(0)]].map(([k, v]) => (
                 <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>

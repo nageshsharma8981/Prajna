@@ -45,13 +45,20 @@ function sessionCookie(req, value, maxAge) {
   const secure = String(req.headers['x-forwarded-proto'] || '').includes('https');
   return `prajna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
 }
-const attempts = new Map(); // ip → { n, at } — a dozen tries per ten minutes
-function tooMany(ip) {
-  const now = Date.now(); const a = attempts.get(ip) || { n: 0, at: now };
-  if (now - a.at > 600000) { a.n = 0; a.at = now; }
-  a.n++; attempts.set(ip, a);
-  return a.n > 12;
+// Per-address rate limits, fixed windows, memory only. Buckets: the access
+// code (a dozen tries per ten minutes), public share links and locked-out API
+// calls (sixty a minute each) — enough for people, not for scanners.
+const buckets = new Map(); // `${bucket}:${ip}` → { n, at }
+function limited(ip, bucket, max, windowMs) {
+  const key = `${bucket}:${ip}`; const now = Date.now();
+  const a = buckets.get(key) || { n: 0, at: now };
+  if (now - a.at > windowMs) { a.n = 0; a.at = now; }
+  a.n++; buckets.set(key, a);
+  if (buckets.size > 5000) for (const [k, v] of buckets) if (now - v.at > windowMs) buckets.delete(k);
+  return a.n > max;
 }
+const ipOf = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+const tooMany = (ip) => limited(ip, 'code', 12, 600000);
 
 /* --------------------------------- seeding -------------------------------- */
 
@@ -198,10 +205,17 @@ async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
 
+  // Baseline response headers. Shared artifacts may be framed by others;
+  // the app itself may not.
+  res.setHeader('x-content-type-options', 'nosniff');
+  res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
+  res.setHeader('permissions-policy', 'camera=(), geolocation=(), payment=()');
+  if (!p.startsWith('/s/') && !p.startsWith('/api/artifacts/')) res.setHeader('x-frame-options', 'SAMEORIGIN');
+
   // ---- Session (always reachable) ----
   if (p === '/api/session') {
     if (req.method === 'POST') {
-      const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+      const ip = ipOf(req);
       if (tooMany(ip)) return json(res, 429, { error: 'Too many attempts. Wait ten minutes.' });
       const body = await readBody(req);
       const code = String(body.code || '').trim();
@@ -217,6 +231,7 @@ async function handle(req, res) {
   // ---- Shared artifact (public by explicit share link; provenance travels with it) ----
   const shared = p.match(/^\/s\/([a-f0-9]{32})$/);
   if (shared) {
+    if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
     const a = store.artifacts().find((x) => x.shareToken === shared[1]);
     const html = a ? store.artifactHtml(a.id) : null;
     if (!html) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This share link is not on the books — it may have been revoked.</p>'); }
@@ -224,6 +239,7 @@ async function handle(req, res) {
   }
 
   if (p.startsWith('/api/') && !authed(req)) {
+    if (limited(ipOf(req), 'locked', 60, 60000)) return json(res, 429, { locked: true, error: 'Too many requests. Try again in a minute.' });
     if (p === '/api/bootstrap') return json(res, 401, { locked: true, error: 'The house is locked. Enter the access code.' });
     return json(res, 401, { locked: true, error: 'Session required.' });
   }

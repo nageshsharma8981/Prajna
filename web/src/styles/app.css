@@ -1355,3 +1355,7 @@ abbr.cite { cursor: help; }
 .src-engine { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--line-strong); border-radius: 3px; padding: 0.05rem 0.35rem; color: var(--bone-dim); }
 .src-engine.attachment { border-color: color-mix(in srgb, var(--green) 50%, var(--line-strong)); color: var(--green); }
 .src-engine.brave { border-color: color-mix(in srgb, var(--blue) 50%, var(--line-strong)); color: var(--blue); }
+
+.digest { border: 1px solid var(--line-strong); border-left: 4px solid var(--led); background: var(--panel); border-radius: 8px; padding: 0.8rem 1rem; margin: 0.6rem 0 1rem; }
+.digest .k { font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
+.digest p { margin: 0.3rem 0 0; font-size: 0.95rem; line-height: 1.55; }
