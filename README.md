@@ -1261,3 +1261,11 @@ house.entered event on your webhook. The house check gains a door row
 that states plainly whether an access code is set, and fails when the
 door is open and more than one person has come through it, naming the
 environment variable that closes it.
+
+## v1.5: The record starts from whoever is already here (2026-09-04)
+
+A house upgraded to the visitor record showed an empty list even when
+someone had already accepted the rules, because the log did not exist
+yet. The acceptance on file is now the first line of that record, so an
+owner sees the person who is actually in the house rather than nobody.
+The daily digest names anyone who accepted in the last day.

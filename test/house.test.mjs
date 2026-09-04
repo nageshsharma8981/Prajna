@@ -701,3 +701,17 @@ test('the house records who came through the door and says when the door is open
   assert.match(door.detail, /different people have accepted|anyone with the address can enter/);
   assert.match(door.detail, /PRAJNA_ACCESS_CODE/);
 });
+
+test('a house that was already occupied does not claim nobody has entered', async () => {
+  const { ws } = await import('../server/workspace.js');
+  // Simulate the state a house upgraded from an older version is in: an
+  // acceptance on file, and no log at all.
+  const w = ws();
+  const kept = w.consentLog;
+  delete w.consentLog;
+  w.consent = { version: '2026-09-04.2', acceptedAt: Date.now() - 3600000, name: 'The Earlier Occupant', ip: '203.0.113.7', agent: 'a browser' };
+  const rebuilt = ws().consentLog;
+  assert.equal(rebuilt.length, 1, 'the acceptance on file becomes the first line');
+  assert.equal(rebuilt[0].name, 'The Earlier Occupant');
+  w.consentLog = kept;
+});

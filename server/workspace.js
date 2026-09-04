@@ -125,6 +125,9 @@ function ensure() {
   if (!st.ws.media) st.ws.media = [];
   if (!st.ws.showcase) st.ws.showcase = [];
   if (!st.ws.ledger) st.ws.ledger = [];
+  // A house that was already occupied should not claim nobody has entered:
+  // the acceptance on file is the first line of the record.
+  if (!Array.isArray(st.ws.consentLog)) st.ws.consentLog = st.ws.consent ? [st.ws.consent] : [];
   if (st.ws.consent === undefined) st.ws.consent = null;
   return st.ws;
 }
