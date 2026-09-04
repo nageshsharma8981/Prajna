@@ -415,7 +415,12 @@ async function handle(req, res) {
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const goal = String(body.goal || '').trim().slice(0, 400) || undefined;
     const feedback = Array.isArray(body.feedback) ? body.feedback : [];
-    const m = forkMission(forkMatch[1], { goal, feedback, installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors() });
+    // An amendment goes back to the apps the parent delivered to (those still
+    // connected); a parent that delivered nowhere queues every connected app.
+    const parent = store.mission(forkMatch[1]);
+    const delivered = [...new Set((parent?.deliveries || []).filter((d) => d.ok).map((d) => d.connector))];
+    const queued = delivered.length ? connectedConnectors().filter((c) => delivered.includes(c)) : connectedConnectors();
+    const m = forkMission(forkMatch[1], { goal, feedback, installedSkills: skillsInstalled(), queuedConnectors: queued, redeliverTo: delivered.length ? queued : [] });
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     return json(res, 200, pub(m));
   }

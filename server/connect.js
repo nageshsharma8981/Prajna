@@ -119,7 +119,7 @@ export async function gather(cid, goal) {
 export function targets() { const w = ws(); if (!w.connectorTargets) w.connectorTargets = {}; return w.connectorTargets; }
 
 function summary(m, link) {
-  const lines = [`${m.serial}: ${m.deliverable} for “${m.goal}”.`, m.narrative ? m.narrative.split(/(?<=\.)\s+/).slice(0, 3).join(' ') : `Delivered by Prajñā, ${m.contract.plan.length} steps, ${Number(m.spent || 0).toFixed(1)} credits.`, `Open it: ${link}`];
+  const lines = [`${m.serial}: ${m.deliverable} for “${m.goal}”.${m.lineage ? ` Version ${m.lineage.version}, superseding ${m.lineage.parentSerial}${(m.lineage.feedback || []).length ? `, written against ${m.lineage.feedback.length} owner note${m.lineage.feedback.length === 1 ? '' : 's'}` : ''}.` : ''}`, m.narrative ? m.narrative.split(/(?<=\.)\s+/).slice(0, 3).join(' ') : `Delivered by Prajñā, ${m.contract.plan.length} steps, ${Number(m.spent || 0).toFixed(1)} credits.`, `Open it: ${link}`];
   return lines.join('\n\n');
 }
 

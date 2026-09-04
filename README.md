@@ -767,3 +767,11 @@ is set, and sent to the apps that delivered before, or to any connected app
 if none did. Each re-delivery is recorded on the mission, marked "again" in
 the handover, and carried into provenance. `POST /api/missions/:id/redeliver`
 accepts an optional list of connectors.
+
+## v0.62: Amendments reach the same recipients (2026-09-04)
+
+Amending a mission that delivered through connected apps queues delivery
+steps for exactly those apps on the new ticket (a parent that delivered
+nowhere queues every connected app, as before), records them in the new
+ticket's lineage, and the delivery text says which version it is and what
+it supersedes, so a v2 never strands recipients on v1.
