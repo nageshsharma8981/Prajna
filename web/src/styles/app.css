@@ -1434,3 +1434,13 @@ abbr.cite { cursor: help; }
 .side-nav, .side-sub { min-width: 0; overflow-x: hidden; }
 .side-item.chat { overflow: hidden; }
 .side-item.chat .t { display: block; }
+
+.side-item.chat { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.4rem; }
+.side-item.chat .t { width: 100%; }
+/* Chat rows: block layout, so the title ellipsizes and the row is never
+   stretched by its container; the delete control is pinned to the right. */
+.side .side-item.chat { display: block; position: relative; padding-right: 1.8rem; height: auto; min-height: 0; }
+.side .side-item.chat .t { display: block; width: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side .side-item.chat .del { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+
+.side .side-item.chat { flex: 0 0 auto; min-height: auto; }

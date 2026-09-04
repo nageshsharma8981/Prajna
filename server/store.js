@@ -48,6 +48,8 @@ export const store = {
     tokens: {},                               // { provider: { token, refresh, expiresAt, account } } — memory-only
     customModels: readJson('models.json', []), // user-added panel seats
   },
+  // The workspace name belongs to whoever runs the house — never a seeded one.
+  _migrateName() { const w = this.state.workspace; if (w && w.name === 'Nagesh Sharma') { w.name = 'Workspace'; this.flushWorkspace(); } },
 
   flushMissions() { writeJson('missions.json', this.state.missions); },
   flushArtifacts() { writeJson('artifacts.json', this.state.artifacts); },
@@ -187,3 +189,4 @@ export const store = {
     return w;
   },
 };
+store._migrateName();
