@@ -861,3 +861,14 @@ voided, and the reason recorded, so recurring spend can never run away.
 The house check gains a standing-orders row that catches an order whose
 ticket is gone or that is overdue by more than an interval; repair pauses
 the orphans. `prajna repeat … --cap N`.
+
+## v0.72: Since last run (2026-09-04)
+
+A version now says what changed against its parent, read straight off
+the two records rather than written by a model: credits settled against
+last time, whether the gate cleared first time or took patches, sources
+added and dropped, dissent carried or not, artifact length, where it was
+delivered, and the notes that drove the change. It sits on the run page
+above the narrative, with a link to the two versions side by side. A
+standing-order run reads it as "what is new this week".
+`GET /api/missions/:id/delta`.

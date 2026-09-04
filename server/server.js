@@ -18,6 +18,7 @@ import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
+import { missionDelta } from './delta.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -517,6 +518,9 @@ async function handle(req, res) {
   if (standingOne && req.method === 'DELETE') return json(res, removeStandingOrder(standingOne[1]) ? 200 : 404, { ok: true });
   if (standingOne && req.method === 'POST' && standingOne[2] === 'pause') { const body = await readBody(req); const o = pauseStandingOrder(standingOne[1], !!body.paused); return o ? json(res, 200, o) : json(res, 404, { error: 'Standing order not found.' }); }
   if (standingOne && req.method === 'POST' && standingOne[2] === 'run') { const o = standingOrders().find((x) => x.id === standingOne[1]); if (!o) return json(res, 404, { error: 'Standing order not found.' }); return json(res, 200, { order: o, run: runOrder(o, standingDeps()) }); }
+
+  const deltaMatch = p.match(/^\/api\/missions\/([\w]+)\/delta$/);
+  if (deltaMatch && req.method === 'GET') { const m = store.mission(deltaMatch[1]); if (!m) return json(res, 404, { error: 'Mission not found.' }); return json(res, 200, { delta: missionDelta(m) }); }
 
   const launchMatch = p.match(/^\/api\/missions\/([\w]+)\/launch$/);
   if (launchMatch && req.method === 'POST') {

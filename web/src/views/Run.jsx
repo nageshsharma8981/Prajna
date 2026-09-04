@@ -249,6 +249,13 @@ export default function Run({ id }) {
   }, [mission]);
   const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
   const [cadence, setCadence] = useState('weekly');
+  const [delta, setDelta] = useState(null);
+  useEffect(() => {
+    if (!mission?.lineage?.parentId) { setDelta(null); return; }
+    let on = true;
+    fetch(`/api/missions/${mission.id}/delta`).then((r) => (r.ok ? r.json() : null)).then((j) => { if (on) setDelta(j?.delta || null); }).catch(() => {});
+    return () => { on = false; };
+  }, [mission?.id, mission?.status, mission?.artifactId]); // eslint-disable-line
   const [cap, setCap] = useState('');
   const amend = async () => {
     setBusy(true); setActionError(null);
@@ -668,6 +675,13 @@ export default function Run({ id }) {
                     <span className="conn-hint">Sends a fresh public link to the apps that delivered before (or any connected app if none did).</span>
                   </div>
                 )}
+              </div>
+            )}
+            {delta && delta.lines.length > 0 && (
+              <div className="narrative delta" role="group" aria-label="Since last run">
+                <span className="k">Since v{delta.parent.version}, <Link to={`/run/${delta.parent.id}`}>{delta.parent.serial}</Link>, this {delta.reason}{delta.done ? '' : ', so far'}</span>
+                <ul>{delta.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+                {delta.done && mission.artifactId && delta.parent.artifactId && <Link className="btn-quiet" style={{ padding: '0.35rem 0.7rem', marginTop: '0.4rem', display: 'inline-block' }} to={`/compare/${delta.parent.artifactId}/${mission.artifactId}`}>See the two versions side by side</Link>}
               </div>
             )}
             {mission.narrative && (
