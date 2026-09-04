@@ -1,4 +1,4 @@
-// Real OAuth 2.0 connections — zero dependencies. Client ids/secrets and the
+// Real OAuth 2.0 connections, zero dependencies. Client ids/secrets and the
 // resulting tokens live ONLY in server memory (never on disk, never sent to
 // the browser), per the house rule: keys are never saved.
 import crypto from 'node:crypto';
@@ -15,7 +15,7 @@ export const OAUTH_PROVIDERS = {
     tokenUrl: 'https://oauth2.googleapis.com/token',
     scopes: ['openid', 'email', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/calendar.readonly'],
     extraAuth: { access_type: 'offline', prompt: 'consent' },
-    console: 'https://console.cloud.google.com/apis/credentials — OAuth client (Web application)',
+    console: 'https://console.cloud.google.com/apis/credentials, OAuth client (Web application)',
     async identity(t) {
       const r = await withTimeout(fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { authorization: `Bearer ${t}` } }), 'Google');
       const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'userinfo failed');
@@ -30,13 +30,13 @@ export const OAUTH_PROVIDERS = {
       if (connector === 'gdrive') {
         const r = await withTimeout(fetch('https://www.googleapis.com/drive/v3/files?pageSize=3&orderBy=modifiedTime%20desc&fields=files(name)', { headers: { authorization: `Bearer ${t}` } }), 'Drive');
         const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'drive failed');
-        return `Drive: latest files — ${(j.files || []).map((f) => f.name).join(' · ') || 'none'}`;
+        return `Drive: latest files, ${(j.files || []).map((f) => f.name).join(' · ') || 'none'}`;
       }
       if (connector === 'gcal') {
         const now = new Date().toISOString();
         const r = await withTimeout(fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=3&singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(now)}`, { headers: { authorization: `Bearer ${t}` } }), 'Calendar');
         const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'calendar failed');
-        return `Calendar: next — ${(j.items || []).map((e) => e.summary).join(' · ') || 'nothing upcoming'}`;
+        return `Calendar: next, ${(j.items || []).map((e) => e.summary).join(' · ') || 'nothing upcoming'}`;
       }
       return `${connector}: connected via Google (scope not read in this desk)`;
     },
@@ -48,7 +48,7 @@ export const OAUTH_PROVIDERS = {
     tokenUrl: 'https://slack.com/api/oauth.v2.access',
     scopes: ['channels:read', 'chat:write', 'users:read'],
     scopeParam: 'scope',
-    console: 'https://api.slack.com/apps — create app, add redirect URL under OAuth & Permissions',
+    console: 'https://api.slack.com/apps, create app, add redirect URL under OAuth & Permissions',
     tokenField: (j) => j.access_token || j.authed_user?.access_token,
     async identity(t) {
       const r = await withTimeout(fetch('https://slack.com/api/auth.test', { method: 'POST', headers: { authorization: `Bearer ${t}` } }), 'Slack');
@@ -58,7 +58,7 @@ export const OAUTH_PROVIDERS = {
     async evidence(t) {
       const r = await withTimeout(fetch('https://slack.com/api/conversations.list?limit=50&exclude_archived=true', { headers: { authorization: `Bearer ${t}` } }), 'Slack');
       const j = await r.json(); if (!j.ok) throw new Error(j.error || 'conversations.list failed');
-      return `Slack: ${(j.channels || []).length} channels reachable — delivery can post to #${(j.channels || [])[0]?.name || 'general'}`;
+      return `Slack: ${(j.channels || []).length} channels reachable, delivery can post to #${(j.channels || [])[0]?.name || 'general'}`;
     },
   },
   notion: {
@@ -69,7 +69,7 @@ export const OAUTH_PROVIDERS = {
     scopes: [],
     extraAuth: { owner: 'user' },
     basicAuth: true,
-    console: 'https://www.notion.so/my-integrations — Public integration, add redirect URI',
+    console: 'https://www.notion.so/my-integrations, Public integration, add redirect URI',
     async identity(t) {
       const r = await withTimeout(fetch('https://api.notion.com/v1/users/me', { headers: { authorization: `Bearer ${t}`, 'Notion-Version': '2022-06-28' } }), 'Notion');
       const j = await r.json(); if (!r.ok) throw new Error(j.message || 'users/me failed');
@@ -79,7 +79,7 @@ export const OAUTH_PROVIDERS = {
       const r = await withTimeout(fetch('https://api.notion.com/v1/search', { method: 'POST', headers: { authorization: `Bearer ${t}`, 'Notion-Version': '2022-06-28', 'content-type': 'application/json' }, body: JSON.stringify({ page_size: 3, sort: { direction: 'descending', timestamp: 'last_edited_time' } }) }), 'Notion');
       const j = await r.json(); if (!r.ok) throw new Error(j.message || 'search failed');
       const titles = (j.results || []).map((p) => p.properties?.title?.title?.[0]?.plain_text || p.properties?.Name?.title?.[0]?.plain_text || p.object).filter(Boolean);
-      return `Notion: recently edited — ${titles.join(' · ') || 'no shared pages yet'}`;
+      return `Notion: recently edited, ${titles.join(' · ') || 'no shared pages yet'}`;
     },
   },
   github: {
@@ -88,7 +88,7 @@ export const OAUTH_PROVIDERS = {
     authUrl: 'https://github.com/login/oauth/authorize',
     tokenUrl: 'https://github.com/login/oauth/access_token',
     scopes: ['read:user', 'repo'],
-    console: 'https://github.com/settings/developers — OAuth App, set callback URL',
+    console: 'https://github.com/settings/developers, OAuth App, set callback URL',
     async identity(t) {
       const r = await withTimeout(fetch('https://api.github.com/user', { headers: { authorization: `Bearer ${t}`, 'user-agent': 'prajna' } }), 'GitHub');
       const j = await r.json(); if (!r.ok) throw new Error(j.message || 'user failed');
@@ -97,7 +97,7 @@ export const OAUTH_PROVIDERS = {
     async evidence(t) {
       const r = await withTimeout(fetch('https://api.github.com/user/repos?sort=pushed&per_page=3', { headers: { authorization: `Bearer ${t}`, 'user-agent': 'prajna' } }), 'GitHub');
       const j = await r.json(); if (!r.ok) throw new Error(j.message || 'repos failed');
-      return `GitHub: recently pushed — ${(j || []).map((x) => x.full_name).join(' · ') || 'none'}`;
+      return `GitHub: recently pushed, ${(j || []).map((x) => x.full_name).join(' · ') || 'none'}`;
     },
   },
 };
@@ -118,7 +118,7 @@ export function startUrl(req, provider) {
   const p = OAUTH_PROVIDERS[provider];
   const app = store.oauthApp(provider);
   if (!p) throw new Error('Unknown provider.');
-  if (!app) throw new Error(`No ${p.label} OAuth app loaded — add its client id and secret under Your keys.`);
+  if (!app) throw new Error(`No ${p.label} OAuth app loaded, add its client id and secret under Your keys.`);
   const state = crypto.randomBytes(16).toString('hex');
   pendingStates.set(state, { provider, at: Date.now() });
   for (const [k, v] of pendingStates) if (Date.now() - v.at > 600000) pendingStates.delete(k);
@@ -137,7 +137,7 @@ export async function finishCallback(req, provider, code, state) {
   const app = store.oauthApp(provider);
   const pend = pendingStates.get(state);
   if (!p || !app) throw new Error('Provider not configured.');
-  if (!pend || pend.provider !== provider) throw new Error('OAuth state mismatch — start the connection again.');
+  if (!pend || pend.provider !== provider) throw new Error('OAuth state mismatch, start the connection again.');
   pendingStates.delete(state);
   const body = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri(req, provider) });
   const headers = { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' };

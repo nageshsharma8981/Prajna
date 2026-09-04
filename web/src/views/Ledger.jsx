@@ -13,7 +13,7 @@ export default function Ledger() {
     <div className="page">
       <h1 className="pg-title">Artifacts</h1>
       <p className="lede">
-        Every mission ends here or it didn't happen. Artifacts are first-class objects —
+        Every mission ends here or it didn't happen. Artifacts are first-class objects,
         downloadable, stamped with exactly how they were made and what they cost, and
         retained even when a review voids them.
       </p>
@@ -24,7 +24,7 @@ export default function Ledger() {
         </div>
         <div className="board-rows">
           {s.artifacts.length === 0 && (
-            <div className="board-empty">Nothing delivered yet. Open a mission — every delivery lands here.</div>
+            <div className="board-empty">Nothing delivered yet. Open a mission, every delivery lands here.</div>
           )}
           {s.artifacts.map((a) => (
             <Link key={a.id} to={`/artifact/${a.id}`} className={`board-row${a.voided ? ' voided' : ''}`}>

@@ -25,11 +25,11 @@ export default function Account({ page }) {
   const save = async (url, body, ok) => { setErr(null); setMsg(null); try { await patch(url, body); setMsg(ok); setForm({}); s.refresh(); } catch (e) { setErr(e.message); } };
   const w = s.workspace;
   const done = s.missions.filter((m) => m.status === 'FILLED').length;
-  // Quality analytics — computed from the ledger, not asserted.
+  // Quality analytics: computed from the ledger, not asserted.
   const filled = s.missions.filter((m) => m.status === 'FILLED');
   const gated = filled.filter((m) => (m.validations || []).length);
   const firstTime = gated.filter((m) => m.validations.length === 1 && m.validations[0].gate?.cleared).length;
-  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '–');
   const patched = filled.filter((m) => (m.patches || []).length).length;
   const risks = filled.reduce((a, m) => a + (m.acceptedRisks || []).length, 0);
   const liveAuthored = filled.filter((m) => m.authored?.live).length;
@@ -65,7 +65,7 @@ export default function Account({ page }) {
           <>
             <h1 className="pg-title">Dashboard</h1>
             {(() => {
-              // What changed in the last seven days — read from the ledger.
+              // What changed in the last seven days, read from the ledger.
               const since = Date.now() - 7 * 86400000;
               const recent = s.missions.filter((m) => (m.createdAt || 0) >= since);
               const delivered = recent.filter((m) => m.status === 'FILLED');
@@ -80,7 +80,7 @@ export default function Account({ page }) {
               return (
                 <div className="digest">
                   <span className="k">What changed · last 7 days</span>
-                  <p>{recent.length ? <>{delivered.length} of {recent.length} missions delivered{desks.length ? <>, most on the {desks[0][0].replace(' desk', '')} desk</> : null}, {spent.toFixed(0)} credits settled. {gatedR.length ? <>{firstR} of {gatedR.length} cleared the gate first time. </> : null}{live ? <>{live} were written by a live seat on your own key. </> : 'None were written by a live seat — load a key to make the lead author real. '}{amended ? <>{amended} were amendments of earlier versions. </> : null}{notes ? <>{notes} note{notes === 1 ? '' : 's'} left on deliveries. </> : null}{shown ? <>{shown} submitted to the community showcase.</> : null}</> : 'No missions in the last seven days. Start one from the home composer.'}</p>
+                  <p>{recent.length ? <>{delivered.length} of {recent.length} missions delivered{desks.length ? <>, most on the {desks[0][0].replace(' desk', '')} desk</> : null}, {spent.toFixed(0)} credits settled. {gatedR.length ? <>{firstR} of {gatedR.length} cleared the gate first time. </> : null}{live ? <>{live} were written by a live model on your own key. </> : 'None were written by a live model, load a key to make the lead author real. '}{amended ? <>{amended} were amendments of earlier versions. </> : null}{notes ? <>{notes} note{notes === 1 ? '' : 's'} left on deliveries. </> : null}{shown ? <>{shown} submitted to the community showcase.</> : null}</> : 'No missions in the last seven days. Start one from the home composer.'}</p>
                 </div>
               );
             })()}
@@ -89,9 +89,9 @@ export default function Account({ page }) {
                 <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>
               ))}
             </div>
-            <h2 className="h2 section-gap">Quality — from the ledger</h2>
+            <h2 className="h2 section-gap">Quality: from the ledger</h2>
             <div className="stat-grid">
-              {[['Gate cleared first time', pct(firstTime, gated.length)], ['Patched before delivery', pct(patched, filled.length)], ['Accepted risks on record', risks], ['Live-authored', pct(liveAuthored, filled.length)], ['Estimate variance', variance == null ? '—' : `${variance >= 0 ? '+' : ''}${Math.round(variance * 100)}%`], ['Saved by your keys', `${savedByKeys.toFixed(0)} cr`]].map(([k, v]) => (
+              {[['Gate cleared first time', pct(firstTime, gated.length)], ['Patched before delivery', pct(patched, filled.length)], ['Accepted risks on record', risks], ['Live-authored', pct(liveAuthored, filled.length)], ['Estimate variance', variance == null ? '–' : `${variance >= 0 ? '+' : ''}${Math.round(variance * 100)}%`], ['Saved by your keys', `${savedByKeys.toFixed(0)} cr`]].map(([k, v]) => (
                 <div key={k} className="stat"><span className="k">{k}</span><span className="v">{v}</span></div>
               ))}
             </div>
@@ -138,7 +138,7 @@ export default function Account({ page }) {
         {p === 'subscription' && (
           <>
             <h1 className="pg-title">Subscription</h1>
-            <div className="digest"><span className="k">What a credit is</span><p>A house credit is the unit every ticket is priced in. The ticket states an estimate and a ceiling (estimate plus a quarter); stamping reserves the ceiling, the run settles what it actually used, and the rest is released. Nothing beyond the ceiling is spent without your decision. Seats on your own keys are priced at zero, so bringing keys lowers every ticket. Every movement is on the credit ledger under Payment &amp; Invoices.</p></div>
+            <div className="digest"><span className="k">What a credit is</span><p>A house credit is the unit every ticket is priced in. The ticket states an estimate and a ceiling (estimate plus a quarter); stamping reserves the ceiling, the run settles what it actually used, and the rest is released. Nothing beyond the ceiling is spent without your decision. Models on your own keys are priced at zero, so bringing keys lowers every ticket. Every movement is on the credit ledger under Payment &amp; Invoices.</p></div>
             <p className="lede">Current plan: <b>{(s.planTiers || []).find((t) => t.id === s.plan)?.name}</b> · {w.credits.toFixed(0)} credits available.</p>
             <div className="plan-grid">
               {(s.planTiers || []).map((t) => (
@@ -146,7 +146,7 @@ export default function Account({ page }) {
                   <b>{t.name}</b><span className="price">{t.price === 0 ? 'Free' : `$${t.price}/mo`}</span>
                   <p>{t.blurb}</p>
                   <ul>{t.features.map((x) => <li key={x}>{x}</li>)}</ul>
-                  {s.plan === t.id ? <span className="toggle-btn on">Current</span> : <button className="btn-stamp attn-btn" onClick={() => save('/api/plan', { plan: t.id }, `Switched to ${t.name}. Demo billing — no payment collected; ${t.credits} credits granted.`)}>{t.price > (s.planTiers.find((x) => x.id === s.plan)?.price || 0) ? 'Upgrade' : 'Switch'}</button>}
+                  {s.plan === t.id ? <span className="toggle-btn on">Current</span> : <button className="btn-stamp attn-btn" onClick={() => save('/api/plan', { plan: t.id }, `Switched to ${t.name}. Demo billing: no payment collected; ${t.credits} credits granted.`)}>{t.price > (s.planTiers.find((x) => x.id === s.plan)?.price || 0) ? 'Upgrade' : 'Switch'}</button>}
                 </article>
               ))}
             </div>
@@ -156,9 +156,9 @@ export default function Account({ page }) {
         {p === 'invoices' && (
           <>
             <h1 className="pg-title">Payment &amp; invoices</h1>
-            <p className="lede">Payment methods and invoices. Billing is in demo mode until a payment provider is wired — nothing is charged.</p>
+            <p className="lede">Payment methods and invoices. Billing is in demo mode until a payment provider is wired, nothing is charged.</p>
             <div className="board section-gap"><div className="board-title"><span className="brd-sm">Top up</span><span className="count">{w.credits.toFixed(0)} cr</span></div>
-              <div className="topup">{[100, 250, 500, 1000, 2500, 5000].map((n) => <button key={n} className="toggle-btn" onClick={async () => { setErr(null); setMsg(null); const r = await fetch('/api/credits/topup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ amount: n }) }); const j = await r.json().catch(() => ({})); if (!r.ok) setErr(j.error || 'Refused.'); else setMsg(`${n} credits added — demo billing, nothing charged. Balance ${j.credits.toFixed(0)} cr.`); s.refresh(); }}>+{n}</button>)}<span className="conn-hint">Demo top-ups: an honest ledger line, no card, no charge.</span></div>
+              <div className="topup">{[100, 250, 500, 1000, 2500, 5000].map((n) => <button key={n} className="toggle-btn" onClick={async () => { setErr(null); setMsg(null); const r = await fetch('/api/credits/topup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ amount: n }) }); const j = await r.json().catch(() => ({})); if (!r.ok) setErr(j.error || 'Refused.'); else setMsg(`${n} credits added, demo billing, nothing charged. Balance ${j.credits.toFixed(0)} cr.`); s.refresh(); }}>+{n}</button>)}<span className="conn-hint">Demo top-ups: an honest ledger line, no card, no charge.</span></div>
             </div>
             <div className="board section-gap"><div className="board-title"><span className="brd-sm">Credit ledger</span><span className="count">{(s.ledger || []).length}</span></div><div className="board-rows">
               {(s.ledger || []).length === 0 && <div className="board-empty">No movements yet. Stamping a ticket reserves its ceiling; closing a run settles and releases.</div>}
@@ -178,9 +178,9 @@ export default function Account({ page }) {
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>KEY</span><span className="what"><b>Keys &amp; models</b><span>Bring your own keys; nothing is ever saved to disk.</span></span><Link to="/keys" className="toggle-btn">Open</Link></div>
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>EXP</span><span className="what"><b>Export your data</b><span>Every mission and artifact, as JSON and HTML.</span></span><a className="toggle-btn" href="/api/bootstrap" target="_blank" rel="noreferrer">Export</a></div>
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>BEL</span><span className="what"><b>Browser notifications</b><span>When a run needs a decision and this tab is in the background, the browser shows a notice. Per browser, stored locally, off by default.</span></span><button className={`toggle-btn${(typeof localStorage !== 'undefined' && localStorage.getItem('prajna-notify') === 'on') ? ' on' : ''}`} onClick={async () => { if (typeof Notification === 'undefined') { setErr('This browser has no notification support.'); return; } const on = localStorage.getItem('prajna-notify') === 'on'; if (on) { localStorage.setItem('prajna-notify', 'off'); setMsg('Notifications off.'); } else { const perm = await Notification.requestPermission(); if (perm === 'granted') { localStorage.setItem('prajna-notify', 'on'); setMsg('Notifications on for this browser.'); } else setErr('The browser refused notification permission.'); } s.refresh(); }}>{(typeof localStorage !== 'undefined' && localStorage.getItem('prajna-notify') === 'on') ? 'On' : 'Off'}</button></div>
-              <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>DIG</span><span className="what"><b>Daily digest by email</b><span>The last 24 hours in plain words from the ledger, sent through your own connected Google account to {s.profile.email || 'the email on your profile'}. Every morning at 08:00 UTC while the server holds a Google token; tokens never leave memory, so a restart means reconnecting.</span></span><span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}><button className="toggle-btn" onClick={async () => { const r = await fetch('/api/digest'); const j = await r.json(); setMsg(j.text); }}>Preview</button><button className="toggle-btn" onClick={async () => { setErr(null); setMsg(null); const r = await fetch('/api/digest/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); const j = await r.json().catch(() => ({})); if (!r.ok) setErr(j.error || 'Refused.'); else setMsg(`Digest sent to ${j.to} from ${j.from}.`); }}>Send now</button><button className={`toggle-btn${s.personalization.digestEmail ? ' on' : ''}`} onClick={() => save('/api/personalization', { digestEmail: !s.personalization.digestEmail }, s.personalization.digestEmail ? 'Morning digest off.' : 'Morning digest on — sends while a Google token is in memory.')}>{s.personalization.digestEmail ? 'Every morning: on' : 'Every morning: off'}</button></span></div>
+              <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>DIG</span><span className="what"><b>Daily digest by email</b><span>The last 24 hours in plain words from the ledger, sent through your own connected Google account to {s.profile.email || 'the email on your profile'}. Every morning at 08:00 UTC while the server holds a Google token; tokens never leave memory, so a restart means reconnecting.</span></span><span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}><button className="toggle-btn" onClick={async () => { const r = await fetch('/api/digest'); const j = await r.json(); setMsg(j.text); }}>Preview</button><button className="toggle-btn" onClick={async () => { setErr(null); setMsg(null); const r = await fetch('/api/digest/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); const j = await r.json().catch(() => ({})); if (!r.ok) setErr(j.error || 'Refused.'); else setMsg(`Digest sent to ${j.to} from ${j.from}.`); }}>Send now</button><button className={`toggle-btn${s.personalization.digestEmail ? ' on' : ''}`} onClick={() => save('/api/personalization', { digestEmail: !s.personalization.digestEmail }, s.personalization.digestEmail ? 'Morning digest off.' : 'Morning digest on, sends while a Google token is in memory.')}>{s.personalization.digestEmail ? 'Every morning: on' : 'Every morning: off'}</button></span></div>
               <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>STA</span><span className="what"><b>Status page</b><span>Public, never secret: uptime, live and paused runs, last delivery, data directory health. Machine-readable at /api/health.</span></span><a className="toggle-btn" href="/status" target="_blank" rel="noreferrer">Open</a></div>
-              <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>THM</span><span className="what"><b>Theme</b><span>Night hall or day desk — the toggle is at the top right.</span></span></div>
+              <div className="board-row" style={{ cursor: 'default' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>THM</span><span className="what"><b>Theme</b><span>Night hall or day desk, the toggle is at the top right.</span></span></div>
             </div></div>
           </>
         )}
@@ -195,14 +195,14 @@ export default function Account({ page }) {
                 <div><span className="k">Does</span><ul>
                   <li>Writes a contract before anything runs: plan, estimate, ceiling, assertions, and why.</li>
                   <li>Runs website, mobile, deck, research and analysis missions with every step, cost and panel position on the tape.</li>
-                  <li>With your own key, the lead seat writes the substance; advisers critique it; figures must trace to a source.</li>
+                  <li>With your own key, the lead model writes the substance; advisers critique it; figures must trace to a source.</li>
                   <li>Retrieves real sources (encyclopedia; the live web with a Brave key) and reads your text attachments as evidence.</li>
                   <li>Gates every delivery with two validator lanes, brings decisions to you with a justification on the record, and settles credits against the estimate.</li>
                   <li>Delivers artifacts with provenance, notes, versions, comparisons, public share links and a full audit bundle.</li>
                   <li>Streams chat, starts missions from conversation, and answers questions about a run from its record.</li>
                 </ul></div>
                 <div><span className="k">Does not, yet</span><ul>
-                  <li>Without a key, the substance of every delivery is house-scripted sample material — labelled, never hidden.</li>
+                  <li>Without a key, the substance of every delivery is house-scripted sample material, labelled, never hidden.</li>
                   <li>Charts plot sample series unless you attach a CSV to an analysis mission; data connectors (Sheets, Stripe) are not wired yet.</li>
                   <li>Video generation on hosted models is not wired; images are, on your OpenAI or Google key.</li>
                   <li>Billing is demo: top-ups and plans are ledger lines, nothing is charged.</li>
@@ -213,7 +213,7 @@ export default function Account({ page }) {
               </div>
             </section>
             <div className="board section-gap"><div className="board-rows">
-              {[['Release notes', 'Every version the house has shipped, newest first.', '/releases'], ['First-run welcome', 'The three steps and the one-minute sample, again.', '/?welcome=1'], ['How missions work', 'State an outcome → the house writes a ticket → it runs in the open → a validated artifact is delivered.', '/missions'], ['Bring your own keys', 'Load a provider key to make panel seats live. Keys are never saved.', '/keys'], ['Connect apps', 'Register a provider OAuth app, then Connect from the catalog.', '/connectors'], ['Boards', 'See every mission on a Kanban and each plan as a task map.', '/boards']].map(([t, d, to]) => (
+              {[['Release notes', 'Every version the house has shipped, newest first.', '/releases'], ['First-run welcome', 'The three steps and the one-minute sample, again.', '/?welcome=1'], ['How missions work', 'State an outcome → the house writes a ticket → it runs in the open → a validated artifact is delivered.', '/missions'], ['Bring your own keys', 'Load a provider key to make panel models live. Keys are never saved.', '/keys'], ['Connect apps', 'Register a provider OAuth app, then Connect from the catalog.', '/connectors'], ['Boards', 'See every mission on a Kanban and each plan as a task map.', '/boards']].map(([t, d, to]) => (
                 <Link key={t} to={to} className="board-row"><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>?</span><span className="what"><b>{t}</b><span>{d}</span></span></Link>
               ))}
             </div></div>

@@ -1,12 +1,12 @@
 // Media studio: images and short motion pieces generated LOCALLY (procedural
-// SVG from your prompt — real output, no invented provider), with the hosted
+// SVG from your prompt, real output, no invented provider), with the hosted
 // model picker ready for when a media key is loaded.
 import { useMemo, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
-const IMAGE_MODELS = [{ name: 'House procedural (local)', provider: null }, { name: 'GPT Image — your OpenAI key', provider: 'openai', modelId: 'gpt-image-1' }, { name: 'Gemini image — your Google key', provider: 'google', modelId: 'gemini-2.5-flash-image' }];
-const VIDEO_MODELS = [{ name: 'House motion (local, SVG)', provider: null }, { name: 'Veo — not wired yet', provider: 'veo' }];
+const IMAGE_MODELS = [{ name: 'House procedural (local)', provider: null }, { name: 'GPT Image: your OpenAI key', provider: 'openai', modelId: 'gpt-image-1' }, { name: 'Gemini image: your Google key', provider: 'google', modelId: 'gemini-2.5-flash-image' }];
+const VIDEO_MODELS = [{ name: 'House motion (local, SVG)', provider: null }, { name: 'Veo: not wired yet', provider: 'veo' }];
 const STYLES = ['Poster', 'Infographic', 'Abstract', 'Storyboard'];
 
 function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -51,10 +51,10 @@ export default function Media() {
     const m = models[model];
     setErr(null);
     if (!m.provider) { setHosted(null); setOuts([{ prompt, style, motion: tab === 'video', at: Date.now() }, ...outs].slice(0, 6)); return; }
-    if (m.provider === 'veo') { setErr('Video generation on hosted models is not wired yet — the local motion engine is the honest option today.'); return; }
+    if (m.provider === 'veo') { setErr('Video generation on hosted models is not wired yet, the local motion engine is the honest option today.'); return; }
     setBusy(true);
     try {
-      const r = await fetch('/api/media/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: `${prompt}${style ? ` — ${style.toLowerCase()} style` : ''}`, provider: m.provider, modelId: m.modelId }) });
+      const r = await fetch('/api/media/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: `${prompt}${style ? `, ${style.toLowerCase()} style` : ''}`, provider: m.provider, modelId: m.modelId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Refused.');
       setHosted(j); s.refresh();
@@ -64,7 +64,7 @@ export default function Media() {
   return (
     <div className="page">
       <h1 className="pg-title">Media studio</h1>
-      <p className="lede">Images and motion pieces from a prompt. The house engine generates locally — real output, no invented provider. Load a media-capable key under <Link to="/keys">Your keys</Link> to route to hosted models.</p>
+      <p className="lede">Images and motion pieces from a prompt. The house engine generates locally, real output, no invented provider. Load a media-capable key under <Link to="/keys">Your keys</Link> to route to hosted models.</p>
       {!enabled && <p role="status" className="soft-banner">Media Generation is switched off under <Link to="/tools">Tools</Link>. You can still preview here; enable it to attach media to missions.</p>}
       <nav className="tabs-row" aria-label="Media type"><button className={`tab-link${tab === 'image' ? ' on' : ''}`} onClick={() => setTab('image')}>Images</button><button className={`tab-link${tab === 'video' ? ' on' : ''}`} onClick={() => setTab('video')}>Video</button></nav>
       <div className="media-grid section-gap">
@@ -72,7 +72,7 @@ export default function Media() {
           <textarea className="goal-input" rows={3} placeholder={tab === 'image' ? 'A poster for a night market under paper lanterns…' : 'Slow drift over an amber city grid at dusk…'} value={prompt} onChange={(e) => setPrompt(e.target.value)} aria-label="Media prompt" />
           <div className="samples">{STYLES.map((x) => <button key={x} className={`sample-chip${style === x ? ' on' : ''}`} onClick={() => setStyle(x)}>{x}</button>)}</div>
           <label className="lbl">Model<select className="key-input" value={model} onChange={(e) => setModel(Number(e.target.value))}>{models.map((m, i) => <option key={m.name} value={i}>{m.name}{m.provider && m.provider !== 'veo' ? (keyed(m.provider) ? ' · key loaded' : ' · no key') : ''}</option>)}</select></label>
-          {model > 0 && models[model].provider !== 'veo' && !keyed(models[model].provider) && <p className="conn-note">This model needs a {models[model].provider === 'openai' ? 'OpenAI' : 'Google'} key under <Link to="/keys">Your keys</Link>. Nothing is generated until one is loaded — no silent fallback.</p>}
+          {model > 0 && models[model].provider !== 'veo' && !keyed(models[model].provider) && <p className="conn-note">This model needs a {models[model].provider === 'openai' ? 'OpenAI' : 'Google'} key under <Link to="/keys">Your keys</Link>. Nothing is generated until one is loaded, no silent fallback.</p>}
           {err && <p role="alert" className="key-err">{err}</p>}
           <button className="btn-stamp" onClick={make} disabled={!prompt.trim() || busy}>{busy ? 'Generating…' : 'Generate'}</button>
         </div>

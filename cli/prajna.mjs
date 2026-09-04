@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Prajñā CLI — the outcome exchange from a terminal. Zero dependencies.
+// Prajñā CLI: the outcome exchange from a terminal. Zero dependencies.
 //
 //   prajna login <workspace-url> [--code <access-code>]
 //   prajna run <website|mobile|deck|research|analysis> "<goal>" [--fast] [--design] [--auto] [--out dir]
@@ -12,7 +12,7 @@
 //   prajna sweep [--minutes 60] [--apply]   void stale tickets, stop runs stuck on a decision
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
-// the server minted — never the access code, never a provider key).
+// the server minted, never the access code, never a provider key).
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -97,7 +97,7 @@ async function run() {
         if (!why) why = 'no justification given at the CLI';
       }
       await post(cfg, `/api/missions/${mid}/attention/${pending.id}`, { decision, justification: why });
-      console.log(`   ${amber('decided')} ${decision} — ${why}`);
+      console.log(`   ${amber('decided')} ${decision}, ${why}`);
     }
     if (m.status === 'FILLED' || m.status === 'KILLED') {
       console.log(bold(`\n${m.status}`), `· ${m.spent} cr spent`);
@@ -169,7 +169,7 @@ async function sweep() {
   console.log(bold(`Older than ${r.minutes} min:`), `${r.stale.length} unstamped ticket(s), ${r.stuck.length} run(s) paused on a decision`);
   for (const m of r.stale) console.log(`   ${dim('stale')} ${m.serial}  ${m.subject}`);
   for (const m of r.stuck) console.log(`   ${amber('stuck')} ${m.serial}  ${m.subject} ${dim(m.kind)}`);
-  console.log(r.dryRun ? dim('Dry run — add --apply to void and stop them (reserves released, all on the tape).') : green(r.note));
+  console.log(r.dryRun ? dim('Dry run: add --apply to void and stop them (reserves released, all on the tape).') : green(r.note));
 }
 const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }

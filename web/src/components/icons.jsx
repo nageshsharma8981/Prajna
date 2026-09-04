@@ -1,4 +1,4 @@
-// Prajñā icon set — drawn in the world's own grammar: 1.6px strokes, square
+// Prajñā icon set, drawn in the world's own grammar: 1.6px strokes, square
 // joints, board-and-ticket motifs. One consistent weight throughout.
 const I = ({ children, ...p }) => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square" width="17" height="17" aria-hidden="true" {...p}>

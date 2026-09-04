@@ -40,7 +40,7 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
         </ol>
         {mission.contract.assertions?.length > 0 && (
           <div className="dod">
-            <span className="k">Definition of done — {mission.contract.assertions.length} testable promises, each owned by one step, proven by two independent validator lanes before the gate seals them</span>
+            <span className="k">Definition of done, {mission.contract.assertions.length} testable promises, each owned by one step, proven by two independent validator lanes before the gate seals them</span>
             <ul>
               {mission.contract.assertions.map((a) => (
                 <li key={a.id}><code>{a.id}</code> {a.title} <span className="own">· owner {a.owner.replace('s', 'step ')}</span></li>
@@ -49,7 +49,7 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
           </div>
         )}
         {mission.contract.access?.external > 0 && (
-          <p className="ticket-note">{mission.contract.access.external} step{mission.contract.access.external > 1 ? 's' : ''} act outside the workspace — each one holds for your signed approval before it runs.</p>
+          <p className="ticket-note">{mission.contract.access.external} step{mission.contract.access.external > 1 ? 's' : ''} act outside the workspace, each one holds for your signed approval before it runs.</p>
         )}
         {mission.lineage && <p className="ticket-note">Amends {mission.lineage.parentSerial} → this delivery becomes v{mission.lineage.version}.</p>}
         <div className="ticket-tally">
@@ -166,7 +166,7 @@ export default function Floor() {
     setAdvisers((prev) => {
       if (prev.includes(id)) return prev.filter((a) => a !== id);
       if (prev.length >= MAX_ADVISERS) {
-        setCouncilNote(`The panel seats ${MAX_ADVISERS} advisers plus the lead — unseat one before adding another.`);
+        setCouncilNote(`The panel models ${MAX_ADVISERS} advisers plus the lead, unseat one before adding another.`);
         return prev;
       }
       return [...prev, id];
@@ -218,7 +218,7 @@ export default function Floor() {
     }
   };
 
-  // Desk picker: a real radio group — arrow keys move, one tab stop.
+  // Desk picker: a real radio group, arrow keys move, one tab stop.
   const onDeskKey = (e, idx) => {
     const n = s.desks.length;
     let next = null;
@@ -238,19 +238,19 @@ export default function Floor() {
   return (
     <div className="page">
       {s.error && (
-        <p role="status" className="soft-banner">Live updates paused — the server is unreachable ({s.error}). Your work here is kept.</p>
+        <p role="status" className="soft-banner">Live updates paused, the server is unreachable ({s.error}). Your work here is kept.</p>
       )}
       <h1 className="pg-title">Open a mission</h1>
       <p className="lede">
-        State the outcome you want. The house writes a ticket — the plan and the price —
+        State the outcome you want. The house writes a ticket, the plan and the price,
         before a single credit is spent. Nothing runs until you stamp it.
       </p>
       <Housekeeping />
 
       {!ticket && (
-        <section className="orderpad fade-up" aria-label="Order pad">
+        <section className="orderpad fade-up" aria-label="Write a ticket">
           <div className="orderpad-head">
-            <span className="brd-sm">Order pad</span>
+            <span className="brd-sm">Write a ticket</span>
             <span className="brd-sm" style={{ color: 'var(--bone-faint)' }}>{desk?.deliverable}</span>
           </div>
           <div className="orderpad-body">
@@ -283,14 +283,13 @@ export default function Floor() {
                   onClick={() => setDeskId(d.id)}
                   onKeyDown={(e) => onDeskKey(e, i)}
                 >
-                  <span className="code">{d.code} · {d.deliverable.toUpperCase()}</span>
-                  <span className="nm" style={{ display: 'block' }}>{d.name}</span>
+                  <span className="nm" style={{ display: 'block' }}>{d.deliverable}</span>
                   <span className="dl">{d.blurb}</span>
                 </button>
               ))}
             </div>
             <div className="council-row">
-              <span className="lbl" id="council-label">The panel — tap a model to seat it as adviser; use its Lead button to make it lead</span>
+              <span className="lbl" id="council-label">The panel: tap a model to add it as an adviser; use its Lead button to make it the lead</span>
               <div className="council-chips" role="group" aria-labelledby="council-label">
                 {s.models.map((m) => {
                   const isLead = lead === m.id;
@@ -302,12 +301,12 @@ export default function Floor() {
                         onClick={() => toggleAdviser(m.id)}
                         aria-pressed={isAdv}
                         disabled={isLead}
-                        aria-label={isLead ? `${m.name} is the lead` : `${m.name} — ${isAdv ? 'seated as adviser; press to unseat' : 'not seated; press to seat as adviser'}`}
+                        aria-label={isLead ? `${m.name} is the lead` : `${m.name}, ${isAdv ? 'adviser; press to remove' : 'not on the panel; press to add as adviser'}`}
                         title={m.role}
                       >
                         <span className="sym" aria-hidden="true">{m.symbol}</span>
                         <span className="nm">{m.name}</span>
-                        {m.live && <span className="live-dot" title="Live — runs on your key" aria-label="live on your key" />}
+                        {m.live && <span className="live-dot" title="Live: runs on your key" aria-label="live on your key" />}
                       </button>
                       {isLead ? (
                         <span className="tag">Lead</span>
@@ -319,7 +318,7 @@ export default function Floor() {
                 })}
               </div>
               <span className="council-note" role="status">
-                {councilNote || `${1 + advisers.length} seats · lead synthesizes, advisers challenge, dissent is recorded — never erased.${s.models.some((m) => m.live) ? ' Seats with a green dot run live on your keys.' : ''}`}
+                {councilNote || `${1 + advisers.length} models · lead synthesizes, advisers challenge, dissent is recorded, never erased.${s.models.some((m) => m.live) ? ' Models with a green dot run live on your keys.' : ''}`}
               </span>
             </div>
           </div>
@@ -366,7 +365,7 @@ export default function Floor() {
           <span className="count">{delivered.length}</span>
         </div>
         <div className="board-rows">
-          {delivered.length === 0 && <div className="board-empty">Nothing delivered yet — the first finished mission lands here.</div>}
+          {delivered.length === 0 && <div className="board-empty">Nothing delivered yet, the first finished mission lands here.</div>}
           {delivered.map((m) => (
             <Link key={m.id} to={m.artifactId ? `/artifact/${m.artifactId}` : `/run/${m.id}`} className="board-row">
               <span className={`sym tint-${m.tint}`}>{m.serial}</span>

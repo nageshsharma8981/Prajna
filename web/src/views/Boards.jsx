@@ -50,7 +50,7 @@ export default function Boards() {
           return (
             <div key={title} className="kcol">
               <div className="kcol-head"><span className="brd-sm">{title}</span><span className="count">{items.length}</span></div>
-              {items.length === 0 && <div className="kempty">—</div>}
+              {items.length === 0 && <div className="kempty">, </div>}
               {items.map((m) => (
                 <button key={m.id} className={`kcard tint-${m.tint}${mission?.id === m.id ? ' on' : ''}`} onClick={() => setSel(m.id)}>
                   <span className="sym">{m.serial}</span>
@@ -64,7 +64,7 @@ export default function Boards() {
       </div>
       {mission && (
         <section className="board section-gap" aria-label="Task map">
-          <div className="board-title"><span className="brd-sm">Task map — {mission.serial}</span><Link to={`/run/${mission.id}`} className="btn-quiet" style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem' }}>Open tape</Link></div>
+          <div className="board-title"><span className="brd-sm">Task map: {mission.serial}</span><Link to={`/run/${mission.id}`} className="btn-quiet" style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem' }}>Open tape</Link></div>
           <TaskMap mission={mission} />
         </section>
       )}

@@ -1,4 +1,4 @@
-// Artifact generators. Every mission ends in one of these — a standalone,
+// Artifact generators. Every mission ends in one of these, a standalone,
 // self-contained HTML document with its own editorial design and a provenance
 // footer. Demo-mode content is authored at full fidelity and labeled synthetic
 // here (not fabricated commercial claims: all figures are marked illustrative).
@@ -17,7 +17,7 @@ export function subjectOf(goal) {
 }
 
 // Machine-readable provenance: a schema'd JSON block plus a rendered panel.
-// Honest by construction — mode says "scripted" until real model calls land.
+// Honest by construction, mode says "scripted" until real model calls land.
 function provenanceObject(mission) {
   return {
     schema: 'prajna.provenance.v1',
@@ -65,11 +65,11 @@ function provenanceObject(mission) {
 
 export function partialBanner(mission) {
   if (mission.voided) {
-    return `<div class="partial-banner">ARTIFACT VOIDED on terminal review — retained for audit only. The gap that voided it is recorded in the provenance block below.</div>`;
+    return `<div class="partial-banner">ARTIFACT VOIDED on terminal review, retained for audit only. The gap that voided it is recorded in the provenance block below.</div>`;
   }
   if (!mission.partial) return '';
   const filled = mission.contract.plan.filter((p) => p.status === 'FILLED').length;
-  return `<div class="partial-banner">PARTIAL ARTIFACT — the run ended at step ${Math.min(filled + 1, mission.contract.plan.length)} of ${mission.contract.plan.length}. Completed work only; the contract's "always an artifact" clause applied.</div>`;
+  return `<div class="partial-banner">PARTIAL ARTIFACT: the run ended at step ${Math.min(filled + 1, mission.contract.plan.length)} of ${mission.contract.plan.length}. Completed work only; the contract's "always an artifact" clause applied.</div>`;
 }
 
 function provenance(mission) {
@@ -80,10 +80,10 @@ function provenance(mission) {
     ? `${prov.gate.cleared ? 'cleared' : 'NOT cleared'} · ${prov.gate.rows.length} votes across ${prov.contract.dimensions.length} dimensions`
     : 'not reached';
   const reviewLine = prov.review
-    ? (prov.review.verdict === 'pass' ? 'pass — no gaps' : `${prov.review.gaps.length} gap(s): ${prov.review.gaps.map((g) => g.id).join(', ')}`)
+    ? (prov.review.verdict === 'pass' ? 'pass, no gaps' : `${prov.review.gaps.length} gap(s): ${prov.review.gaps.map((g) => g.id).join(', ')}`)
     : 'not reached';
   const decisions = prov.decisions.length
-    ? prov.decisions.map((d) => `<li><strong>${esc(d.kind)}</strong> → ${esc(d.decision)} — “${esc(d.justification)}”</li>`).join('')
+    ? prov.decisions.map((d) => `<li><strong>${esc(d.kind)}</strong> → ${esc(d.decision)}, “${esc(d.justification)}”</li>`).join('')
     : '<li>none required</li>';
   return `
   <footer class="prov">
@@ -95,13 +95,13 @@ function provenance(mission) {
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <div class="prov-row"><span>Definition of done</span><strong>${prov.assertions.length ? `${prov.assertions.filter((a) => a.status === 'SEALED').length}/${prov.assertions.length} assertions sealed by two independent validator lanes${prov.validation.acceptedRisks.length ? ` · ${prov.validation.acceptedRisks.length} accepted risk` : ''}${prov.validation.patches.length ? ` · patched: ${prov.validation.patches.join(', ')}` : ''}` : 'no assertions recorded'}</strong></div>
     <div class="prov-row"><span>Plan vs actual</span><strong>${prov.planVsActual.planned} planned · ${prov.planVsActual.done} done${prov.planVsActual.skipped.length ? ` · ${prov.planVsActual.skipped.length} skipped on the record` : ''}${prov.planVsActual.notReached ? ` · ${prov.planVsActual.notReached} not reached` : ''}${prov.access ? ` · access: ${prov.access.read} read / ${prov.access.write} write / ${prov.access.external} external` : ''}</strong></div>
-    ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version} — supersedes ${esc(prov.lineage.parentSerial)}${prov.lineage.feedback.length ? ` · written against ${prov.lineage.feedback.length} owner note(s)` : ''}</strong></div>` : ''}
-    ${prov.lineage && prov.lineage.feedback.length ? `<div class="prov-row"><span>Owner notes</span><strong>${prov.lineage.feedback.map((f) => esc(f)).join(' · ')}${prov.mode === 'live' ? '' : ' — scripted substance cannot act on notes; they are recorded, not applied'}</strong></div>` : ''}
-    <details><summary>Provenance — how this was made</summary><ol>${steps}</ol>
-    <p><strong>Definition of done — assertion verdicts:</strong></p><ul>${prov.assertions.map((a) => `<li><strong>${esc(a.id)}</strong> ${esc(a.title)} — <em>${esc(a.status.toLowerCase())}</em> (owner ${esc(a.owner)})</li>`).join('') || '<li>none</li>'}</ul>
+    ${prov.lineage ? `<div class="prov-row"><span>Lineage</span><strong>v${prov.lineage.version}, supersedes ${esc(prov.lineage.parentSerial)}${prov.lineage.feedback.length ? ` · written against ${prov.lineage.feedback.length} owner note(s)` : ''}</strong></div>` : ''}
+    ${prov.lineage && prov.lineage.feedback.length ? `<div class="prov-row"><span>Owner notes</span><strong>${prov.lineage.feedback.map((f) => esc(f)).join(' · ')}${prov.mode === 'live' ? '' : ', scripted substance cannot act on notes; they are recorded, not applied'}</strong></div>` : ''}
+    <details><summary>Provenance: how this was made</summary><ol>${steps}</ol>
+    <p><strong>Definition of done, assertion verdicts:</strong></p><ul>${prov.assertions.map((a) => `<li><strong>${esc(a.id)}</strong> ${esc(a.title)}, <em>${esc(a.status.toLowerCase())}</em> (owner ${esc(a.owner)})</li>`).join('') || '<li>none</li>'}</ul>
     <p><strong>Human decisions on the record:</strong></p><ul>${decisions}</ul>
     ${prov.planVsActual.skipped.length ? `<p><strong>Skipped by decision:</strong> ${prov.planVsActual.skipped.map(esc).join('; ')}</p>` : ''}
-    <p class="note">${prov.mode === 'live' ? `Live run: the substance of this deliverable was written by ${esc(prov.authored.model)} on your own key at the authoring step; the house laid it out, two validator lanes gated it, and any panel positions marked live were real calls. Figures and charts remain illustrative until a connector supplies real data.` : prov.mode === 'hybrid' ? 'Hybrid run: panel positions from seats marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
+    <p class="note">${prov.mode === 'live' ? `Live run: the substance of this deliverable was written by ${esc(prov.authored.model)} on your own key at the authoring step; the house laid it out, two validator lanes gated it, and any panel positions marked live were real calls. Figures and charts remain illustrative until a connector supplies real data.` : prov.mode === 'hybrid' ? 'Hybrid run: panel positions from models marked live were real model calls on your own keys; tools and figures remain scripted, illustrative sample data.' : 'Demonstration run (mode: scripted): figures and sources are illustrative sample data, marked throughout.'} The machine-readable record below is the audit object.</p></details>
   </footer>
   <script type="application/json" id="prajna-provenance">${JSON.stringify(prov, null, 1).replace(/</g, '\\u003c')}</script>`;
 }
@@ -125,7 +125,7 @@ export function briefArtifact(mission) {
   const A = authored(mission);
   const today = new Date().toISOString().slice(0, 10);
   const R = mission.sources || [];
-  const SOURCES = A ? Object.fromEntries(A.claims.slice(0, 5).map((c, i) => { const r = R[Number(c.src) - 1]; return [`src-${i + 1}`, r ? { title: r.title, url: r.url, kind: r.kind, retrieved: r.retrieved } : { title: str(c.source?.title, 'Source class stated by the lead model — not retrieved'), kind: str(c.source?.kind, 'analysis'), retrieved: today }]; })) : {
+  const SOURCES = A ? Object.fromEntries(A.claims.slice(0, 5).map((c, i) => { const r = R[Number(c.src) - 1]; return [`src-${i + 1}`, r ? { title: r.title, url: r.url, kind: r.kind, retrieved: r.retrieved } : { title: str(c.source?.title, 'Source class stated by the lead model, not retrieved'), kind: str(c.source?.kind, 'analysis'), retrieved: today }]; })) : {
     'src-1': { title: 'Sector regulatory filing digest (sample)', kind: 'primary', retrieved: '2026-09-03' },
     'src-2': { title: 'Independent market-size analysis, methodology visible (sample)', kind: 'analysis', retrieved: '2026-09-03' },
     'src-3': { title: 'Incumbent annual report, segment notes (sample)', kind: 'primary', retrieved: '2026-09-03' },
@@ -135,7 +135,7 @@ export function briefArtifact(mission) {
   const CLAIMS = A ? A.claims.slice(0, 5).map((c, i) => ({ text: str(c.text, 'Claim'), grade: /^[ABC]$/.test(c.grade) ? c.grade : 'C', ref: `src-${i + 1}`, snippet: str(c.detail).slice(0, 140), detail: str(c.detail) })) : [
     { text: 'The demand signal is real but younger than the headlines imply.', grade: 'A', ref: 'src-1', snippet: 'primary indicators point the same direction across independent sources; the disagreement is about slope, not sign', detail: 'Primary indicators point the same direction across independent sources; the disagreement is about slope, not sign.' },
     { text: 'The economics clear the bar only in the focused segment.', grade: 'B', ref: 'src-2', snippet: 'unit economics in the broad market remain marginal; the narrow segment clears the threshold', detail: 'Unit economics in the broad market remain marginal; in the narrow segment identified in §3 they clear the threshold with room to spare.' },
-    { text: 'Incumbents are structurally slow here.', grade: 'B', ref: 'src-3', snippet: 'the capability is organizationally expensive for incumbents to build', detail: 'The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite — the panel’s median estimate is 18–30 months.' },
+    { text: 'Incumbents are structurally slow here.', grade: 'B', ref: 'src-3', snippet: 'the capability is organizationally expensive for incumbents to build', detail: 'The capability that matters is organizationally expensive for incumbents to build; the window is real but not indefinite, the panel’s median estimate is 18–30 months.' },
   ];
   for (const c of CLAIMS) {
     if (!c.ref || !SOURCES[c.ref]) throw new Error(`Artifact build refused: claim "${c.text.slice(0, 40)}…" has no registered source ref.`);
@@ -148,7 +148,7 @@ export function briefArtifact(mission) {
   }).join('\n');
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t} — Decision Brief</title>
+<title>${t}, Decision Brief</title>
 <style>
 :root{--ink:#1b1b18;--paper:#fbfaf7;--accent:#8a4b13;--rule:#d9d4c8}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);
@@ -180,13 +180,13 @@ ${PROV_CSS}
 ${A ? esc(A.verdict) : 'The panel recommends a <strong>staged commitment</strong>: enter with a narrow, reversible first move within two quarters, gated on the two signals in §4. A full commitment now outruns the evidence; standing still concedes the window.'}</div>
 
 <h2>1 · What the evidence supports</h2>
-<p>Three findings survived cross-examination by the full council. Every claim carries its source ref — a claim without one cannot ship:</p>
+<p>Three findings survived cross-examination by the full council. Every claim carries its source ref, a claim without one cannot ship:</p>
 ${claimsHtml}
 
 <h2>2 · What the evidence does not support</h2>
 ${A && Array.isArray(A.refuted) && A.refuted.length ? `<p>Claims commonly made that did not survive grading: ${A.refuted.slice(0, 4).map((r) => `${esc(str(r))}<span class="grade gC">C</span>`).join(', ')}. The brief refuses them as planning assumptions.</p>` : '<p>Claims commonly made in this space that did not survive grading: that the market is winner-take-all<span class="grade gC">C</span>, that regulation will remain favorable by default<span class="grade gC">C</span>, and that early entrants hold durable data advantages<span class="grade gC">C</span>. Each rests on analogy rather than measurement. The brief refuses them as planning assumptions.</p>'}
 
-${mission.data && mission.data.series ? `<h2>2b · Data on the table — ${esc(mission.data.name)}</h2>
+${mission.data && mission.data.series ? `<h2>2b · Data on the table, ${esc(mission.data.name)}</h2>
 <p>${mission.data.rows} rows, ${mission.data.columns.length} columns, attached by the owner. ${esc(mission.data.series.column)}${mission.data.series.labelColumn ? ` by ${esc(mission.data.series.labelColumn)}` : ''}: sum ${mission.data.stats.sum}, mean ${mission.data.stats.mean}, range ${mission.data.stats.min}–${mission.data.stats.max}.${mission.data.segments ? ` By ${esc(mission.data.segments.column)}: ${mission.data.segments.items.map((s) => `${esc(s.name)} ${s.value}`).join(', ')}.` : ''} Parsed, not verified; figures in this brief that trace to it are marked as owner data.</p>
 <table><thead><tr><th>${esc(mission.data.series.labelColumn || '#')}</th><th>${esc(mission.data.series.column)}</th></tr></thead><tbody>
 ${mission.data.series.points.slice(0, 12).map((p, i) => `<tr><td>${esc(p.label || String(i + 1))}</td><td>${p.value}</td></tr>`).join('')}
@@ -197,26 +197,26 @@ ${mission.data.series.points.length > 12 ? `<tr><td colspan="2">… ${mission.da
 <table><thead><tr><th>Move</th><th>Commitment</th><th>Reversibility</th><th>What it buys</th></tr></thead><tbody>
 ${A && Array.isArray(A.moves) && A.moves.length ? A.moves.slice(0, 4).map((mv) => `<tr><td>${esc(str(mv.move))}</td><td>${esc(str(mv.commitment))}</td><td>${esc(str(mv.reversibility))}</td><td>${esc(str(mv.buys))}</td></tr>`).join('\n') : `<tr><td>Focused pilot in the identified segment</td><td>Small, time-boxed</td><td>High</td><td>Direct demand measurement, not survey proxy</td></tr>
 <tr><td>Partnership before build</td><td>Contractual only</td><td>High</td><td>Distribution learning at near-zero capex</td></tr>
-<tr><td>Full build-out</td><td>Large</td><td>Low</td><td>Deferred — gated on §4 signals</td></tr>`}
+<tr><td>Full build-out</td><td>Large</td><td>Low</td><td>Deferred: gated on §4 signals</td></tr>`}
 </tbody></table>
 
-<h2>4 · Tripwires — when to change your mind</h2>
-${A ? `<p>${esc(str(A.tripwires, 'Tripwires were not stated by the lead model — treat the recommendation as unconditional at your own risk.'))}</p>` : '<p>Commit further only when <strong>both</strong> hold: (1) pilot conversion sustains above the threshold for two consecutive months; (2) the cost curve continues its current decline through the next cycle. If either fails, exit the pilot with learning banked — the position was sized to make that cheap.</p>'}
+<h2>4 · Tripwires: when to change your mind</h2>
+${A ? `<p>${esc(str(A.tripwires, 'Tripwires were not stated by the lead model, treat the recommendation as unconditional at your own risk.'))}</p>` : '<p>Commit further only when <strong>both</strong> hold: (1) pilot conversion sustains above the threshold for two consecutive months; (2) the cost curve continues its current decline through the next cycle. If either fails, exit the pilot with learning banked, the position was sized to make that cheap.</p>'}
 
-<div class="dissent"><b>Recorded dissent — ${A ? esc(str(A.dissent?.seat, 'an adviser')) : 'DeepSeek R2'}</b><br>
+<div class="dissent"><b>Recorded dissent: ${A ? esc(str(A.dissent?.seat, 'an adviser')) : 'DeepSeek R2'}</b><br>
 ${A ? esc(str(A.dissent?.text, 'The lead model recorded no dissent. That absence is itself on the record.')) : "One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months."}</div>
 
-<h2>5 · References — cited sources only</h2>
-<p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? (R.length ? 'Linked entries were retrieved by the house at the sweep step and cited by the lead model; unlinked entries are source classes the model named without a retrieved document.' : 'Source classes were stated by the lead model; no document was fetched — treat each as a pointer to verify, not a verified citation.') : 'All entries are illustrative samples in this demonstration run.'}</p>
+<h2>5 · References: cited sources only</h2>
+<p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? (R.length ? 'Linked entries were retrieved by the house at the sweep step and cited by the lead model; unlinked entries are source classes the model named without a retrieved document.' : 'Source classes were stated by the lead model; no document was fetched, treat each as a pointer to verify, not a verified citation.') : 'All entries are illustrative samples in this demonstration run.'}</p>
 <table><thead><tr><th>Ref</th><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>
 ${referencesHtml}
 </tbody></table>
-${!A && R.length ? `<h2>6 · Retrieved reading — not cited</h2>
+${!A && R.length ? `<h2>6 · Retrieved reading: not cited</h2>
 <p>The house retrieved these real sources at the sweep step. The claims above are house-scripted samples and were not derived from them, so they are listed here for the reader, not cited as evidence.</p>
 <table><thead><tr><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>${R.map((r) => `<tr><td><a href="${esc(r.url)}" rel="noreferrer">${esc(r.title)}</a></td><td>${esc(r.kind)}</td><td>${esc(r.retrieved)}</td></tr>`).join('')}</tbody></table>` : ''}
 ${provenance(mission)}
 </div></body></html>`;
-  return { title: `${subject} — Decision Brief`, kind: 'brief', html };
+  return { title: `${subject}, Decision Brief`, kind: 'brief', html };
 }
 
 /* ----------------------------------- DECK --------------------------------- */
@@ -236,13 +236,13 @@ export function deckArtifact(mission) {
     ...A.slides.slice(2, 6).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)) })),
     { k: 'end', h: 'The close', s: esc(str(A.close, 'End on the claim.')) },
   ] : [
-    { k: 'title', h: t, s: 'The argument in nine slides — one idea per slide, evidence beneath assertion.' },
+    { k: 'title', h: t, s: 'The argument in nine slides, one idea per slide, evidence beneath assertion.' },
     { k: 'claim', n: 'The problem', h: 'The status quo has a cost, and it compounds.', s: 'Name the pain precisely: who bleeds, how much, how often. A problem the room already feels needs one slide, not three.' },
-    { k: 'claim', n: 'The shift', h: 'Something changed that makes now different.', s: 'Timing is the investor question under every other question. State the enabling shift — technical, regulatory, or behavioral — and date it.' },
-    { k: 'big', h: 'One sentence.', s: `${t} — stated so plainly that a skeptic could repeat it back.` },
-    { k: 'claim', n: 'The mechanism', h: 'How it works — shown, not adjectived.', s: 'The demo slide. Walk one concrete case end to end. If the mechanism needs three slides, it is not yet understood.' },
+    { k: 'claim', n: 'The shift', h: 'Something changed that makes now different.', s: 'Timing is the investor question under every other question. State the enabling shift, technical, regulatory, or behavioral, and date it.' },
+    { k: 'big', h: 'One sentence.', s: `${t}, stated so plainly that a skeptic could repeat it back.` },
+    { k: 'claim', n: 'The mechanism', h: 'How it works, shown, not adjectived.', s: 'The demo slide. Walk one concrete case end to end. If the mechanism needs three slides, it is not yet understood.' },
     { k: 'claim', n: 'The proof', h: 'Evidence a competitor could not copy-paste.', s: 'Illustrative placeholder: replace with your real traction, pilot results, or signed intent. The deck refuses invented numbers.' },
-    { k: 'claim', n: 'The economics', h: 'The unit that makes money, and when.', s: 'One unit, its cost, its price, its payback window. Illustrative placeholder — wire in your model before the room.' },
+    { k: 'claim', n: 'The economics', h: 'The unit that makes money, and when.', s: 'One unit, its cost, its price, its payback window. Illustrative placeholder: wire in your model before the room.' },
     { k: 'claim', n: 'The ask', h: 'What you want, what it buys, what it proves.', s: 'A specific amount, a specific runway, and the two milestones that de-risk the next round.' },
     { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.' },
   ];
@@ -255,7 +255,7 @@ export function deckArtifact(mission) {
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t} — Deck</title>
+<title>${t}, Deck</title>
 <style>
 :root{--ink:${ink};--paper:${paper};--acc:${acc}}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
@@ -285,7 +285,7 @@ function go(d){i=Math.max(0,Math.min(n-1,i+d));deck.scrollTo({left:i*deck.client
 addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});
 deck.addEventListener('click',()=>go(1));
 </script>${provenance(mission)}</body></html>`;
-  return { title: `${subject} — Deck`, kind: 'deck', html };
+  return { title: `${subject}, Deck`, kind: 'deck', html };
 }
 
 /* ----------------------------------- SITE --------------------------------- */
@@ -330,18 +330,18 @@ ${PROV_CSS}
 <header class="hero">
   <div>
     <h1>${A ? esc(str(A.headline, subject)) : t}</h1>
-    <p>${A ? esc(str(A.sub)) : 'One promise, kept: the thing this page announces, working, in your hands — without the noise the category insists on.'}</p>
+    <p>${A ? esc(str(A.sub)) : 'One promise, kept: the thing this page announces, working, in your hands, without the noise the category insists on.'}</p>
     <div class="actions"><a class="btn" href="#join">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a><a class="ghost" href="#how">${A ? esc(str(A.secondary, 'See how it works')) : 'See how it works'}</a></div>
   </div>
-  <div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending — supplied by the owner' : 'Product still — replace with real capture'}</span></div>
+  <div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending: supplied by the owner' : 'Product still: replace with real capture'}</span></div>
 </header>
 <div class="strip">${A ? esc(str(A.strip, 'Built by Prajñā')) : 'Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement'}</div>
 <section class="why" id="how">
-${why ? `  <div><h3><em>${why[0].k}</em> — ${why[0].h}</h3><p>${why[0].p}</p></div>
-  <div><h3><em>${why[1].k}</em> — ${why[1].h}</h3><p>${proofPatched ? 'Evidence pending — supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : `${why[1].p} <em>This slot awaits your real case study.</em>`}</p></div>
-  <div><h3><em>${why[2].k}</em> — ${why[2].h}</h3><p>${why[2].p}</p></div>` : `  <div><h3><em>Why now</em> — the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
-  <div><h3><em>The proof</em> — one real case</h3><p>${proofPatched ? 'Evidence pending — supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.'}</p></div>
-  <div><h3><em>The practice</em> — opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>`}
+${why ? `  <div><h3><em>${why[0].k}</em>, ${why[0].h}</h3><p>${why[0].p}</p></div>
+  <div><h3><em>${why[1].k}</em>, ${why[1].h}</h3><p>${proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : `${why[1].p} <em>This slot awaits your real case study.</em>`}</p></div>
+  <div><h3><em>${why[2].k}</em>, ${why[2].h}</h3><p>${why[2].p}</p></div>` : `  <div><h3><em>Why now</em>, the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
+  <div><h3><em>The proof</em>, one real case</h3><p>${proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.'}</p></div>
+  <div><h3><em>The practice</em>, opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>`}
 </section>
 <section class="final" id="join">
   <h2>${A ? esc(str(A.closing?.h, 'Be first through the door.')) : 'Be first through the door.'}</h2>
@@ -349,7 +349,7 @@ ${why ? `  <div><h3><em>${why[0].k}</em> — ${why[0].h}</h3><p>${why[0].p}</p><
 </section>
 <footer>${provenance(mission)}</footer>
 </body></html>`;
-  return { title: `${subject} — Landing page`, kind: 'site', html };
+  return { title: `${subject}, Landing page`, kind: 'site', html };
 }
 
 /* --------------------------------- ANALYSIS ------------------------------- */
@@ -382,7 +382,7 @@ export function analysisArtifact(mission) {
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t} — Analysis</title>
+<title>${t}, Analysis</title>
 <style>
 :root{--ink:#182420;--paper:#f7f6f1;--acc:#b0472f;--good:#28463a;--rule:#ddd8cc}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 'Helvetica Neue',Arial,sans-serif}
@@ -403,14 +403,14 @@ ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
 <p class="docline">Prajñā analysis · ${esc(mission.serial)} · ${D ? `data: ${esc(D.name)}, ${D.rows} rows` : 'sample data, marked'}</p>
-<p class="read">${authored(mission) ? esc(str(authored(mission).read)) : 'The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong — the driver is mix shift, not performance. Everything below defends that paragraph.'}</p>
+<p class="read">${authored(mission) ? esc(str(authored(mission).read)) : 'The one-paragraph read: the trend is real, it is concentrated in a single segment, and the obvious explanation is wrong, the driver is mix shift, not performance. Everything below defends that paragraph.'}</p>
 <div class="grid">
   <div class="panel"><h2>${D ? `${esc(D.series.column)} · ${n} points${D.series.labelColumn ? ` by ${esc(D.series.labelColumn)}` : ''}` : 'The trend · 12 periods (sample)'}</h2>
     <svg viewBox="0 0 560 190" role="img" aria-label="12-period trend line, rising with a dip mid-series">
       <polyline points="${pts}" fill="none" stroke="#28463a" stroke-width="3" stroke-linejoin="round"/>
       ${series.map((v, i) => `<circle cx="${(i / Math.max(1, n - 1)) * 560}" cy="${180 - (Math.max(0, v) / max) * 180}" r="3.5" fill="#28463a"><title>${esc(labels[i] || '')} ${v}</title></circle>`).join('')}
     </svg>
-    <p class="headline">${authored(mission) ? esc(str(authored(mission).trend)) : 'Up and to the right — but the slope <b>halves</b> after period 8. The topline hides it; the segments below explain it.'}</p>
+    <p class="headline">${authored(mission) ? esc(str(authored(mission).trend)) : 'Up and to the right, but the slope <b>halves</b> after period 8. The topline hides it; the segments below explain it.'}</p>
   </div>
   <div class="panel"><h2>${D && D.segments && D.segments.items.length >= 5 ? `By ${esc(D.segments.column)} · ${barItems.length} segments` : D ? `Latest ${barItems.length} points` : 'By segment · latest 8 (sample)'}</h2>
     <svg viewBox="0 0 560 175" role="img" aria-label="Segment bar chart with one outlier segment highlighted">${bars}</svg>
@@ -418,10 +418,10 @@ ${PROV_CSS}
   </div>
 </div>
 <div class="caveat"><b>Caveats attached, as promised</b><br>
-${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data — attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live seat reads your numbers.` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data — attach a CSV to run this on your real numbers.')}</div>
+${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data, attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live model reads your numbers.` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data, attach a CSV to run this on your real numbers.')}</div>
 ${provenance(mission)}
 </div></body></html>`;
-  return { title: `${subject} — Analysis`, kind: 'analysis', html };
+  return { title: `${subject}, Analysis`, kind: 'analysis', html };
 }
 
 /* ---------------------------------- MOBILE -------------------------------- */
@@ -439,7 +439,7 @@ export function mobileArtifact(mission) {
   ];
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t} — Mobile prototype</title>
+<title>${t}, Mobile prototype</title>
 <style>
 :root{--ink:#131a17;--paper:#f7f6f1;--acc:#1d5c3a;--muted:#6b756f}
 *{box-sizing:border-box}body{margin:0;background:#dfe3dd;font:15px/1.45 -apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 3rem;gap:1rem}
@@ -464,7 +464,7 @@ h1{font-size:1.05rem;margin:0;color:#3e4842;font-weight:600}
 ${PROV_CSS}
 .prov{max-width:min(390px,94vw)}
 </style></head><body>${partialBanner(mission)}
-<h1>${A ? esc(str(A.short, t)) : t} — tappable prototype</h1>
+<h1>${A ? esc(str(A.short, t)) : t}, tappable prototype</h1>
 <div class="phone"><div class="glass"><div class="notch"></div>
 <div class="status"><span>9:41</span><span>●●●</span></div>
 ${screens.map((s, i) => `<section class="screen${i === 0 ? ' on' : ''}" data-screen="${s.id}"><h2>${esc(s.title)}</h2><p>${esc(s.body)}</p>
@@ -474,13 +474,13 @@ ${s.items && s.items.length ? s.items.map((it, j) => `<div class="card"><span cl
 <button class="cta">${s.cta ? esc(s.cta) : i === 0 ? 'Do the one thing' : 'Take the action'}</button></section>`).join('')}
 <nav class="tabs">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
 </div></div>
-<p class="hint">Tap the tab bar — the prototype navigates. Built by Prajñā · ${A ? `content written by ${esc(mission.authored.model)}` : 'placeholder content marked for replacement'}.</p>
+<p class="hint">Tap the tab bar, the prototype navigates. Built by Prajñā · ${A ? `content written by ${esc(mission.authored.model)}` : 'placeholder content marked for replacement'}.</p>
 <script>
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===b.dataset.go));}));
 </script>
 ${provenance(mission)}
 </body></html>`;
-  return { title: `${subject} — Mobile prototype`, kind: 'mobile', html };
+  return { title: `${subject}, Mobile prototype`, kind: 'mobile', html };
 }
 
 /* ------------------------------- DESIGN DRAFT ----------------------------- */
@@ -496,7 +496,7 @@ export function designArtifact(mission, base) {
     ? ['Status bar', 'Screen title', 'Primary content list', 'Primary action', 'Tab bar (4)']
     : ['Nav + primary CTA', 'Hero: promise + action', 'Proof strip', 'Why now / proof / practice', 'Closing CTA', 'Footer + provenance'];
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t} — Design draft</title>
+<title>${t}, Design draft</title>
 <style>
 body{margin:0;background:#f2f2ef;color:#222;font:15px/1.5 'Helvetica Neue',Arial,sans-serif}
 .wrap{max-width:60rem;margin:0 auto;padding:3rem 1.5rem 5rem}
@@ -507,11 +507,11 @@ h1{font-size:1.6rem;margin:0 0 .3rem}.sub{color:#666;margin:0 0 2rem}
 .region span{font-size:.8rem;color:#667}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
-<h1>${t}</h1><p class="sub">Design draft — layout, hierarchy and states decided; no final styling promised. Switch to Build to produce the working deliverable.</p>
+<h1>${t}</h1><p class="sub">Design draft: layout, hierarchy and states decided; no final styling promised. Switch to Build to produce the working deliverable.</p>
 <div class="frame">${regions.map((r, i) => `<div class="region"><b>${String(i + 1).padStart(2, '0')} · ${esc(r)}</b><span>${notes ? esc(notes[i]) : 'intent, content and state notes live here'}</span></div>`).join('')}</div>
 ${provenance(mission)}
 </div></body></html>`;
-  return { title: `${subject} — Design draft`, kind: 'design', html };
+  return { title: `${subject}, Design draft`, kind: 'design', html };
 }
 
 export const GENERATORS = {

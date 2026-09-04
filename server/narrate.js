@@ -1,6 +1,6 @@
 // The run narrative: plain words, written by the house from the tape, so a
 // reader who never opened the run view still knows what happened and why.
-// Deterministic — nothing here is asked of a model — and every sentence is
+// Deterministic: nothing here is asked of a model, and every sentence is
 // backed by an event on the ledger.
 const n = (x) => Number(x || 0).toFixed(1);
 const list = (xs) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
@@ -34,12 +34,12 @@ export function narrateRun(m) {
 
   if (m.authored?.live) out.push(`${m.authored.model} wrote the substance itself on your key${m.authored.revisions ? `, and revised it ${m.authored.revisions} time${m.authored.revisions === 1 ? '' : 's'}` : ''}.`);
   else if (m.authored) out.push(`${m.authored.model} could not author (${m.authored.error}); the house-scripted substance stood in and the record says so.`);
-  else out.push('No live seat was loaded, so the substance is house-scripted sample material, labelled as such.');
+  else out.push('No live model was loaded, so the substance is house-scripted sample material, labelled as such.');
 
   const critiques = m.critiques || [];
   if (critiques.length) {
     const revise = critiques.filter((c) => c.verdict === 'revise');
-    out.push(revise.length ? `${list(revise.map((c) => c.model))} asked for a revision before the gate — ${list(revise.flatMap((c) => c.issues || []).slice(0, 3).map((x) => x.toLowerCase().replace(/\.$/, '')))} — and the lead rewrote the draft against it.` : `${list(critiques.map((c) => c.model))} read the draft and passed it.`);
+    out.push(revise.length ? `${list(revise.map((c) => c.model))} asked for a revision before the gate, ${list(revise.flatMap((c) => c.issues || []).slice(0, 3).map((x) => x.toLowerCase().replace(/\.$/, '')))}, and the lead rewrote the draft against it.` : `${list(critiques.map((c) => c.model))} read the draft and passed it.`);
   }
 
   const gates = ev.filter((e) => e.type === 'gate');

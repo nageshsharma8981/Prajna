@@ -13,7 +13,7 @@ export default function Tools() {
     if (!r.ok) { setErr(j.error || 'Refused.'); return; }
     setName(''); setUrl(''); setAdding(false); s.refresh();
   };
-  const notes = { 'task-agent': 'Delegated sub-missions appear as nested lines on the tape.', media: 'Unlocks the media studio — local generation now, hosted models when a media key is loaded.', browser: 'Reads pages with a real browser session when the browser plugin is enabled.' };
+  const notes = { 'task-agent': 'Delegated sub-missions appear as nested lines on the tape.', media: 'Unlocks the media studio, local generation now, hosted models when a media key is loaded.', browser: 'Reads pages with a real browser session when the browser plugin is enabled.' };
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center' }}>

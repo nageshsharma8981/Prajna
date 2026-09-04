@@ -11,7 +11,7 @@ export const MODES = [
   { id: 'mobile', label: 'Mobile App', icon: PhoneIcon, placeholder: 'Describe the mobile app you want to create…', samples: ['Build a mobile app for a restaurant', 'Build a mobile app for a fitness tracker', 'Build a mobile app for a weather forecast', 'Build a mobile app for a news reader'] },
   { id: 'deck', label: 'Slide Deck', icon: DeckIcon, placeholder: 'Describe the slide deck you want to create…', samples: ['Build a B2B software sales deck', 'Create cybersecurity training slides', 'Draft a startup funding pitch deck', 'Explain AI impact on future work', 'Outline a product launch update deck'] },
   { id: 'research', label: 'Research', icon: SearchIcon, placeholder: 'Describe what you want to research…', samples: ['Summarize the key features of the latest model release', 'What are the top trending programming languages in 2026?', 'Find the latest updates on the Mars exploration missions', 'Give me a quick overview of the current state of electric vehicle adoption'] },
-  { id: 'analysis', label: 'Analysis', icon: ChartIcon, placeholder: 'What do the numbers need to answer?', samples: ['Cohort retention for our Q2 signups — where is the leak?', 'Marketing channel efficiency across the last 4 quarters', 'Pricing experiment readout: annual vs monthly plans'] },
+  { id: 'analysis', label: 'Analysis', icon: ChartIcon, placeholder: 'What do the numbers need to answer?', samples: ['Cohort retention for our Q2 signups: where is the leak?', 'Marketing channel efficiency across the last 4 quarters', 'Pricing experiment readout: annual vs monthly plans'] },
 ];
 
 const HOUSES = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google' };
@@ -39,7 +39,7 @@ function ModelPicker({ models, value, onChange, onClose }) {
             {m.live ? <span className="badge live">LIVE</span> : m.tier === 'byok' ? <span className="badge">YOURS</span> : m.pro ? <span className="badge pro">PRO</span> : null}
           </button>
         ))}
-        <Link to="/keys" className="pop-item quiet" onClick={onClose}><span className="nm">Advanced — keys & custom models</span></Link>
+        <Link to="/keys" className="pop-item quiet" onClick={onClose}><span className="nm">Advanced: keys & custom models</span></Link>
       </div>
     </div>
   );
@@ -187,7 +187,7 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
           aria-label="Message"
         />
         {attachments.length > 0 && (
-          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip" title={a.text ? `${a.text.length} characters read — on the table as an owner source` : 'name only — not a text file, so its contents are not read'}>{a.name}{a.text ? '' : ' (name only)'} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a.name}`}>×</button></span>)}</div>
+          <div className="attach-row">{attachments.map((a, i) => <span key={i} className="attach-chip" title={a.text ? `${a.text.length} characters read, on the table as an owner source` : 'name only, not a text file, so its contents are not read'}>{a.name}{a.text ? '' : ' (name only)'} <button onClick={() => setAttachments(attachments.filter((_, j) => j !== i))} aria-label={`Remove ${a.name}`}>×</button></span>)}</div>
         )}
         <div className="composer-bar">
           <button className="ic" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files"><ClipIcon /></button>

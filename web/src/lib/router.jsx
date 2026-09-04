@@ -1,5 +1,5 @@
 // Minimal pushState router: useRoute() returns the current path, navigate(to)
-// changes it. Deliberately tiny — the app has six surfaces.
+// changes it. Deliberately tiny: the app has six surfaces.
 import { useEffect, useState } from 'react';
 
 const listeners = new Set();
@@ -26,7 +26,7 @@ export function useRoute() {
 }
 
 // A modified or secondary click (new tab/window, context menu) is the
-// browser's business — only a plain primary click becomes SPA navigation.
+// browser's business, only a plain primary click becomes SPA navigation.
 function isPlainClick(e) {
   return !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }

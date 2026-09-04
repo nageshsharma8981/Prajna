@@ -1,5 +1,5 @@
-// BYOK provider adapters — zero dependencies, plain fetch. A user's own key
-// makes a panel seat LIVE: its position on the tape is a real model call.
+// BYOK provider adapters, zero dependencies, plain fetch. A user's own key
+// makes a panel model LIVE: its position on the tape is a real model call.
 // Keys never leave the server; failures fall back to the scripted voice and
 // are recorded on the tape, never hidden.
 
@@ -108,8 +108,8 @@ export const PROVIDERS = {
   brave: {
     label: 'Brave Search',
     kind: 'search',
-    hint: 'Web-search key (api.search.brave.com). Not a model seat: it widens the research desk\'s retrieval beyond the open encyclopedia.',
-    async call() { throw new Error('Brave Search is a search key, not a model seat.'); },
+    hint: 'Web-search key (api.search.brave.com). Not a model: it widens the research desk\'s retrieval beyond the open encyclopedia.',
+    async call() { throw new Error('Brave Search is a search key, not a model.'); },
   },
 };
 
@@ -181,7 +181,7 @@ export async function streamModel({ provider, key, baseUrl, modelId, prompt, max
 export async function callModel({ provider, key, baseUrl, modelId, prompt, maxTokens }) {
   const p = PROVIDERS[provider];
   if (!p) throw new Error(`Unknown provider "${provider}".`);
-  if (p.kind === 'search') throw new Error(`${p.label} is a search key, not a model seat.`);
+  if (p.kind === 'search') throw new Error(`${p.label} is a search key, not a model.`);
   if (!key) throw new Error(`No key on file for ${p.label}.`);
   const text = await p.call({ key, baseUrl, modelId, prompt, maxTokens });
   if (!text) throw new Error(`${p.label} returned an empty reply.`);

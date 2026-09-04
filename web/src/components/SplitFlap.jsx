@@ -2,7 +2,7 @@
 // staggered left to right, whenever the text changes (and once on mount).
 import { useEffect, useRef, useState } from 'react';
 
-const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789·— ';
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789·- ';
 
 export default function SplitFlap({ text, size = '1rem', className = '' }) {
   const target = text.toUpperCase();

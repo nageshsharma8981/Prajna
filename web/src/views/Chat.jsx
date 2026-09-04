@@ -35,7 +35,7 @@ function RunCard({ missionId }) {
         {m.contract.plan.map((p) => <li key={p.id} className={p.status.toLowerCase()}><span className="dot" />{p.title}</li>)}
       </ol>
       <div className="run-card-foot">
-        <span className="mono">{done}/{m.contract.plan.length} steps · {m.spent.toFixed(1)} / {m.contract.ceiling} cr{m.authored?.live ? ` · written by ${m.authored.model} on your key` : m.authored ? ' · scripted substance (live seat could not author)' : ''}</span>
+        <span className="mono">{done}/{m.contract.plan.length} steps · {m.spent.toFixed(1)} / {m.contract.ceiling} cr{m.authored?.live ? ` · written by ${m.authored.model} on your key` : m.authored ? ' · scripted substance (live model could not author)' : ''}</span>
         {pending && <Link to={`/run/${m.id}`} className="btn-stamp attn-btn">Decision needed →</Link>}
         {m.artifactId && <Link to={`/artifact/${m.artifactId}`} className="btn-stamp attn-btn">Open delivery</Link>}
         <Link to={`/run/${m.id}`} className="btn-quiet" style={{ padding: '0.4rem 0.8rem' }}>Watch the tape</Link>

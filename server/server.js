@@ -1,4 +1,4 @@
-// Prajñā — zero-dependency Node server: API + SSE + static SPA.
+// Prajñā: zero-dependency Node server: API + SSE + static SPA.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
@@ -27,7 +27,7 @@ function releases() {
   let md = '';
   try { md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8'); } catch { return []; }
   const out = [];
-  const re = /^## (v\d+\.\d+(?:\.\d+)?) — ([^\n(]+?)\s*(?:\((\d{4}-\d{2}-\d{2})\))?\s*$/gm;
+  const re = /^## (v\d+\.\d+(?:\.\d+)?)[:,] ([^\n(]+?)\s*(?:\((\d{4}-\d{2}-\d{2})\))?\s*$/gm;
   let m; const marks = [];
   while ((m = re.exec(md))) marks.push({ index: m.index, end: m.index + m[0].length, version: m[1], title: m[2].trim(), date: m[3] || null });
   for (let i = 0; i < marks.length; i++) {
@@ -47,8 +47,8 @@ function health() {
     missions: { live: ms.filter((m) => m.status === 'LIVE').length, paused: ms.filter((m) => m.status.startsWith('PAUSED')).length, delivered: ms.filter((m) => m.status === 'FILLED').length, total: ms.length },
     lastDeliveryAt: last?.filledAt || null,
     // Seven days of history, oldest first: what started, what was delivered,
-    // what was stopped, and the incidents the house records about itself —
-    // retrieval failures and live seats that could not author.
+    // what was stopped, and the incidents the house records about itself,
+    // retrieval failures and live models that could not author.
     days: Array.from({ length: 7 }, (_, i) => {
       const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - (6 - i));
       const from = d.getTime(), to = from + 86400000;
@@ -95,7 +95,7 @@ function sessionCookie(req, value, maxAge) {
 }
 // Per-address rate limits, fixed windows, memory only. Buckets: the access
 // code (a dozen tries per ten minutes), public share links and locked-out API
-// calls (sixty a minute each) — enough for people, not for scanners.
+// calls (sixty a minute each), enough for people, not for scanners.
 const buckets = new Map(); // `${bucket}:${ip}` → { n, at }
 function limited(ip, bucket, max, windowMs) {
   const key = `${bucket}:${ip}`; const now = Date.now();
@@ -114,9 +114,9 @@ function seed() {
   if (store.missions().length > 0) return;
   const day = 86400000;
   const seeds = [
-    { goal: 'State of AI agent platforms — who wins the enterprise?', deskId: 'brief', lead: 'opus', advisers: ['gpt', 'deepseek'], age: 2.1 * day, spent: 61.4 },
+    { goal: 'State of AI agent platforms, who wins the enterprise?', deskId: 'brief', lead: 'opus', advisers: ['gpt', 'deepseek'], age: 2.1 * day, spent: 61.4 },
     { goal: 'Series A pitch for a carbon-accounting startup', deskId: 'deck', lead: 'sonnet', advisers: ['gpt', 'gemini'], age: 1.3 * day, spent: 49.7 },
-    { goal: 'Cohort retention for our Q2 signups — where is the leak?', deskId: 'analysis', lead: 'opus', advisers: ['deepseek', 'llama'], age: 0.4 * day, spent: 55.2 },
+    { goal: 'Cohort retention for our Q2 signups: where is the leak?', deskId: 'analysis', lead: 'opus', advisers: ['deepseek', 'llama'], age: 0.4 * day, spent: 55.2 },
   ];
   for (const s of seeds) {
     const m = writeContract(s);
@@ -166,14 +166,14 @@ function notify(missionId, event) {
 
 /* --------------------------------- helpers -------------------------------- */
 
-// Strip the persisted run script from API payloads — it's runner state, not
+// Strip the persisted run script from API payloads: it's runner state, not
 // client data.
 function pub(m) {
   if (!m || typeof m !== 'object') return m;
   const { runScript, deferredCost, ...rest } = m;
   return rest;
 }
-// Boards never need the event ledger — the run view streams it. Bootstrap
+// Boards never need the event ledger, the run view streams it. Bootstrap
 // carries a count instead, which keeps the payload small as history grows.
 function lean(m) {
   const { events, ...rest } = pub(m);
@@ -277,13 +277,13 @@ async function handle(req, res) {
 <div><span class="k">Uptime</span><b>${up(h.uptimeSeconds)}</b></div>
 <div><span class="k">Runs live / paused</span><b>${h.missions.live} / ${h.missions.paused}</b></div>
 <div><span class="k">Delivered</span><b>${h.missions.delivered} of ${h.missions.total}</b></div>
-<div><span class="k">Last delivery</span><b>${h.lastDeliveryAt ? new Date(h.lastDeliveryAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—'}</b></div>
+<div><span class="k">Last delivery</span><b>${h.lastDeliveryAt ? new Date(h.lastDeliveryAt).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '–'}</b></div>
 <div><span class="k">Data directory</span><b>${h.dataWritable ? 'writable' : 'READ-ONLY'}</b></div>
 <div><span class="k">Memory</span><b>${h.memoryMb} MB</b></div>
 </div>
 <h2 style="font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:#9a9583;margin:1.6rem 0 .5rem">Last seven days · UTC</h2>
 <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="color:#9a9583;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase"><th style="text-align:left;padding:.3rem 0">Day</th><th style="text-align:right">Started</th><th style="text-align:right">Delivered</th><th style="text-align:right">Stopped</th><th style="text-align:right">Incidents</th></tr></thead><tbody>${h.days.map((d) => `<tr style="border-top:1px solid #2a2f2a"><td style="padding:.35rem 0">${d.date}</td><td style="text-align:right">${d.started}</td><td style="text-align:right">${d.delivered}</td><td style="text-align:right">${d.stopped}</td><td style="text-align:right;color:${d.incidents ? '#ffb300' : 'inherit'}">${d.incidents}</td></tr>`).join('')}</tbody></table>
-<p class="note">An incident is a retrieval failure or a live seat that could not author — recorded on the tape, never hidden.</p>
+<p class="note">An incident is a retrieval failure or a live model that could not author, recorded on the tape, never hidden.</p>
 <p class="note">Machine-readable: <a href="/api/health">/api/health</a>. Nothing here is secret; keys and tokens never leave memory. <a href="/">Open the workspace</a>.</p>
 </div></body></html>`;
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }, page);
@@ -311,7 +311,7 @@ async function handle(req, res) {
     if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
     const a = store.artifacts().find((x) => x.shareToken === shared[1]);
     const html = a ? store.artifactHtml(a.id) : null;
-    if (!html) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This share link is not on the books — it may have been revoked.</p>'); }
+    if (!html) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This share link is not on the books, it may have been revoked.</p>'); }
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, html);
   }
 
@@ -320,7 +320,7 @@ async function handle(req, res) {
   if (sharedRun) {
     if (limited(ipOf(req), 'share', 60, 60000)) { res.writeHead(429, { 'content-type': 'text/plain' }); return res.end('Too many requests. Try again in a minute.'); }
     const m = store.missions().find((x) => x.shareToken === sharedRun[1]);
-    if (!m) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This record link is not on the books — it may have been revoked.</p>'); }
+    if (!m) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This record link is not on the books, it may have been revoked.</p>'); }
     const full = store.missionFull(m.id);
     const a = full.artifactId ? store.artifact(full.artifactId) : null;
     return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, auditBundle(pub(full), a, full.artifactId ? store.artifactHtml(full.artifactId) : null));
@@ -393,7 +393,7 @@ async function handle(req, res) {
     // The house never runs what it cannot fund: the ceiling must be covered.
     const credits = store.workspace().credits;
     if (credits < pending.contract.ceiling) {
-      return json(res, 402, { error: `House credits (${credits.toFixed(0)}) are below this ticket's ceiling (${pending.contract.ceiling}). Top up or void the ticket — nothing was spent.` });
+      return json(res, 402, { error: `House credits (${credits.toFixed(0)}) are below this ticket's ceiling (${pending.contract.ceiling}). Top up or void the ticket, nothing was spent.` });
     }
     const m = launchMission(launchMatch[1], notify);
     if (!m) return json(res, 404, { error: 'Mission not found or not open.' });
@@ -439,7 +439,7 @@ async function handle(req, res) {
     let voided = 0, stopped = 0;
     for (const m of stale) { if (voidTicket(m.id, notify)) voided++; }
     for (const m of stuck) { const r = killMission(m.id, notify); if (r && !r.error) stopped++; }
-    return json(res, 200, { ...plan, dryRun: false, voided, stopped, note: `Housekeeping: ${voided} unstamped ticket(s) voided, ${stopped} paused run(s) stopped — reserves released, everything on the tape.` });
+    return json(res, 200, { ...plan, dryRun: false, voided, stopped, note: `Housekeeping: ${voided} unstamped ticket(s) voided, ${stopped} paused run(s) stopped, reserves released, everything on the tape.` });
   }
 
   const voidMatch = p.match(/^\/api\/missions\/([\w]+)\/void$/);
@@ -507,7 +507,7 @@ async function handle(req, res) {
     w.showcase.unshift(entry);
     store.workspace().credits += entry.grant; store.flushWorkspace?.();
     flushWs();
-    ledger('grant', entry.grant, `Showcase submission ${a.serial} — ${entry.grant} cr house grant (demo)`, { artifactId: a.id });
+    ledger('grant', entry.grant, `Showcase submission ${a.serial}, ${entry.grant} cr house grant (demo)`, { artifactId: a.id });
     return json(res, 200, { ok: true, entry, path: `/s/${shareToken}`, granted: entry.grant });
   }
   const scDel = p.match(/^\/api\/showcase\/(sc_[a-f0-9]+)$/);
@@ -524,7 +524,7 @@ async function handle(req, res) {
     const provider = String(body.provider || 'openai');
     if (!prompt) return json(res, 400, { error: 'Describe the image first.' });
     const k = store.keyFor(provider);
-    if (!k) return json(res, 400, { error: `No ${PROVIDERS[provider]?.label || provider} key in memory — load one under Your keys. Nothing was generated.` });
+    if (!k) return json(res, 400, { error: `No ${PROVIDERS[provider]?.label || provider} key in memory, load one under Your keys. Nothing was generated.` });
     const started = Date.now();
     try {
       const out = await generateImage({ provider, key: k.key, baseUrl: k.baseUrl, modelId: String(body.modelId || '').trim() || undefined, prompt, size: /^\d{3,4}x\d{3,4}$/.test(String(body.size || '')) ? body.size : undefined });
@@ -597,7 +597,7 @@ async function handle(req, res) {
       const body = await readBody(req);
       const text = String(body.text || '').trim().slice(0, 500);
       if (!text) return json(res, 400, { error: 'Write the note first.' });
-      if (notes.length >= 12) return json(res, 400, { error: 'Twelve notes at most — the next version should be able to address them all.' });
+      if (notes.length >= 12) return json(res, 400, { error: 'Twelve notes at most, the next version should be able to address them all.' });
       const note = { id: crypto.randomBytes(4).toString('hex'), text, at: Date.now(), by: ws().profile.handle || ws().profile.name };
       store.refreshArtifact(a.id, { notes: [...notes, note] }, store.artifactHtml(a.id));
       return json(res, 200, { ok: true, note, notes: [...notes, note] });
@@ -642,9 +642,9 @@ async function handle(req, res) {
     if (req.method === 'PATCH') { const body = await readBody(req); return json(res, 200, renameChat(c.id, body.title || c.title)); }
     return json(res, 200, c);
   }
-  // The companion can start a mission mid-conversation: a live seat ends its
+  // The companion can start a mission mid-conversation: a live model ends its
   // reply with `PRAJNA-MISSION: <mode> | <goal>` when the user clearly asks
-  // for a deliverable; without a live seat a plain-language request is read
+  // for a deliverable; without a live model a plain-language request is read
   // directly. Either way the mission is written and launched on the record.
   const MODE_DESK_ALL = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' };
   const inferMode = (text) => {
@@ -661,13 +661,13 @@ async function handle(req, res) {
     const lead = modelById(seatId || ws().personalization.defaultModel).id;
     const advisers = (ws().personalization.defaultAdvisers || []).map((a) => modelById(a).id).filter((a) => a !== lead).slice(0, 5);
     const mission = writeContract({ goal, deskId: MODE_DESK_ALL[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: 'build', template: null, depth: 'deep', chatId: c.id });
-    if (store.workspace().credits < mission.contract.ceiling) return { mission, text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ceiling ${mission.contract.ceiling}) but the house holds only ${store.workspace().credits.toFixed(0)} credits — top up before stamping.`, kind: 'ticket' };
+    if (store.workspace().credits < mission.contract.ceiling) return { mission, text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ceiling ${mission.contract.ceiling}) but the house holds only ${store.workspace().credits.toFixed(0)} credits, top up before stamping.`, kind: 'ticket' };
     launchMission(mission.id, notify);
     return { mission, text: `Started ${mission.deskName.replace(' desk', '')} mission ${mission.serial} from this conversation: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}).`, kind: 'run' };
   };
 
-  // Streaming plain chat: SSE deltas as the live seat speaks, then the saved
-  // message. Without a live seat the house answers honestly in one event.
+  // Streaming plain chat: SSE deltas as the live model speaks, then the saved
+  // message. Without a live model the house answers honestly in one event.
   const chatStreamMatch = p.match(/^\/api\/chats\/([\w]+)\/stream$/);
   if (chatStreamMatch && req.method === 'POST') {
     const c = getChat(chatStreamMatch[1]);
@@ -685,7 +685,7 @@ async function handle(req, res) {
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread — when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If — and only if — the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
+        reply = await streamModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, maxTokens: 1200, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace that can run missions (website, mobile, deck, research, analysis) with a visible contract. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''} If: and only if, the user clearly asks you to produce one of those deliverables, end your reply with a final line exactly of the form: PRAJNA-MISSION: <website|mobile|deck|research|analysis> | <one-line goal>\n\n${history}\nAssistant:`, onDelta: (d) => emit('delta', { text: d }) });
         kind = 'live';
         const mm = reply.match(/PRAJNA-MISSION:\s*(website|mobile|deck|research|analysis)\s*\|\s*(.+)$/im);
         if (mm) {
@@ -696,7 +696,7 @@ async function handle(req, res) {
           emit('done', { message: m, mission: m2, chat: getChat(c.id) });
           return res.end();
         }
-      } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
+      } catch (e) { reply = `The live model (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
       const fromRecord = answerFromRecord(text, missionsOfChat(c));
       if (fromRecord) {
@@ -735,25 +735,25 @@ async function handle(req, res) {
       const mission = writeContract({ goal: text, deskId: MODE_DESK[mode], lead, advisers, installedSkills: connectorState().skills, queuedConnectors: connectedConnectors(), variant: body.variant === 'design' ? 'design' : 'build', template: body.template || null, depth: body.depth === 'fast' ? 'fast' : 'deep', chatId: c.id, attachments: docs });
       const credits = store.workspace().credits;
       if (credits < mission.contract.ceiling) {
-        const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits — top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });
+        const m = addMessage(c.id, { role: 'assistant', text: `I wrote the ticket (${mission.serial}: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits, ceiling ${mission.contract.ceiling}) but the house holds only ${credits.toFixed(0)} credits, top up or trim the plan before stamping.`, missionId: mission.id, kind: 'ticket' });
         return json(res, 200, { chat: getChat(c.id), mission: pub(mission), message: m });
       }
       const launched = launchMission(mission.id, notify);
-      const m = addMessage(c.id, { role: 'assistant', text: `On it — ${mission.deskName.replace(' desk', '')} mission ${mission.serial} is running: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}). Watch the tape or wait for the delivery here.`, missionId: mission.id, kind: 'run' });
+      const m = addMessage(c.id, { role: 'assistant', text: `On it: ${mission.deskName.replace(' desk', '')} mission ${mission.serial} is running: ${mission.contract.plan.length} steps, ${mission.contract.estimate} credits estimated (ceiling ${mission.contract.ceiling}). Watch the tape or wait for the delivery here.`, missionId: mission.id, kind: 'run' });
       return json(res, 200, { chat: getChat(c.id), mission: pub(launched || mission), message: m });
     }
-    // Plain chat: a live seat answers if a key is loaded; otherwise the house replies honestly.
+    // Plain chat: a live model answers if a key is loaded; otherwise the house replies honestly.
     const seatId = body.lead || ws().personalization.defaultModel;
     const live = liveSeat(seatId);
     let reply, kind = 'text';
     if (live) {
       try {
         const history = c.messages.slice(-8).map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
-        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread — when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''}\n\n${history}\nAssistant:`, maxTokens: 900 });
+        reply = await callModel({ provider: live.model.provider, key: live.key, baseUrl: live.baseUrl, modelId: live.model.modelId, prompt: `You are Prajñā, a calm, precise assistant inside an agent workspace. Reply helpfully and concisely (markdown ok).${recordContext(c) ? `\n\nRecord of missions in this thread, when asked about them, answer ONLY from this record and say plainly when it does not say:\n${recordContext(c)}` : ''}\n\n${history}\nAssistant:`, maxTokens: 900 });
         kind = 'live';
-      } catch (e) { reply = `The live seat (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
+      } catch (e) { reply = `The live model (${live.model.name}) refused: ${String(e.message || e).slice(0, 160)}. Check the key under Your keys.`; }
     } else {
-      reply = answerFromRecord(text, missionsOfChat(c)) || `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode — Website, Mobile App, Slide Deck or Research — and I will run it as a mission with a visible contract.`;
+      reply = answerFromRecord(text, missionsOfChat(c)) || `I can chat once a model key is loaded under Your keys (that makes ${modelById(seatId).name} live). Meanwhile, pick a mode, Website, Mobile App, Slide Deck or Research: and I will run it as a mission with a visible contract.`;
       if (reply.startsWith('From the record:')) kind = 'record';
     }
     const m = addMessage(c.id, { role: 'assistant', text: reply, kind, model: modelById(seatId).name });
@@ -788,7 +788,7 @@ async function handle(req, res) {
     const body = await readBody(req); const w = ws();
     const name = String(body.name || '').trim().slice(0, 40); const url = String(body.url || '').trim().slice(0, 200);
     if (!name || !/^https?:\/\//.test(url)) return json(res, 400, { error: 'A name and an http(s) URL are required.' });
-    const entry = { id: `mcp_${Math.random().toString(36).slice(2, 8)}`, name, url, addedAt: Date.now(), status: 'registered — not yet probed' };
+    const entry = { id: `mcp_${Math.random().toString(36).slice(2, 8)}`, name, url, addedAt: Date.now(), status: 'registered, not yet probed' };
     w.mcp.push(entry); flushWs(); return json(res, 200, entry);
   }
   const mcpDel = p.match(/^\/api\/mcp\/(mcp_[\w]+)$/);
@@ -820,7 +820,7 @@ async function handle(req, res) {
     if (![100, 250, 500, 1000, 2500, 5000].includes(amount)) return json(res, 400, { error: 'Top-ups come in 100, 250, 500, 1000, 2500 or 5000 credits.' });
     store.workspace().credits = Math.round((store.workspace().credits + amount) * 10) / 10; store.flushWorkspace();
     const w = ws();
-    w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: Math.round(amount / 100 * 2 * 100) / 100, currency: 'USD', plan: `Top-up ${amount} cr`, status: 'demo — no payment collected' }); flushWs();
+    w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: Math.round(amount / 100 * 2 * 100) / 100, currency: 'USD', plan: `Top-up ${amount} cr`, status: 'demo, no payment collected' }); flushWs();
     const line = ledger('topup', amount, `Top-up of ${amount} cr (demo billing, no payment collected)`);
     return json(res, 200, { ok: true, credits: store.workspace().credits, line });
   }
@@ -833,10 +833,10 @@ async function handle(req, res) {
   if (p === '/api/digest/send' && req.method === 'POST') {
     const body = await readBody(req);
     const to = String(body.to || ws().profile.email || '').trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json(res, 400, { error: 'No email to send to — add one under My Profile.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json(res, 400, { error: 'No email to send to, add one under My Profile.' });
     const base = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(String(body.base || '')) ? body.base : undefined; // test hook, local only
     try {
-      const r = await sendMail({ to, subject: `Prajñā digest — ${new Date().toISOString().slice(0, 10)}`, text: digestText({ days: 1 }), base });
+      const r = await sendMail({ to, subject: `Prajñā digest: ${new Date().toISOString().slice(0, 10)}`, text: digestText({ days: 1 }), base });
       return json(res, 200, { ok: true, ...r });
     } catch (e) { return json(res, 400, { error: String(e.message || e).slice(0, 220) }); }
   }
@@ -848,9 +848,9 @@ async function handle(req, res) {
     if (tier.id !== w.plan) {
       w.plan = tier.id;
       if (tier.price > 0) {
-        w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: tier.price, currency: 'USD', plan: tier.name, status: 'demo — no payment collected' });
+        w.invoices.unshift({ id: `inv_${Date.now().toString(36)}`, at: Date.now(), amount: tier.price, currency: 'USD', plan: tier.name, status: 'demo, no payment collected' });
         store.workspace().credits = Math.round((store.workspace().credits + tier.credits) * 10) / 10; store.flushWorkspace();
-        ledger('grant', tier.credits, `${tier.name} plan — ${tier.credits} cr granted (demo billing, no payment collected)`);
+        ledger('grant', tier.credits, `${tier.name} plan, ${tier.credits} cr granted (demo billing, no payment collected)`);
       }
       flushWs();
     }
@@ -901,7 +901,7 @@ async function handle(req, res) {
     return json(res, 200, { ok: true });
   }
 
-  // ---- BYOK: keys + custom seats (keys never leave the server) ----
+  // ---- BYOK: keys + custom models (keys never leave the server) ----
   const keyMatch = p.match(/^\/api\/keys\/([\w-]+)$/);
   if (keyMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
     const prov = keyMatch[1];
@@ -923,7 +923,7 @@ async function handle(req, res) {
     const body = await readBody(req);
     const saved = store.keyFor(prov);
     const key = String(body.key || saved?.key || '').trim();
-    if (!key) return json(res, 400, { error: 'No key to test — save one or pass it in the request.' });
+    if (!key) return json(res, 400, { error: 'No key to test, save one or pass it in the request.' });
     const modelId = String(body.modelId || '').trim() || allModels().find((m) => m.provider === prov)?.modelId;
     try {
       const r = await testKey({ provider: prov, key, baseUrl: String(body.baseUrl || saved?.baseUrl || '').trim() || null, modelId });
@@ -943,9 +943,9 @@ async function handle(req, res) {
     if (!PROVIDERS[provider]) return json(res, 400, { error: 'Unknown provider.' });
     if (PROVIDERS[provider].kind === 'search') return json(res, 400, { error: `${PROVIDERS[provider].label} is a search key, not a model provider.` });
     if (baseUrl && !/^https?:\/\//.test(baseUrl)) return json(res, 400, { error: 'Base URL must start with http:// or https://.' });
-    if (allModels().length >= 24) return json(res, 400, { error: 'Seat limit reached (24 models).' });
+    if (allModels().length >= 24) return json(res, 400, { error: 'Model limit reached (24 models).' });
     const symbol = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase().padEnd(3, 'X');
-    const m = store.addCustomModel({ id: `c_${Math.random().toString(36).slice(2, 8)}`, symbol, name, house: PROVIDERS[provider].label, role: 'Your seat · BYOK', tier: 'byok', color: '#E3A93C', provider, modelId, baseUrl });
+    const m = store.addCustomModel({ id: `c_${Math.random().toString(36).slice(2, 8)}`, symbol, name, house: PROVIDERS[provider].label, role: 'Your model · BYOK', tier: 'byok', color: '#E3A93C', provider, modelId, baseUrl });
     return json(res, 200, m);
   }
   const modelDel = p.match(/^\/api\/models\/(c_[\w]+)$/);
@@ -959,8 +959,8 @@ async function handle(req, res) {
     const cid = connectMatch[1];
     const cdef = CONNECTORS.find((c) => c.id === cid);
     if (!cdef) return json(res, 404, { error: 'Unknown connector.' });
-    if (cdef.provider) return json(res, 400, { error: `${cdef.name} connects with real sign-in — use Connect on the Connectors page.` });
-    return json(res, 400, { error: `${cdef.name} is not wired yet — no OAuth provider for it in this build.` });
+    if (cdef.provider) return json(res, 400, { error: `${cdef.name} connects with real sign-in, use Connect on the Connectors page.` });
+    return json(res, 400, { error: `${cdef.name} is not wired yet, no OAuth provider for it in this build.` });
     const cs = connectorState();
     cs.connected = cs.connected.includes(cid) ? cs.connected.filter((c) => c !== cid) : [...cs.connected, cid];
     store.flushConnectors();

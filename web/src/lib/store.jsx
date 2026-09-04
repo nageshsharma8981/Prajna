@@ -44,7 +44,7 @@ export function StoreProvider({ children }) {
   }, [refresh]);
 
   // While anything is running, the credit meter, ticker and boards keep pace
-  // with the ledger on a light poll — every surface, not just the run tape.
+  // with the ledger on a light poll, every surface, not just the run tape.
   useEffect(() => {
     const busy = (data?.missions || []).some((m) => m.status === 'LIVE' || m.status.startsWith('PAUSED'));
     if (!busy) return;

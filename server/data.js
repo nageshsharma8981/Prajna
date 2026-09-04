@@ -2,7 +2,7 @@
 // and profiled here: the first numeric column becomes the series, the first
 // text column its labels, and a second text column (if any) the segment
 // breakdown. The profile is what the charts plot and what the author and the
-// tape describe — real numbers, named by file, never sample data.
+// tape describe, real numbers, named by file, never sample data.
 export function parseCsv(text) {
   const rows = [];
   let row = [], cell = '', q = false;
@@ -36,7 +36,7 @@ export function profileCsv(name, text) {
   const { headers, rows } = t;
   const numeric = headers.map((h, i) => ({ h, i, share: rows.filter((r) => num(r[i]) !== null).length / rows.length })).filter((c) => c.share >= 0.8);
   const textual = headers.map((h, i) => ({ h, i, distinct: new Set(rows.map((r) => r[i])).size })).filter((c) => !numeric.some((n) => n.i === c.i));
-  if (!numeric.length) return { name, rows: rows.length, columns: headers, notes: ['no numeric column found — nothing to plot'] };
+  if (!numeric.length) return { name, rows: rows.length, columns: headers, notes: ['no numeric column found, nothing to plot'] };
   const prefer = numeric.find((c) => /revenue|value|amount|count|total|sales|users|spend|cost|score/i.test(c.h)) || numeric[0];
   const labelCol = textual.find((c) => c.distinct >= Math.min(rows.length, 3)) || null;
   const segCol = textual.find((c) => c !== labelCol && c.distinct >= 2 && c.distinct <= 12) || null;
@@ -62,5 +62,5 @@ export function dataSummary(d) {
   if (!d || !d.series) return '';
   const pts = d.series.points.map((p) => `${p.label ? `${p.label}: ` : ''}${p.value}`).join(', ');
   const segs = d.segments ? d.segments.items.map((s) => `${s.name}: ${s.value}`).join(', ') : 'none';
-  return `Owner data from ${d.name} (${d.rows} rows): series ${d.series.column}${d.series.labelColumn ? ` by ${d.series.labelColumn}` : ''} = [${pts}]; sum ${d.stats.sum}, mean ${d.stats.mean}, min ${d.stats.min}, max ${d.stats.max}; segments by ${d.segments?.column || '—'}: ${segs}.`;
+  return `Owner data from ${d.name} (${d.rows} rows): series ${d.series.column}${d.series.labelColumn ? ` by ${d.series.labelColumn}` : ''} = [${pts}]; sum ${d.stats.sum}, mean ${d.stats.mean}, min ${d.stats.min}, max ${d.stats.max}; segments by ${d.segments?.column || '–'}: ${segs}.`;
 }

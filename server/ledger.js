@@ -1,6 +1,6 @@
 // The credit ledger: every movement of house credits, in order, with the
 // balance after it. Reserves on stamping, settlements and releases on
-// closing, grants, top-ups — each one a line an owner can read back.
+// closing, grants, top-ups, each one a line an owner can read back.
 import { store } from './store.js';
 import { ws, flushWs } from './workspace.js';
 

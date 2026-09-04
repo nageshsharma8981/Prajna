@@ -34,7 +34,7 @@ export default function Connectors() {
       ? <a className={`btn-stamp attn-btn${small ? ' sm' : ''}`} href={`/api/oauth/${c.provider}/start`}>Connect</a>
       : c.supported
         ? <Link to="/keys" className={`toggle-btn${small ? ' sm' : ''}`} title="Add the provider's OAuth app under Your keys">Connect</Link>
-        : <button className={`toggle-btn${small ? ' sm' : ''}`} onClick={() => setErr(`${c.name}: no sign-in provider is wired for this connector yet — it is listed, not pretended.`)}>Connect</button>;
+        : <button className={`toggle-btn${small ? ' sm' : ''}`} onClick={() => setErr(`${c.name}: no sign-in provider is wired for this connector yet, it is listed, not pretended.`)}>Connect</button>;
 
   return (
     <div className="page">

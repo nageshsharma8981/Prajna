@@ -1,4 +1,4 @@
-// ⌘K command palette: routes, desks, missions, artifacts. A real dialog —
+// ⌘K command palette: routes, desks, missions, artifacts. A real dialog,
 // focus trapped, Escape anywhere, focus restored, selection announced.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { navigate } from '../lib/router.jsx';
@@ -21,20 +21,20 @@ export default function Palette({ onClose }) {
 
   const items = useMemo(() => {
     const base = [
-      // Runs waiting on a decision come first — one keystroke from anywhere.
-      ...(s.pending || []).map((d) => ({ k: 'DECIDE', t: `${d.serial} · ${d.kind} — ${d.prompt.slice(0, 90)}`, to: `/run/${d.id}`, decide: true })),
+      // Runs waiting on a decision come first, one keystroke from anywhere.
+      ...(s.pending || []).map((d) => ({ k: 'DECIDE', t: `${d.serial} · ${d.kind}, ${d.prompt.slice(0, 90)}`, to: `/run/${d.id}`, decide: true })),
       { k: 'GO', t: 'New chat', to: '/' },
-      { k: 'GO', t: 'Missions — tickets & runs', to: '/missions' },
+      { k: 'GO', t: 'Missions: tickets & runs', to: '/missions' },
       { k: 'GO', t: 'Boards', to: '/boards' },
       { k: 'GO', t: 'Plugins', to: '/plugins' },
       { k: 'GO', t: 'Factory', to: '/factory/cli' },
       { k: 'GO', t: 'Tools', to: '/tools' },
       { k: 'GO', t: 'Media studio', to: '/media' },
-      { k: 'GO', t: 'Artifacts — everything delivered', to: '/artifacts' },
-      { k: 'GO', t: 'Skills — the house playbook', to: '/skills' },
-      { k: 'GO', t: 'Connectors — evidence sources', to: '/connectors' },
-      { k: 'GO', t: 'Your keys — bring your own models', to: '/keys' },
-      { k: 'GO', t: 'Release notes — what shipped', to: '/releases' },
+      { k: 'GO', t: 'Artifacts: everything delivered', to: '/artifacts' },
+      { k: 'GO', t: 'Skills: the house playbook', to: '/skills' },
+      { k: 'GO', t: 'Connectors: evidence sources', to: '/connectors' },
+      { k: 'GO', t: 'Your keys: bring your own models', to: '/keys' },
+      { k: 'GO', t: 'Release notes: what shipped', to: '/releases' },
       ...(s.chats || []).slice(0, 8).map((c) => ({ k: 'CHAT', t: c.title, to: `/c/${c.id}` })),
       ...(s.missions || []).slice(0, 8).map((m) => ({ k: m.serial, t: m.subject, to: `/run/${m.id}` })),
       ...(s.artifacts || []).slice(0, 8).map((a) => ({ k: 'ART', t: a.title, to: `/artifact/${a.id}` })),
@@ -52,7 +52,7 @@ export default function Palette({ onClose }) {
   const go = (item) => {
     if (!item) return;
     onClose();
-    // Desk handoff rides the URL so the Floor reads it on mount — no
+    // Desk handoff rides the URL so the Floor reads it on mount, no
     // pre-mount event can be lost.
     navigate(item.to);
   };
@@ -88,7 +88,7 @@ export default function Palette({ onClose }) {
           ref={inputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Jump anywhere — missions, artifacts, desks…"
+          placeholder="Jump anywhere: missions, artifacts, desks…"
           aria-label="Search the workspace"
           role="combobox"
           aria-expanded="true"

@@ -15,7 +15,7 @@ function summary(m, a) {
     risks: (m.acceptedRisks || []).length,
     rounds: (m.validations || []).length,
     sources: (m.sources || []).length,
-    delivered: a.createdAt ? new Date(a.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—',
+    delivered: a.createdAt ? new Date(a.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–',
   };
 }
 
@@ -46,7 +46,7 @@ export default function Compare({ leftId, rightId }) {
         </div>
         <table className="compare-table" aria-label="What the ledger says changed">
           <thead><tr><th /><th>v{left.version}</th><th>v{right.version}</th></tr></thead>
-          <tbody>{rows.map(([label, k]) => <tr key={k} className={L && R && String(L[k]) !== String(R[k]) ? 'diff' : ''}><td>{label}</td><td>{L ? String(L[k]) : '—'}</td><td>{R ? String(R[k]) : '—'}</td></tr>)}</tbody>
+          <tbody>{rows.map(([label, k]) => <tr key={k} className={L && R && String(L[k]) !== String(R[k]) ? 'diff' : ''}><td>{label}</td><td>{L ? String(L[k]) : '–'}</td><td>{R ? String(R[k]) : '–'}</td></tr>)}</tbody>
         </table>
       </div>
       <div className="compare-frames">

@@ -1,4 +1,4 @@
-// The daily digest: what the house did, in plain words, from the ledger —
+// The daily digest: what the house did, in plain words, from the ledger,
 // and the means to send it through the owner's own connected Gmail. No
 // token in memory, no send; the route says so rather than pretending.
 import { store } from './store.js';
@@ -20,14 +20,14 @@ export function digestText({ days = 1 } = {}) {
   const incidents = recent.filter((m) => (m.retrieval && m.retrieval.ok === false) || (m.authored && m.authored.live === false));
   const w = store.workspace();
   const lines = [];
-  lines.push(`Prajñā digest — the last ${days === 1 ? '24 hours' : `${days} days`}`);
+  lines.push(`Prajñā digest: the last ${days === 1 ? '24 hours' : `${days} days`}`);
   lines.push('');
   lines.push(recent.length ? `${recent.length} mission${recent.length === 1 ? '' : 's'} started, ${delivered.length} delivered, ${stopped.length} stopped. ${n(settled)} credits settled.` : 'No missions started.');
-  if (gated.length) lines.push(`${first} of ${gated.length} cleared the gate first time; ${live} ${live === 1 ? 'was' : 'were'} written by a live seat on your own key.`);
+  if (gated.length) lines.push(`${first} of ${gated.length} cleared the gate first time; ${live} ${live === 1 ? 'was' : 'were'} written by a live model on your own key.`);
   if (pending.length) lines.push(`${pending.length} run${pending.length === 1 ? ' is' : 's are'} waiting on a decision: ${pending.map((m) => `${m.serial} (${(m.attention || []).find((a) => !a.decision)?.kind})`).join(', ')}.`);
-  if (incidents.length) lines.push(`${incidents.length} incident${incidents.length === 1 ? '' : 's'} recorded: ${incidents.map((m) => `${m.serial} — ${m.retrieval && m.retrieval.ok === false ? `retrieval failed (${m.retrieval.error})` : `live seat could not author (${m.authored.error})`}`).join('; ')}.`);
+  if (incidents.length) lines.push(`${incidents.length} incident${incidents.length === 1 ? '' : 's'} recorded: ${incidents.map((m) => `${m.serial}, ${m.retrieval && m.retrieval.ok === false ? `retrieval failed (${m.retrieval.error})` : `live model could not author (${m.authored.error})`}`).join('; ')}.`);
   lines.push('');
-  if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) lines.push(`  • ${m.serial} — ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)`); lines.push(''); }
+  if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) lines.push(`  • ${m.serial}, ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)`); lines.push(''); }
   lines.push(`Balance ${n(w.credits)} credits, ${n(w.reserved)} reserved, ${n(w.spent)} spent to date.`);
   lines.push('');
   lines.push('Every line above comes from the mission ledger. Open the workspace for the tape, the decisions and the deliveries.');
@@ -40,7 +40,7 @@ function b64url(s) { return Buffer.from(s).toString('base64').replace(/\+/g, '-'
 // memory-only; a restart means reconnecting before the next send.
 export async function sendMail({ to, subject, text, base = 'https://gmail.googleapis.com' }) {
   const tok = store.token('google');
-  if (!tok || !tok.token) throw new Error('No Google account connected in this session — connect Google under Connectors first.');
+  if (!tok || !tok.token) throw new Error('No Google account connected in this session, connect Google under Connectors first.');
   const from = tok.account?.email || 'me';
   const raw = b64url([`From: ${from}`, `To: ${to}`, `Subject: ${subject}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', text].join('\r\n'));
   const r = await fetch(`${base.replace(/\/$/, '')}/gmail/v1/users/me/messages/send`, { method: 'POST', headers: { authorization: `Bearer ${tok.token}`, 'content-type': 'application/json' }, body: JSON.stringify({ raw }) });
@@ -60,8 +60,8 @@ export function scheduleDigest() {
       const day = now.toISOString().slice(0, 10);
       if (now.getUTCHours() !== 8 || lastSentDay === day) return;
       lastSentDay = day;
-      const r = await sendMail({ to: w.profile.email, subject: `Prajñā digest — ${day}`, text: digestText({ days: 1 }) });
+      const r = await sendMail({ to: w.profile.email, subject: `Prajñā digest: ${day}`, text: digestText({ days: 1 }) });
       console.log(`prajna: digest sent to ${r.to}`);
-    } catch (e) { console.error('prajna: digest not sent —', e.message); }
+    } catch (e) { console.error('prajna: digest not sent,', e.message); }
   }, 10 * 60 * 1000).unref();
 }

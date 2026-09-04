@@ -1,5 +1,5 @@
-// Your keys (BYOK): bring your own provider keys and your own models. A seat
-// whose provider has a key goes LIVE — its panel position is a real model
+// Your keys (BYOK): bring your own provider keys and your own models. A model
+// whose provider has a key goes LIVE: its panel position is a real model
 // call billed to you, not to house credits. Keys stay on this machine.
 import { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
@@ -21,7 +21,7 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
 
   const save = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(meta.kind === 'search' ? `Loaded as ${r.masked} for this session (not saved to disk). The research desk now sweeps the live web through ${meta.label} until the server restarts.` : `Loaded as ${r.masked} for this session (not saved to disk). Seats on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
+    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(meta.kind === 'search' ? `Loaded as ${r.masked} for this session (not saved to disk). The research desk now sweeps the live web through ${meta.label} until the server restarts.` : `Loaded as ${r.masked} for this session (not saved to disk). Models on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const test = async () => {
@@ -31,7 +31,7 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
   };
   const remove = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { await send(`/api/keys/${id}`, 'DELETE'); setMsg(meta.kind === 'search' ? 'Key removed. Retrieval falls back to the open encyclopedia.' : 'Key removed. Seats on this provider are scripted again.'); await onChange(); }
+    try { await send(`/api/keys/${id}`, 'DELETE'); setMsg(meta.kind === 'search' ? 'Key removed. Retrieval falls back to the open encyclopedia.' : 'Key removed. Models on this provider are scripted again.'); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
 
@@ -122,11 +122,11 @@ export default function Keys() {
     <div className="page">
       <h1 className="pg-title">Your keys</h1>
       <p className="lede">
-        Bring your own keys and your own models. Any panel seat whose provider has a key here goes
-        <b> live</b>: its position on the tape is a real model call, billed to your provider — not to
+        Bring your own keys and your own models. Any panel model whose provider has a key here goes
+        <b> live</b>: its position on the tape is a real model call, billed to your provider, not to
         house credits. <b>Keys are never saved.</b> They are held in the server's memory for this
         session only, never written to disk, never sent back to the browser, and gone the moment the
-        server restarts — you re-enter them when you need them.
+        server restarts, you re-enter them when you need them.
       </p>
 
       <section className="section-gap" aria-label="Provider keys">
@@ -152,11 +152,11 @@ export default function Keys() {
       <section className="board section-gap" aria-label="Your models">
         <div className="board-title"><span className="brd-sm">Your models</span><span className="count">{custom.length}</span></div>
         <div className="board-rows">
-          {custom.length === 0 && <div className="board-empty">No custom seats yet. Add any model your provider serves — it appears on the panel picker like a house seat.</div>}
+          {custom.length === 0 && <div className="board-empty">No custom models yet. Add any model your provider serves, it appears on the panel picker like a house model.</div>}
           {custom.map((m) => (
             <div key={m.id} className="board-row" style={{ cursor: 'default' }}>
               <span className="sym" style={{ '--tint': m.live ? 'var(--green)' : 'var(--flap-ink)' }} aria-hidden="true">{m.symbol}</span>
-              <span className="what"><b>{m.name}</b><span>{m.house} · {m.modelId}{m.baseUrl ? ` · ${m.baseUrl}` : ''} · {m.live ? 'live — key on file' : 'no key for this provider yet'}</span></span>
+              <span className="what"><b>{m.name}</b><span>{m.house} · {m.modelId}{m.baseUrl ? ` · ${m.baseUrl}` : ''} · {m.live ? 'live, key on file' : 'no key for this provider yet'}</span></span>
               <button className="toggle-btn" onClick={() => removeModel(m.id)} aria-label={`Remove ${m.name}`}>Remove</button>
             </div>
           ))}
@@ -167,7 +167,7 @@ export default function Keys() {
             </select>
             <input className="key-input" placeholder="Model id (exactly as the API expects)" value={modelId} onChange={(e) => setModelId(e.target.value)} aria-label="Model id" />
             {provider === 'openai' && <input className="key-input" placeholder="Base URL (optional)" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} aria-label="Base URL" />}
-            <button className="btn-stamp attn-btn" onClick={addModel} disabled={busy || !name || !modelId}>Add seat</button>
+            <button className="btn-stamp attn-btn" onClick={addModel} disabled={busy || !name || !modelId}>Add model</button>
           </div>
           {err && <p className="key-err" role="alert" style={{ padding: '0 1.4rem 1rem' }}>{err}</p>}
         </div>

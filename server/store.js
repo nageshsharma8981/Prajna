@@ -18,7 +18,7 @@ function readJson(file, fallback) {
   try {
     return JSON.parse(fs.readFileSync(full, 'utf8'));
   } catch (e) {
-    // A corrupt ledger must never be silently reseeded over — keep the
+    // A corrupt ledger must never be silently reseeded over, keep the
     // evidence aside and start from the fallback.
     if (fs.existsSync(full)) {
       try { fs.copyFileSync(full, `${full}.corrupt-${Date.now()}`); } catch {}
@@ -44,11 +44,11 @@ export const store = {
     workspace: readJson('workspace.json', null),
     connectors: readJson('connectors.json', null),
     keys: {},                                 // BYOK: memory-only. Never written to disk, never sent to clients, gone on restart.
-    oauthApps: {},                            // { provider: { clientId, clientSecret } } — memory-only
-    tokens: {},                               // { provider: { token, refresh, expiresAt, account } } — memory-only
-    customModels: readJson('models.json', []), // user-added panel seats
+    oauthApps: {},                            // { provider: { clientId, clientSecret } }, memory-only
+    tokens: {},                               // { provider: { token, refresh, expiresAt, account } }, memory-only
+    customModels: readJson('models.json', []), // user-added panel models
   },
-  // The workspace name belongs to whoever runs the house — never a seeded one.
+  // The workspace name belongs to whoever runs the house, never a seeded one.
   _migrateName() { const w = this.state.workspace; if (w && w.name === 'Nagesh Sharma') { w.name = 'Workspace'; this.flushWorkspace(); } },
 
   flushMissions() { writeJson('missions.json', this.state.missions); },

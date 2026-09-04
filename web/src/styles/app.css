@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PRAJÑĀ — The Outcome Exchange
+   PRAJÑĀ: The Outcome Exchange
    World: Solari split-flap boards · amber LED telemetry · paper order tickets
    ========================================================================== */
 
@@ -96,7 +96,7 @@
   --shadow-soft: 0 6px 18px rgba(0, 0, 0, 0.3);
   --paper-shadow: 0 8px 22px rgba(0, 0, 0, 0.5), 0 2px 5px rgba(0, 0, 0, 0.4);
   --focus: 0 0 0 2px var(--ground), 0 0 0 4px var(--led);
-  --flap-ink: #ece7d9; /* lettering on flap tiles — same in both themes */
+  --flap-ink: #ece7d9; /* lettering on flap tiles, same in both themes */
   --board-font: 'Archivo', 'Helvetica Neue', sans-serif;
   --mono: 'Spline Sans Mono', ui-monospace, 'SF Mono', monospace;
   --led-font: 'Doto', 'Spline Sans Mono', monospace;
@@ -1455,7 +1455,7 @@ abbr.cite { cursor: help; }
 @media (max-width: 800px) { .limits-grid { grid-template-columns: 1fr; } }
 
 /* Accessibility pass: the amber that reads on the night hall is too light on
-   day paper — decision cues and the bell take a darker amber there; the
+   day paper, decision cues and the bell take a darker amber there; the
    disclaimer steps up one shade everywhere. */
 :root[data-theme="day"] .side-item.decisions, :root[data-theme="day"] .bell, :root[data-theme="day"] .side-item.decisions .badge-n { color: #7a4a00; }
 :root[data-theme="day"] .side-item.decisions { border-color: #b98a2a; }

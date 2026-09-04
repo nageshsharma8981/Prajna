@@ -118,7 +118,7 @@ function ensure() {
       boards: [],
     };
   }
-  // The profile belongs to whoever opens the house — never a seeded name.
+  // The profile belongs to whoever opens the house, never a seeded name.
   if (st.ws.profile && (st.ws.profile.email === 'just4nagesh@gmail.com' || st.ws.profile.name === 'Nagesh Sharma')) st.ws.profile = { name: '', email: '', handle: '', bio: '', avatar: 'P' };
   if (!st.ws.media) st.ws.media = [];
   if (!st.ws.showcase) st.ws.showcase = [];

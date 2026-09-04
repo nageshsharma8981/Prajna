@@ -1,23 +1,23 @@
-# Prajñā — The Outcome Exchange
+# Prajñā: The Outcome Exchange
 
 An agent workspace where every request becomes a **mission with a visible contract**:
 the agent states the deliverable, the plan, and the price *before* running, executes
-in the open — every step, tool call, and model deliberation streamed live — and ends
+in the open, every step, tool call, and model deliberation streamed live, and ends
 with a tangible, versioned artifact.
 
 Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 
 ## The three refusals (the UVP)
 
-1. **Contract before action.** The house writes an order ticket — full plan, credit
-   estimate, hard ceiling — and nothing runs until you stamp it.
+1. **Contract before action.** The house writes an order ticket, full plan, credit
+   estimate, hard ceiling, and nothing runs until you stamp it.
 2. **Work in the open.** The run deck streams the tape live: tool calls, the model
-   panel's positions, challenges, verdict — and recorded dissent, never erased.
+   panel's positions, challenges, verdict, and recorded dissent, never erased.
 3. **Artifacts, not answers.** Every mission ends in a versioned artifact in the
    Artifacts list (decision brief, deck, landing page, analysis) with provenance and cost
    stamped on it. A mission that ends in prose has failed.
 
-## v0.2 — the contract made mechanical
+## v0.2: the contract made mechanical
 
 - **Event ledger.** Every run event carries a monotonic `seq` (`prajna.event.v1`);
   SSE honors `Last-Event-ID`, and `GET /api/missions/:id/events?after=N` replays
@@ -25,29 +25,29 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 - **Settlement.** The ceiling is a reservation: every run ends with
   reserved / settled / released printed on the tape and in the artifact. A live
   burn-down meter shows settled-vs-estimate variance per step.
-- **Always an artifact.** Kill a live position or hit the ceiling — the run
+- **Always an artifact.** Kill a live position or hit the ceiling, the run
   pauses or closes with a *partial artifact*, stamped as such. No terminal state
   ends in nothing.
 - **Panel gate.** The panel votes pass / fail / unverifiable per acceptance
   dimension; *unverifiable counts as fail*, and the patch + re-vote that clears
   the gate is on the record.
-- **Terminal review.** A reviewer that sees only the goal and the artifact —
-  never the run — judges the result; gaps go on the record or void the artifact.
+- **Terminal review.** A reviewer that sees only the goal and the artifact,
+  never the run, judges the result; gaps go on the record or void the artifact.
 - **Attention queue.** Every mid-run decision (ceiling raise, gap acceptance)
   demands a justification, recorded in the ledger and the artifact. First write
   wins; nothing is silently relabeled to fit the budget.
 - **Citation integrity.** Brief references render *only* from sources actually
   cited; an unreferenced claim fails the artifact build.
 - **Machine-readable provenance.** Every artifact embeds
-  `prajna.provenance.v1` — contract, settlement, gate table, review, decisions,
-  honest `mode: "scripted"` label — refreshed at settlement.
+  `prajna.provenance.v1`, contract, settlement, gate table, review, decisions,
+  honest `mode: "scripted"` label, refreshed at settlement.
 
-## v0.3 — perfected after a 100-agent full-app audit
+## v0.3: perfected after a 100-agent full-app audit
 
 - **Vocabulary rule: world-nouns stay, workflow-verbs go plain.** Open a
   *mission*, *stamp & run*, *stop run*, DONE / STOPPED / HOLDING, *Connectors*
   (not "instruments"), *Missions* (not "the floor"), *Artifacts* (not "ledger"). Tickets, tape, panel, desks, credits are
-  unchanged — they explain themselves and carry the world.
+  unchanged, they explain themselves and carry the world.
 - **Real reservations.** Stamping a ticket reserves its ceiling from house
   credits; each cost settles from the reservation; closing releases the rest.
   `credits + reserved + spent` always reconciles to the funded pool, and the
@@ -67,15 +67,15 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   + scroll reset on route change, a quiet live region instead of a chatty one,
   gate votes as a real table with readable rationale, a pausable ticker.
 
-## v0.4 — bring your own keys (BYOK)
+## v0.4: bring your own keys (BYOK)
 
 - **Your keys** page: Anthropic, OpenAI-compatible (OpenAI, DeepSeek, Groq,
-  Together, Ollama… via base URL) and Google Gemini keys — **never saved**: held in
+  Together, Ollama… via base URL) and Google Gemini keys: **never saved**: held in
   server memory for the session only, masked in every response, never sent to the browser, gone on restart. **Test** proves
   a key with a real round-trip.
 - **Your models**: add any model id your provider serves; it becomes a panel
   seat like a house seat.
-- **Live seats**: a seat whose provider has a key goes *live* — its panel
+- **Live seats**: a seat whose provider has a key goes *live*, its panel
   position on the tape is a real model call (green dot on the chip, "live on
   your key" on the tape). A failed call falls back to the scripted voice and
   the failure is recorded, never hidden.
@@ -84,7 +84,7 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   per-seat live flags. Tools and artifacts remain scripted until live execution
   ships.
 
-## v0.5 — mechanisms adopted from ii-agent (independent implementations, no code copied)
+## v0.5: mechanisms adopted from ii-agent (independent implementations, no code copied)
 
 - **Plans are milestone graphs.** Every step declares what it depends on and its
   access class (read / write / external). Independent steps run side by side on
@@ -101,10 +101,10 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
   supersedes.
 - `AGENTS.md` records the mandatory rules for changing the engine.
 
-## v0.6 — connectors that actually connect
+## v0.6: connectors that actually connect
 
 - **Real OAuth sign-in** for Google (one app covers Gmail, Drive, Calendar, Sheets,
-  YouTube), Slack, Notion and GitHub — zero dependencies, standard authorization-code
+  YouTube), Slack, Notion and GitHub: zero dependencies, standard authorization-code
   flow, state-checked callbacks at `/api/oauth/<provider>/callback`.
 - **Bring your own provider app**: register an OAuth app once in each provider's
   console, paste its client id/secret under *Your keys* (memory-only, never saved),
@@ -117,20 +117,20 @@ Built as a direct answer to chat-with-a-spinner agent platforms (Zenith et al.).
 - Sources without a wired provider (Outlook, Linear, Jira, HubSpot, Stripe, Figma,
   X, RSS) say so honestly instead of pretending.
 
-## v0.7 — stopping discipline from Zenith (independent implementation)
+## v0.7: stopping discipline from Zenith (independent implementation)
 
 Studied the Zenith harness (Apache-2.0; report CC BY) and adopted its control
 mechanisms without copying code:
 
 - **Definition of done as atomic assertions.** Every ticket carries testable
   promises about the deliverable (`VAL-…`), each owned by exactly one plan step
-  — Zenith's two-layer shape: many assertions → fewer work steps.
+ , Zenith's two-layer shape: many assertions → fewer work steps.
 - **Two independent validator lanes, real checks.** After the artifact exists, a
   *scrutiny* lane and a *surface* lane each prove every assertion against the
   actual HTML (structure, behavior, parseable provenance, cited-only refs, nine
   slides, responsive rules…). No scripted votes.
 - **A gate that seals or refuses.** An assertion seals only when both lanes
-  pass; lanes disagreeing is *dissent*, no lane covering is *missing* — both
+  pass; lanes disagreeing is *dissent*, no lane covering is *missing*, both
   block. A refused gate raises a decision: **patch & re-validate** (the
   earliest wrong artifact is regenerated and both lanes run again), **accept
   the risk on the record**, or **stop**.
@@ -157,9 +157,9 @@ Dev loop: `cd web && npm run dev` (Vite on 5205, proxying /api to 3005).
 
 ## Architecture
 
-- `server/` — zero-dependency Node HTTP server: REST + SSE streaming, JSON-file
+- `server/`, zero-dependency Node HTTP server: REST + SSE streaming, JSON-file
   persistence in `data/` (gitignored), mission engine, artifact generators.
-- `web/` — React 19 + Vite SPA, hand-written CSS design system in
+- `web/`, React 19 + Vite SPA, hand-written CSS design system in
   `src/styles/app.css`, self-hosted variable fonts (Archivo, Doto, Spline Sans Mono).
 - Demo mode ships scripted runs that produce real artifacts; the engine has a seam
   for live model calls when `ANTHROPIC_API_KEY` is present (future work).
@@ -183,7 +183,7 @@ Data note: `data/` is gitignored runtime state; deleting it reseeds the demo wor
 
 ## Deploy (Railway)
 
-Live at **https://www.prajñā.com** (punycode `www.xn--praj-jqa0h.com`; the ASCII prajna.com is not ours) and https://prajna-production.up.railway.app — Railway project **Prajna**,
+Live at **https://www.prajñā.com** (punycode `www.xn--praj-jqa0h.com`; the ASCII prajna.com is not ours) and https://prajna-production.up.railway.app, Railway project **Prajna**,
 service `prajna`, a persistent volume mounted at `/data` (`PRAJNA_DATA_DIR=/data`),
 Nixpacks build via `railway.json` (`npm run build` → `npm start`, health check on
 `/api/bootstrap`). Deploys are CLI-driven from this directory:
@@ -196,28 +196,28 @@ Custom domain: `railway domain yourdomain.com` prints the CNAME target; add that
 record at your DNS host and Railway issues the certificate automatically.
 Single process, port from `PORT`, no external services.
 
-## v0.8 — Zenith-parity workspace (2026-09-04)
+## v0.8: Zenith-parity workspace (2026-09-04)
 
 The front end now mirrors the surfaces of agent.ii.inc so every feature has a
 home before we make each one better:
 
-- **Chat-first home** — greeting, one composer, mode chips (Website, Mobile App,
+- **Chat-first home**, greeting, one composer, mode chips (Website, Mobile App,
   Slide Deck, Research, Analysis), model picker with LIVE / YOURS / PRO badges,
   Model Council (lead + advisers), deck template picker, Fast/Deep research,
   Build/Design variant, attachments and mic.
-- **Chats** — every prompt lives in a thread (`/c/:id`); mode prompts turn into
+- **Chats**, every prompt lives in a thread (`/c/:id`); mode prompts turn into
   missions and render a live run card in the thread (steps, cost, Decision
   needed / Open delivery / Watch the tape). Plain chat answers with a live
   seat when a key is loaded and says so honestly when not.
-- **Sidebar** — New chat, Plugins, Factory (CLI / Community / Skills / Assets /
+- **Sidebar**, New chat, Plugins, Factory (CLI / Community / Skills / Assets /
   Projects), Boards (beta: Mission board + Tickets & runs), Chats, and the
   footer tools (Connectors, Skills, Tools, Your keys), plan pill and user menu.
-- **Boards** — Kanban of every mission plus a task map of each plan by
-  dependency depth. **Tools** — Task agent, Media, Browser switches + MCP
-  servers. **Connectors** — 50-app catalog with search, categories, Popular
+- **Boards**, Kanban of every mission plus a task map of each plan by
+  dependency depth. **Tools**, Task agent, Media, Browser switches + MCP
+  servers. **Connectors**, 50-app catalog with search, categories, Popular
   grid and Connected accounts (Google/Slack/Notion/GitHub run real OAuth).
-- **Account** — profile, dashboard, assets, personalization, language,
-  subscription tiers (demo billing), invoices, settings, help. **Media** —
+- **Account**, profile, dashboard, assets, personalization, language,
+  subscription tiers (demo billing), invoices, settings, help. **Media**,
   local procedural image/motion studio; hosted models route once a key is
   loaded.
 - New desk: **Mobile** (phone-framed artifact) and a **Design** variant for
@@ -229,17 +229,17 @@ catalog) and the `/api/chats*`, `/api/projects*`, `/api/plugins`, `/api/tools`,
 `/api/mcp`, `/api/profile|personalization|language|plan`, `/api/boards`
 routes. Keys and OAuth tokens remain memory-only.
 
-## v0.9 — Live authoring (2026-09-04)
+## v0.9: Live authoring (2026-09-04)
 
 The first "better than Zenith" move: when the lead seat is live (a BYOK key is
 loaded for its provider), the lead model **writes the substance of the
-deliverable itself** at the compose / build / design step — brief claims,
+deliverable itself** at the compose / build / design step, brief claims,
 verdict and dissent; deck beats; site copy; mobile screens; analysis read and
 caveats; design regions. The house lays it out, the two validator lanes gate
 it exactly as they gate scripted output, and the provenance block records
 `mode: "live"` with the model, character count and latency. No key → scripted
 substance, labeled as such. A model reply that misses the required shape is
-recorded on the tape and the scripted substance is used instead — nothing is
+recorded on the tape and the scripted substance is used instead, nothing is
 silently swapped.
 
 Also fixed: two validator surface lanes (deck one-idea, chart accessibility)
@@ -248,23 +248,23 @@ Validators now scan the deliverable body only.
 
 `server/author.js` holds the per-desk shapes and the authoring call.
 
-## v0.10 — Streaming chat and real retrieval (2026-09-04)
+## v0.10: Streaming chat and real retrieval (2026-09-04)
 
 - **Streaming replies.** Plain chat now streams token by token from the live
   seat over SSE (`POST /api/chats/:id/stream`), for Anthropic, OpenAI-compatible
   and Gemini keys alike. The first message from the home composer is handed
   to the thread so the reply streams there instead of blocking navigation.
 - **Real sources for the research desk.** The sweep step retrieves real,
-  linked, dated sources from the open Wikipedia API — no key needed. A live
+  linked, dated sources from the open Wikipedia API: no key needed. A live
   author cites them by number and the references table links them; the
-  scripted brief lists them under "Retrieved reading — not cited" because its
+  scripted brief lists them under "Retrieved reading: not cited" because its
   sample claims were not derived from them. Retrieval success, count and
   latency go on the tape and into the provenance block (`retrieval`).
 
 `server/retrieve.js` holds the retriever; `streamModel` in `server/providers.js`
 holds the streaming adapters.
 
-## v0.11 — Search key, sources on the panel's table, quality analytics (2026-09-04)
+## v0.11: Search key, sources on the panel's table, quality analytics (2026-09-04)
 
 - **Brave Search key (BYOK).** A web-search key on the Your keys page widens
   the research desk's sweep to the live web; the open encyclopedia still runs
@@ -276,7 +276,7 @@ holds the streaming adapters.
   time rate, patched-before-delivery rate, accepted risks, live-authored share,
   estimate variance and per-desk delivery from the mission ledger.
 
-## v0.12 — Access gate and share links (2026-09-04)
+## v0.12: Access gate and share links (2026-09-04)
 
 - **Access gate.** Set `PRAJNA_ACCESS_CODE` on the host (Railway → Variables)
   and every API call needs a session cookie minted by that code; the app shows
@@ -285,15 +285,15 @@ holds the streaming adapters.
   not log anyone out and nothing secret is written to disk. Twelve wrong
   attempts per ten minutes per address. Unset, the house is open (local
   development). Log out clears the cookie.
-- **Share links.** Any delivered artifact can be shared at `/s/<token>` —
-  public, `noindex`, provenance block included — and revoked at any time from
+- **Share links.** Any delivered artifact can be shared at `/s/<token>`,
+  public, `noindex`, provenance block included, and revoked at any time from
   the artifact bar. The token lives on the artifact record.
 
 ```bash
 railway variables --service prajna --set PRAJNA_ACCESS_CODE=your-code
 ```
 
-## v0.13 — Hosted media on your own key (2026-09-04)
+## v0.13: Hosted media on your own key (2026-09-04)
 
 The media studio now generates real images on the user's own OpenAI-compatible
 key (`gpt-image-1`) or Google key (`gemini-2.5-flash-image`) through
@@ -303,7 +303,7 @@ the workspace ledger and can be deleted. No key → an honest refusal, never a
 silent fallback. The local procedural engine remains the keyless option; hosted
 video is not wired and the page says so.
 
-## v0.14 — Community showcase and the CLI (2026-09-04)
+## v0.14: Community showcase and the CLI (2026-09-04)
 
 - **Community showcase.** Any fully delivered, unvoided artifact can be
   submitted from Factory → Assets. It goes public at its share link with the
@@ -324,15 +324,15 @@ prajna run website "A landing page for a Bengaluru coffee roaster" --auto --out 
   saves the delivered artifact. `status`, `tape <mission-id>`, `artifacts` and
   `get <artifact-id>` cover the rest. The session file under
   `~/.config/prajna` holds the workspace URL and the server-minted session
-  cookie only — never the access code, never a provider key.
+  cookie only, never the access code, never a provider key.
 
-## v0.15 — The honesty lane (2026-09-04)
+## v0.15: The honesty lane (2026-09-04)
 
 A new assertion on every content desk, `VAL-FIGURES-SOURCED`: in a
 live-authored deliverable, every figure (percentages, money, counts with units,
 ratios, n=) must trace to the goal or to a retrieved source's text. The
 scrutiny lane is strict; the surface lane forgives figures the text itself
-labels illustrative — so a labelled example produces dissent, not a silent
+labels illustrative, so a labelled example produces dissent, not a silent
 pass. Verdicts now carry a detail string (which figures, why) that appears on
 the tape and in the decision prompt.
 
@@ -342,7 +342,7 @@ size and latency, then both lanes run again. If the seat cannot revise, the
 draft stands and the gate says so. Scripted substance is house-labelled sample
 and is not figure-checked.
 
-## v0.16 — Advisers critique the draft; the companion starts missions (2026-09-04)
+## v0.16: Advisers critique the draft; the companion starts missions (2026-09-04)
 
 - **Critique before the gate.** When the lead seat is live, every live
   adviser reads the lead's draft and returns pass or revise with concrete
@@ -355,27 +355,27 @@ and is not figure-checked.
   drops the run card into the thread. Without a live seat, a plain-language
   request ("build a pitch deck for…") is read directly and started the same way.
 
-## v0.17 — Edit the plan before you stamp it (2026-09-04)
+## v0.17: Edit the plan before you stamp it (2026-09-04)
 
 An unstamped ticket is editable from the run view: retitle, reorder, remove
 or add steps (any house tool, up to twelve). On save the contract is
-recomputed — estimate, ceiling, access counts, assertion ownership — and the
+recomputed, estimate, ceiling, access counts, assertion ownership, and the
 edit is recorded on the contract (`contract.edited`: count, added, removed)
 and in every artifact's provenance. `PATCH /api/missions/:id/plan` refuses
 anything but an OPEN ticket, unknown tools and oversized plans.
 
-## v0.18 — Why this plan, and what each step costs (2026-09-04)
+## v0.18: Why this plan, and what each step costs (2026-09-04)
 
 Every ticket now shows the cost, access class and approval flag of each step,
 the per-seat price on the panel step (live seats on your own key are priced
 at 0 house credits, house seats share the panel cost), and a house-written
-"Why this plan" — a contract-level explanation of depth, variant, removed
-skill steps, connector steps and the ceiling rule — plus a one-line rationale
+"Why this plan", a contract-level explanation of depth, variant, removed
+skill steps, connector steps and the ceiling rule, plus a one-line rationale
 per step. All of it is carried in the provenance block (`contract.why`,
 `contract.steps`). Deterministic and honest: the house explains its own
 reasoning; it does not ask a model to invent one.
 
-## v0.19 — Amend from notes (2026-09-04)
+## v0.19: Amend from notes (2026-09-04)
 
 Leave notes on any delivery (artifact view → Notes) and amend with them: the
 next version's ticket carries the notes in its lineage, the lead author is
@@ -385,7 +385,7 @@ records the notes too and says plainly that scripted substance cannot act on
 them. `POST/DELETE /api/artifacts/:id/notes`, `POST /api/missions/:id/fork
 {feedback: [...]}`.
 
-## v0.20 — Brand mark, and your own evidence on the table (2026-09-04)
+## v0.20: Brand mark, and your own evidence on the table (2026-09-04)
 
 - **Logo.** The supplied Prajñā mark replaces the split-flap wordmark in the
   sidebar, the locked-house screen and the favicon; "Outcome Exchange" is gone
@@ -398,15 +398,15 @@ them. `POST/DELETE /api/artifacts/:id/notes`, `POST /api/missions/:id/fork
   count as sourced for the honesty lane. Non-text files are recorded by name
   only and the chip says so.
 
-## v0.21 — Sources on the table (2026-09-04)
+## v0.21: Sources on the table (2026-09-04)
 
-The ticket now lists every source on the table — owner attachments, Brave web
-hits, encyclopedia entries — with engine, link and retrieval date, updating
+The ticket now lists every source on the table, owner attachments, Brave web
+hits, encyclopedia entries, with engine, link and retrieval date, updating
 live as the sweep lands. Numbered references in panel positions and adviser
 critiques resolve to those sources on the tape: `[3]` links to source 3, or
 names the owner attachment it points to.
 
-## v0.22 — The audit bundle (2026-09-04)
+## v0.22: The audit bundle (2026-09-04)
 
 `GET /api/missions/:id/bundle` (add `?download=1`, or `?format=json`) returns
 one self-contained HTML file carrying a mission's whole record: goal, panel,
@@ -417,7 +417,7 @@ embedded in a sandboxed frame, and the machine-readable record
 (`prajna.bundle.v1`). The run view has an "Audit bundle" button; the CLI has
 `prajna bundle <mission-id>`.
 
-## v0.23 — Hardening and the weekly digest (2026-09-04)
+## v0.23: Hardening and the weekly digest (2026-09-04)
 
 - **Rate limits.** Per-address, memory-only, fixed windows: twelve access-code
   tries per ten minutes, sixty public share-link fetches a minute, sixty
@@ -428,24 +428,24 @@ embedded in a sandboxed frame, and the machine-readable record
   the ledger: delivered vs started, credits settled, gate-first-time count,
   live-authored count, amendments, notes left, showcase submissions.
 
-## v0.24 — Mobile pass and keyboard polish (2026-09-04)
+## v0.24: Mobile pass and keyboard polish (2026-09-04)
 
 Promo cards stack below 700px, the greeting, chat thread, run card and plan
 editor tighten for small screens, and no page scrolls sideways on a phone.
 `/` focuses the composer from anywhere on a page that has one; `⌘K` still
 opens the jump palette and `Esc` closes overlays.
 
-## v0.25 — Compare versions (2026-09-04)
+## v0.25: Compare versions (2026-09-04)
 
 `/compare/<older>/<newer>` puts two versions of a delivery side by side with
-the owner notes that drove the newer one and a ledger comparison — mode,
+the owner notes that drove the newer one and a ledger comparison, mode,
 assertions sealed, validation rounds, patches, accepted risks, sources,
-settled cost, delivery time — with differences highlighted. Every superseding
+settled cost, delivery time, with differences highlighted. Every superseding
 artifact has a "Compare with v(n-1)" button in its bar.
 
-## v0.26 — In plain words (2026-09-04)
+## v0.26: In plain words (2026-09-04)
 
-When a run ends — delivered or stopped — the house writes a narrative from the
+When a run ends, delivered or stopped, the house writes a narrative from the
 tape: what the ticket was, what the sweep found, who on the panel spoke live,
 who wrote the substance, what the advisers asked to change, what the gate
 refused and what the owner decided (with the justification), ceiling and
@@ -454,18 +454,18 @@ what was delivered. Deterministic and ledger-backed; no model is asked to
 summarise. It lands in the chat thread as a message, sits at the end of the
 tape on the run page, and travels in the audit bundle.
 
-## v0.27 — Ask the record (2026-09-04)
+## v0.27: Ask the record (2026-09-04)
 
 A thread that started missions can be asked about them. A live seat receives
-the mission record in its prompt — narrative, credits, plan, gate rounds and
+the mission record in its prompt, narrative, credits, plan, gate rounds and
 findings, owner decisions with justifications, authoring mode, critiques,
-sources, review, artifact — with the instruction to answer only from it and
+sources, review, artifact, with the instruction to answer only from it and
 to say when it does not say. Without a live seat the house answers
 deterministically from the narrative and ledger ("why did this cost more than
 the estimate?", "what did the gate refuse?", "which sources?") and labels the
 reply "answered from the record".
 
-## v0.28 — Decision needed (2026-09-04)
+## v0.28: Decision needed (2026-09-04)
 
 When a run pauses for a decision the tab title starts with "(n) Decision
 needed", the sidebar shows a pulsing "Decision needed" item with a count that
@@ -474,49 +474,49 @@ bell. Browser notifications are opt-in under Settings, stored per browser,
 and fire only when the tab is in the background. `prajna watch` rings the
 terminal bell and prints the prompt, the options and the run URL.
 
-## v0.29 — Housekeeping (2026-09-04)
+## v0.29: Housekeeping (2026-09-04)
 
-`POST /api/housekeeping {minutes, apply}` lists — and with `apply`, settles —
+`POST /api/housekeeping {minutes, apply}` lists, and with `apply`, settles,
 what the board has stopped caring about: unstamped tickets older than the
 window are voided, runs paused on a decision nobody has taken for that long
 are stopped, reserves are released, and every action lands on the tape as
 such. Dry run by default. The Tickets & runs page has a Housekeeping control
 with a confirm step; the CLI has `prajna sweep [--minutes 60] [--apply]`.
 
-## v0.30 — First run (2026-09-04)
+## v0.30: First run (2026-09-04)
 
 A fresh workspace opens with a welcome: the three steps (ask for an outcome,
 watch it run, take the delivery with its evidence), a one-minute sample that
 writes and runs a fast research ticket into a new chat, and a link to load a
 key. Dismissed per browser; Get Help brings it back (`/?welcome=1`).
 
-## v0.31 — Decisions in the palette (2026-09-04)
+## v0.31: Decisions in the palette (2026-09-04)
 
-Pending decisions sit at the top of the ⌘K palette — serial, kind and the
-prompt — so a run waiting on you is one keystroke away from anywhere, and
+Pending decisions sit at the top of the ⌘K palette, serial, kind and the
+prompt, so a run waiting on you is one keystroke away from anywhere, and
 typing "decide" or a serial filters to them.
 
-## v0.32 — Seats at stamping (2026-09-04)
+## v0.32: Seats at stamping (2026-09-04)
 
 An unstamped ticket now shows seat health: each seat marked live on your key
 or house voice, a plain sentence about what that means for the substance, and
 a link to load the missing provider key. No surprises after stamping.
 
-## v0.33 — What your keys save (2026-09-04)
+## v0.33: What your keys save (2026-09-04)
 
 The panel step records the house price per seat; a live seat is priced at 0.
 The ticket tally shows "Saved by your keys" for any run with live seats, and
-the dashboard totals it across the board — the value of bringing your own
+the dashboard totals it across the board, the value of bringing your own
 keys, in house credits, from the ledger.
 
-## v0.34 — Fresh-eyes pass (2026-09-04)
+## v0.34: Fresh-eyes pass (2026-09-04)
 
 A first-visit walk through the live site at desktop width. One flaw found and
 fixed: the promo cards overlapped the welcome card's corner; with the welcome
 showing they now sit in a row above it. Home, missions, artifacts and the
 console were otherwise clean.
 
-## v0.35 — Status page and health (2026-09-04)
+## v0.35: Status page and health (2026-09-04)
 
 `/status` is a public, never-secret page: version, uptime, runs live and
 paused, deliveries, last delivery time, data-directory health and memory.
@@ -524,22 +524,22 @@ paused, deliveries, last delivery time, data-directory health and memory.
 house is locked, and are rate-limited like the other public routes. Linked
 from Settings.
 
-## v0.36 — The credit ledger (2026-09-04)
+## v0.36: The credit ledger (2026-09-04)
 
 Every movement of house credits is now a line the owner can read back:
 reserve on stamping, settlement and release on closing, ceiling raises, plan
-grants, showcase grants and top-ups — each with the balance and reserve after
+grants, showcase grants and top-ups, each with the balance and reserve after
 it. Payment & Invoices shows the ledger and offers demo top-ups (an honest
 line, no charge); Subscription opens with a plain explanation of what a
 credit is and how estimate, ceiling, settlement and live seats relate.
 
-## v0.37 — The tape moves to its own file (2026-09-04)
+## v0.37: The tape moves to its own file (2026-09-04)
 
 A finished mission's event ledger is archived to `data/tape/<id>.json`
 (`prajna.tape.v1`) and the mission record keeps only the count, so the main
 missions file stays small and every event flush during a run stays cheap.
-Readers that need the events — the run view, replay, the bundle, the record
-digest — load the full mission on demand. Existing finished missions are
+Readers that need the events, the run view, replay, the bundle, the record
+digest, load the full mission on demand. Existing finished missions are
 archived once on boot. Nothing is lost: the tape is the same events, in the
 same order, with the run script beside them.
 
@@ -549,65 +549,65 @@ shows "Set up your profile" until then, email is editable and validated
 under My Profile, and the brand mark sits in the top bar on small screens
 where the sidebar is a drawer.
 
-## v0.38 — Share the record (2026-09-04)
+## v0.38: Share the record (2026-09-04)
 
-A finished mission's whole record — the audit bundle with contract, tape,
-decisions, sources, settlement and the embedded artifact — can be shared at a
+A finished mission's whole record, the audit bundle with contract, tape,
+decisions, sources, settlement and the embedded artifact, can be shared at a
 public, `noindex`, revocable link (`/r/<token>`) from the run view, alongside
 the download. Unstamped tickets have no record to share. The profile page
 nudges for a name while the house does not know one.
 
-## v0.39 — Status history (2026-09-04)
+## v0.39: Status history (2026-09-04)
 
 The status page and `/api/health` carry seven days of history: runs started,
 delivered and stopped per UTC day, and the incidents the house records about
-itself — retrieval failures and live seats that could not author. Nothing is
+itself, retrieval failures and live seats that could not author. Nothing is
 inferred; every count comes from the mission ledger.
 
-## v0.40 — The daily digest, by your own Gmail (2026-09-04)
+## v0.40: The daily digest, by your own Gmail (2026-09-04)
 
-`GET /api/digest` writes the last 24 hours in plain words from the ledger —
+`GET /api/digest` writes the last 24 hours in plain words from the ledger,
 started, delivered, stopped, credits settled, gate-first-time, live-authored,
 runs waiting on a decision, incidents, deliveries, balance. `POST
 /api/digest/send` sends it through the owner's connected Google account
 (`gmail.send` scope added to the Google connector) to the profile email; with
 no token in memory it says so and sends nothing. Settings offers "Send now"
 and an opt-in "every morning at 08:00 UTC while the server holds a Google
-token" — tokens are memory-only, so a restart means reconnecting.
+token", tokens are memory-only, so a restart means reconnecting.
 
-## v0.41 — What the house can and cannot do yet (2026-09-04)
+## v0.41: What the house can and cannot do yet (2026-09-04)
 
 Get Help opens with one honest list: what the house does today and what it
-does not do yet — scripted substance without a key, sample chart series,
+does not do yet, scripted substance without a key, sample chart series,
 no hosted video, demo billing, one workspace per house, memory-only keys and
 tokens, and which connectors are live versus catalogue entries.
 
-## v0.42 — Your data on the analysis desk (2026-09-04)
+## v0.42: Your data on the analysis desk (2026-09-04)
 
 Attach a CSV to an analysis mission and the charts plot it: the first numeric
 column is the series (labelled by the first text column), a second text
 column becomes the segment breakdown, and the ingest step says on the tape
-exactly what it parsed — rows, columns, series and segments. The live author
+exactly what it parsed, rows, columns, series and segments. The live author
 and the panel get the numbers in their prompt; the artifact names the file
 and carries the profile in provenance (`data`). No CSV → the house sample
 series, labelled as such, as before.
 
-## v0.43 — Data in the brief (2026-09-04)
+## v0.43: Data in the brief (2026-09-04)
 
 A CSV attached to a research mission appears in the brief as "Data on the
 table": the file, its shape, the series with sum, mean and range, the segment
-breakdown, and the first rows — parsed, not verified, and marked as owner
+breakdown, and the first rows, parsed, not verified, and marked as owner
 data. The author gets the same summary in its prompt; figures that trace to
 the file pass the honesty lane.
 
-## v0.44 — Accessibility pass (2026-09-04)
+## v0.44: Accessibility pass (2026-09-04)
 
 Measured contrast on the surfaces added today. The amber that reads on the
 night hall was far below AA on day paper for the decision cues and the bell;
 they now take a darker amber by day. The disclaimer steps up a shade. The
 logo link and the hidden file input carry accessible names.
 
-## v0.45 — Keyboard-only decision walk (2026-09-04)
+## v0.45: Keyboard-only decision walk (2026-09-04)
 
 Verified without a mouse: ⌘K opens the palette with the pending decision
 first, Enter opens the run, the justification field takes focus and text,
@@ -616,25 +616,36 @@ or Space activates in any browser. The test harness cannot emit native button
 activation, so that last step was completed by click; everything before it
 was driven by keys alone.
 
-## v0.46 — Release notes in the app (2026-09-04)
+## v0.46: Release notes in the app (2026-09-04)
 
 `/releases` lists every version the house has shipped, newest first, parsed
 from this README (`GET /api/releases`), with the running version at the top.
 Linked from Get Help and the ⌘K palette.
 
-## v0.47 — Lighter first load, Escape everywhere (2026-09-04)
+## v0.47: Lighter first load, Escape everywhere (2026-09-04)
 
-The secondary views — run, account, boards, factory, connectors, tools,
-media, artifacts, compare, releases, skills, keys — now load on demand, which
+The secondary views, run, account, boards, factory, connectors, tools,
+media, artifacts, compare, releases, skills, keys, now load on demand, which
 takes the first script from 104 KB to 76 KB gzipped; the home, chat and
 sidebar stay in the first chunk. In the composer, Escape closes whichever
-overlay is open — model picker, depth menu, council, templates.
+overlay is open, model picker, depth menu, council, templates.
 
-## v0.48 — Ten at once (2026-09-04)
+## v0.48: Ten at once (2026-09-04)
 
 Verified under load: nine missions launched together (a tenth was refused
-because the house could not fund its ceiling — the right answer), all nine
+because the house could not fund its ceiling, the right answer), all nine
 delivered, and afterwards the reserve returned exactly to its starting value,
 the spent delta equalled the sum of the nine settlements, every tape was
 archived, every narrative written, and the ledger held two lines per mission
 plus one per ceiling raise. No code changed; this is the record of the check.
+
+## v0.49: Plain words, plain cards (2026-09-04)
+
+Owner feedback, applied everywhere: the black code labels that overlapped
+the desk titles are gone and each card is titled by what it delivers
+(Decision brief, Slide deck, Landing page, Mobile app prototype, Metrics
+dashboard); "Order pad" is now "Write a ticket"; every em dash in the
+interface, the artifacts, the tape and these notes became a colon, comma or
+full stop; "seat" became "model" wherever a person reads it; and the
+"Decision needed" sidebar item and bell are removed, pending decisions stay
+reachable from the run card, the board and the palette.

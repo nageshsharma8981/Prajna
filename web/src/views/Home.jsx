@@ -23,7 +23,7 @@ export default function Home() {
   const sample = async () => {
     setSampling(true);
     try {
-      const goal = 'Should a neighbourhood coffee roaster add a subscription — a fast brief';
+      const goal = 'Should a neighbourhood coffee roaster add a subscription, a fast brief';
       const r = await fetch('/api/chats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'research', title: goal.slice(0, 60) }) });
       const chat = await r.json();
       await fetch(`/api/chats/${chat.id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: goal, mode: 'research', depth: 'fast' }) });
@@ -53,7 +53,7 @@ export default function Home() {
     <div className={`home${showWelcome ? ' with-welcome' : ''}`}>
       <aside className="promos" aria-label="Featured">
         <Link to="/media" className="promo"><span className="promo-ic"><MediaIcon /></span><span>Create videos<br />and photos</span><ArrowIcon /></Link>
-        <Link to="/?mode=chat" className="promo"><span className="promo-ic"><SparkIcon /></span><span>Try the companion —<br />a mind by your side</span><ArrowIcon /></Link>
+        <Link to="/?mode=chat" className="promo"><span className="promo-ic"><SparkIcon /></span><span>Try the companion,<br />a mind by your side</span><ArrowIcon /></Link>
       </aside>
       <div className="home-center">
         {showWelcome && (
@@ -61,7 +61,7 @@ export default function Home() {
             <div className="welcome-head"><span className="k">First run</span><button className="x" onClick={dismiss} aria-label="Dismiss welcome">×</button></div>
             <h2>Every request becomes a contract. Every run is watched. Every delivery carries its evidence.</h2>
             <ol className="welcome-steps">
-              <li><b>Ask for an outcome.</b> Pick a mode below — website, mobile app, deck, research, analysis — and say what you want. The house writes a ticket: the plan and the price, before anything runs.</li>
+              <li><b>Ask for an outcome.</b> Pick a mode below, website, mobile app, deck, research, analysis, and say what you want. The house writes a ticket: the plan and the price, before anything runs.</li>
               <li><b>Watch it run.</b> Every step, panel position and cost prints on the tape. When the gate refuses or the ceiling is hit, the decision comes to you, with a justification on the record.</li>
               <li><b>Take the delivery.</b> The artifact carries its provenance: who wrote what, which sources, what was sealed, what you decided. Amend it with notes, compare versions, or hand over the audit bundle.</li>
             </ol>
@@ -74,7 +74,7 @@ export default function Home() {
             )}
             <div className="welcome-actions">
               <button className="btn-stamp attn-btn" onClick={sample} disabled={sampling}>{sampling ? 'Writing the ticket…' : 'Run a one-minute sample'}</button>
-              <Link to="/keys" className="btn-quiet">Load a key so seats go live</Link>
+              <Link to="/keys" className="btn-quiet">Load a key so models run live</Link>
               <span className="conn-hint">Without a key the house runs in its scripted voice and labels every sample as such.</span>
             </div>
           </section>

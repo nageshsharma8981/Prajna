@@ -7,10 +7,10 @@ import Skills from './Skills.jsx';
 const TABS = [['cli', 'CLI'], ['community', 'Community'], ['skills', 'Skills'], ['assets', 'Assets'], ['projects', 'Projects']];
 
 const SHOWCASE = [
-  { id: 'sc1', title: 'The Renaissance — when humanity dared to dream', kind: 'deck', by: 'house', prompt: 'A nine-beat deck on the Renaissance for an international presentation competition', mode: 'deck' },
+  { id: 'sc1', title: 'The Renaissance: when humanity dared to dream', kind: 'deck', by: 'house', prompt: 'A nine-beat deck on the Renaissance for an international presentation competition', mode: 'deck' },
   { id: 'sc2', title: 'Climate metrics dashboard', kind: 'site', by: 'house', prompt: 'Design an interactive climate metrics dashboard site', mode: 'website' },
-  { id: 'sc3', title: 'Who wins the enterprise agent market?', kind: 'brief', by: 'house', prompt: 'State of AI agent platforms — who wins the enterprise?', mode: 'research' },
-  { id: 'sc4', title: 'Fitness tracker — tappable prototype', kind: 'mobile', by: 'house', prompt: 'Build a mobile app for a fitness tracker', mode: 'mobile' },
+  { id: 'sc3', title: 'Who wins the enterprise agent market?', kind: 'brief', by: 'house', prompt: 'State of AI agent platforms, who wins the enterprise?', mode: 'research' },
+  { id: 'sc4', title: 'Fitness tracker: tappable prototype', kind: 'mobile', by: 'house', prompt: 'Build a mobile app for a fitness tracker', mode: 'mobile' },
 ];
 
 export default function Factory({ tab }) {
@@ -44,21 +44,21 @@ export default function Factory({ tab }) {
 
       {t === 'cli' && (
         <section className="section-gap">
-          <p className="lede">Run Prajñā from your terminal — the same engine, the same contracts. The CLI talks to this workspace over the API.</p>
+          <p className="lede">Run Prajñā from your terminal, the same engine, the same contracts. The CLI talks to this workspace over the API.</p>
           <div className="board" style={{ marginTop: '1rem' }}>
             <div className="board-title"><span className="brd-sm">Install</span></div>
             <pre className="code">git clone https://github.com/nageshsharma8981/Prajna && cd Prajna && npm link   # installs the `prajna` command
 prajna login {location.origin}{'\n'}prajna run research "Should we enter the EU home-battery market?" --fast
 prajna run website "A landing page for a Bengaluru coffee roaster" --auto --out ./deliveries
 prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna get &lt;artifact-id&gt;</pre>
-            <p className="conn-note">Zero dependencies, Node 22+. <code>run</code> streams the tape, stops at every decision the house raises (or takes the first option with <code>--auto</code>, on the record), and saves the delivered artifact with its provenance block. The session file holds only the workspace URL and a server-minted session cookie — never the access code, never a provider key.</p>
+            <p className="conn-note">Zero dependencies, Node 22+. <code>run</code> streams the tape, stops at every decision the house raises (or takes the first option with <code>--auto</code>, on the record), and saves the delivered artifact with its provenance block. The session file holds only the workspace URL and a server-minted session cookie, never the access code, never a provider key.</p>
           </div>
         </section>
       )}
 
       {t === 'community' && (
         <section className="section-gap">
-          <p className="lede">Real use cases made with Prajñā — prompts and model choices visible, one click to clone into your own chat.</p>
+          <p className="lede">Real use cases made with Prajñā: prompts and model choices visible, one click to clone into your own chat.</p>
           {submit && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Submit any fully delivered artifact from <Link to="/factory/assets">Assets</Link>: it goes public with its provenance block and the house grants 200 credits (demo grant).</p>}
           <div className="showcase-grid">
             {(s.showcase || []).map((sc) => (

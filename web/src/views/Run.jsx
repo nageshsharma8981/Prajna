@@ -13,7 +13,7 @@ function fmtElapsed(ms) {
 }
 const ts = (at) => new Date(at).toLocaleTimeString('en-GB', { hour12: false }).slice(3);
 
-// Decision card for a pending attention item — justification is mandatory
+// Decision card for a pending attention item, justification is mandatory
 // and goes on the record (ledger + artifact provenance).
 function AttentionCard({ missionId, ev, decided }) {
   const [justification, setJustification] = useState('');
@@ -23,7 +23,7 @@ function AttentionCard({ missionId, ev, decided }) {
 
   const decide = async (decision) => {
     if (!justification.trim()) {
-      setError('A justification is required — it goes on the record.');
+      setError('A justification is required, it goes on the record.');
       return;
     }
     setSending(true);
@@ -39,17 +39,17 @@ function AttentionCard({ missionId, ev, decided }) {
         setSending(false);
       }
     } catch (e) {
-      setError(`The decision did not reach the house (${e.message}) — nothing was recorded. Try again.`);
+      setError(`The decision did not reach the house (${e.message}), nothing was recorded. Try again.`);
       setSending(false);
     }
   };
 
   const LABELS = {
     'raise-ceiling': 'Raise ceiling +40%',
-    'abort-with-partial': 'Stop — take partial artifact',
+    'abort-with-partial': 'Stop: take partial artifact',
     'accept-gap': 'Accept gap on the record',
     'void-artifact': 'Void the artifact',
-    'approve-step': 'Approve — let it act',
+    'approve-step': 'Approve: let it act',
     'skip-step': 'Skip this step',
     'patch': 'Patch & re-validate',
     'accept-risk': 'Accept the risk on the record',
@@ -58,14 +58,14 @@ function AttentionCard({ missionId, ev, decided }) {
 
   return (
     <div className="attn-card" role="group" aria-label="Decision required">
-      <div className="attn-head">Decision required — the run is holding</div>
+      <div className="attn-head">Decision required: the run is holding</div>
       <p className="attn-prompt">{ev.prompt}</p>
       {ev.gaps?.map((g) => (
-        <p key={g.id} className="attn-gap"><b>{g.id}</b> ({g.severity}) — {g.description}</p>
+        <p key={g.id} className="attn-gap"><b>{g.id}</b> ({g.severity}), {g.description}</p>
       ))}
       <input
         className="attn-just"
-        placeholder="Justification — goes on the record and into the artifact"
+        placeholder="Justification: goes on the record and into the artifact"
         value={justification}
         onChange={(e) => setJustification(e.target.value)}
         aria-label="Justification for your decision"
@@ -91,7 +91,7 @@ function GateGrid({ ev }) {
   const label = (v) => (v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : 'UNVER');
   return (
     <div className={`gate ${ev.cleared ? 'cleared' : 'blocked'}`}>
-      <div className="gate-head">Panel gate — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
+      <div className="gate-head">Panel gate: {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
       <table className="gate-table">
         <caption className="sr-only">Panel votes per acceptance dimension. Select a vote to read its rationale.</caption>
         <thead>
@@ -139,7 +139,7 @@ function Cite({ text, sources }) {
     if (!src) return part;
     return src.url
       ? <a key={i} className="cite" href={src.url} target="_blank" rel="noreferrer" title={src.title}>{part}</a>
-      : <abbr key={i} className="cite" title={`${src.title} — owner attachment`}>{part}</abbr>;
+      : <abbr key={i} className="cite" title={`${src.title}, owner attachment`}>{part}</abbr>;
   });
 }
 
@@ -168,7 +168,7 @@ export default function Run({ id }) {
     setActionError(null);
     let es = null;
     let cancelled = false;
-    // Confirm the mission exists before opening a stream — a stale deep link
+    // Confirm the mission exists before opening a stream, a stale deep link
     // gets a real not-found state, not an endless retry loop.
     fetch(`/api/missions/${id}`).then(async (r) => {
       if (cancelled) return;
@@ -200,7 +200,7 @@ export default function Run({ id }) {
           if (ev.estimateSoFar != null) setBurn({ total: ev.total, estimateSoFar: ev.estimateSoFar, variance: ev.variance ?? 0 });
         }
         if (ev.type === 'artifact.ready') { setMission((m) => (m ? { ...m, artifactId: ev.artifactId } : m)); setAnnounce('Artifact delivered.'); }
-        if (ev.type === 'attention.raised') { setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m)); setAnnounce('Decision required — the run is holding.'); }
+        if (ev.type === 'attention.raised') { setMission((m) => (m ? { ...m, status: ev.kind === 'ceiling' ? 'PAUSED_CEILING' : 'PAUSED_ATTENTION' } : m)); setAnnounce('Decision required: the run is holding.'); }
         if (ev.type === 'step.skipped') setMission((m) => (m ? { ...m, contract: { ...m.contract, plan: m.contract.plan.map((p) => (p.id === ev.stepId ? { ...p, status: 'SKIPPED' } : p)) } } : m));
         if (ev.type === 'attention.resolved') setMission((m) => (m ? { ...m, status: 'LIVE' } : m));
         if (ev.type === 'ceiling.raised') setMission((m) => (m ? { ...m, contract: { ...m.contract, ceiling: ev.ceiling } } : m));
@@ -262,7 +262,7 @@ export default function Run({ id }) {
   if (notFound) {
     return (
       <div className="page">
-        <p role="alert" style={{ color: 'var(--rose)' }}>No mission with serial id “{id}” is on the books — the link may be stale or the workspace was reset.</p>
+        <p role="alert" style={{ color: 'var(--rose)' }}>No mission with serial id “{id}” is on the books, the link may be stale or the workspace was reset.</p>
         <Link to="/" className="btn-quiet" style={{ marginTop: '1rem', display: 'inline-flex' }}><BackIcon /> Back to missions</Link>
       </div>
     );
@@ -330,7 +330,7 @@ export default function Run({ id }) {
         {(filled || killed) && !mission.voidedBeforeRun && (
           <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
         )}
-        {mission.status !== 'OPEN' && <button className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} title={mission.shareToken ? 'Revoke the public link to this record' : 'Public link to the whole record — contract, tape, decisions, artifact — revocable any time'} onClick={async () => {
+        {mission.status !== 'OPEN' && <button className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} title={mission.shareToken ? 'Revoke the public link to this record' : 'Public link to the whole record, contract, tape, decisions, artifact, revocable any time'} onClick={async () => {
           const r = await fetch(`/api/missions/${mission.id}/share`, { method: mission.shareToken ? 'DELETE' : 'POST' });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) { setActionError(j.error || 'Refused.'); return; }
@@ -368,7 +368,7 @@ export default function Run({ id }) {
                 ? <>settled {burn.total.toFixed(1)} vs est {burn.estimateSoFar} · variance <b className={burn.variance > 0 ? 'over' : 'under'}>{burn.variance > 0 ? '+' : ''}{burn.variance.toFixed(1)}cr</b></>
                 : mission.spent > 0
                   ? <>{mission.spent.toFixed(1)}cr settled of {mission.contract.ceiling}cr reserved</>
-                  : mission.status === 'OPEN' ? 'nothing reserved until you stamp' : 'reservation held — nothing settled yet'}
+                  : mission.status === 'OPEN' ? 'nothing reserved until you stamp' : 'reservation held, nothing settled yet'}
           </span>
         </div>
       </div>
@@ -399,18 +399,18 @@ export default function Run({ id }) {
               ))}
             </ol>
             {mission.status === 'OPEN' && (() => {
-              // Seat health before stamping: which seats will really be live.
+              // Model check before stamping: which seats will really be live.
               const models = store.models || [];
               const seats = [mission.lead, ...(mission.advisers || [])].map((id) => models.find((m) => m.id === id) || { id, name: id, live: false });
               const lead = seats[0];
               const missing = [...new Set(seats.filter((x) => !x.live && x.provider).map((x) => x.provider))];
               return (
-                <div className="seat-health" role="group" aria-label="Seat health">
-                  <span className="k">Seats at stamping</span>
-                  <div className="seat-list">{seats.map((x, i) => <span key={x.id} className={`seat-pill${x.live ? ' live' : ''}`}>{x.name}{i === 0 ? ' · lead' : ''} — {x.live ? 'live on your key' : 'house voice'}</span>)}</div>
+                <div className="seat-health" role="group" aria-label="Model check">
+                  <span className="k">Models at stamping</span>
+                  <div className="seat-list">{seats.map((x, i) => <span key={x.id} className={`seat-pill${x.live ? ' live' : ''}`}>{x.name}{i === 0 ? ' · lead' : ''}, {x.live ? 'live on your key' : 'house voice'}</span>)}</div>
                   {!lead?.live && <p>The lead is not live, so the substance will be house-scripted sample material and labelled as such. {lead?.provider ? <>Load {/^[aeiou]/i.test((store.providers || {})[lead.provider]?.label || lead.provider) ? 'an' : 'a'} <Link to="/keys">{(store.providers || {})[lead.provider]?.label || lead.provider} key</Link> to make {lead.name} write it.</> : null}</p>}
-                  {lead?.live && missing.length > 0 && <p>{seats.filter((x) => !x.live).length} adviser seat{seats.filter((x) => !x.live).length === 1 ? '' : 's'} will speak in the house voice; <Link to="/keys">load a {missing.map((pv) => (store.providers || {})[pv]?.label || pv).join(' or ')} key</Link> to make them live.</p>}
-                  {lead?.live && missing.length === 0 && <p>Every seat is live: positions, critiques and the substance itself run on your own keys, priced at 0 house credits.</p>}
+                  {lead?.live && missing.length > 0 && <p>{seats.filter((x) => !x.live).length} adviser model{seats.filter((x) => !x.live).length === 1 ? '' : 's'} will speak in the house voice; <Link to="/keys">load a {missing.map((pv) => (store.providers || {})[pv]?.label || pv).join(' or ')} key</Link> to make them live.</p>}
+                  {lead?.live && missing.length === 0 && <p>Every model is live: positions, critiques and the substance itself run on your own keys, priced at 0 house credits.</p>}
                 </div>
               );
             })()}
@@ -418,7 +418,7 @@ export default function Run({ id }) {
               <details className="plan-why">
                 <summary>Why this plan</summary>
                 <p>{mission.contract.why}</p>
-                <ol>{mission.contract.plan.map((p) => <li key={p.id}><b>{p.tool}</b> — {p.rationale}</li>)}</ol>
+                <ol>{mission.contract.plan.map((p) => <li key={p.id}><b>{p.tool}</b>, {p.rationale}</li>)}</ol>
               </details>
             )}
             {(mission.sources || []).length > 0 && (
@@ -427,7 +427,7 @@ export default function Run({ id }) {
                 <ol>{mission.sources.map((src, i) => (
                   <li key={src.id || i}><span className={`src-engine ${src.engine || 'house'}`}>{src.engine === 'attachment' ? 'owner' : src.engine || src.kind}</span> {src.url ? <a href={src.url} target="_blank" rel="noreferrer">{src.title}</a> : <span>{src.title}</span>}<em> · {src.retrieved}</em></li>
                 ))}</ol>
-                {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}) — recorded, not hidden.</p>}
+                {mission.retrieval && !mission.retrieval.ok && <p className="live-error">Retrieval failed ({mission.retrieval.error}), recorded, not hidden.</p>}
               </details>
             )}
             {mission.contract.edited && <p className="ticket-deliv" style={{ marginTop: '0.4rem' }}>plan edited before stamping · {mission.contract.edited.steps} steps{mission.contract.edited.added ? ` · ${mission.contract.edited.added} added` : ''}{mission.contract.edited.removed ? ` · ${mission.contract.edited.removed} removed` : ''}</p>}
@@ -465,13 +465,13 @@ export default function Run({ id }) {
 
         <section className="tape" aria-label="Live tape">
           <div className="board-title">
-            <span className="brd-sm">The tape — every move on the record</span>
+            <span className="brd-sm">The tape: every move on the record</span>
             {live && <span className="count" style={{ animation: 'flapflip 1.2s linear infinite' }}>LIVE</span>}
           </div>
           <div className="tape-feed" ref={feedRef} onScroll={onFeedScroll} style={{ maxHeight: '34rem' }}>
             {visibleEvents.map((ev, i) => {
               if (ev.type === 'run.launched') {
-                return <div key={i} className="tape-step"><span>Ticket stamped — run opened</span><span className="rule" /></div>;
+                return <div key={i} className="tape-step"><span>Ticket stamped: run opened</span><span className="rule" /></div>;
               }
               if (ev.type === 'step.status' && ev.status === 'LIVE') {
                 return <div key={i} className="tape-step"><span>{stepTitle[ev.stepId]}{ev.access === 'external' ? ' · external' : ''}</span><span className="rule" /></div>;
@@ -500,9 +500,9 @@ export default function Run({ id }) {
                       <span className="role">{role}</span>
                     </div>
                     <p><Cite text={ev.text} sources={mission.sources} /></p>
-                    {ev.liveError && <p className="live-error">Live call failed ({ev.liveError}) — the scripted voice stood in. Recorded, not hidden.</p>}
+                    {ev.liveError && <p className="live-error">Live call failed ({ev.liveError}), the scripted voice stood in. Recorded, not hidden.</p>}
                     {ev.dissent && (
-                      <div className="dissent"><b>Recorded dissent — {ev.dissent.model}</b><br />{ev.dissent.text}</div>
+                      <div className="dissent"><b>Recorded dissent: {ev.dissent.model}</b><br />{ev.dissent.text}</div>
                     )}
                   </div>
                 );
@@ -522,7 +522,7 @@ export default function Run({ id }) {
                 const state = (id) => (ev.sealed.includes(id) ? 'sealed' : ev.acceptedRisks?.includes(id) ? 'accepted risk' : ev.failed.includes(id) ? 'failed' : ev.dissenting.includes(id) ? 'dissent' : 'missing');
                 return (
                   <div key={i} className={`gate ${ev.cleared ? 'cleared' : 'blocked'}`}>
-                    <div className="gate-head">Validation gate · round {ev.round} — {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
+                    <div className="gate-head">Validation gate · round {ev.round}, {ev.cleared ? 'CLEARED' : 'NOT CLEARED'}</div>
                     <table className="gate-table">
                       <caption className="sr-only">Assertion verdicts from two independent validator lanes.</caption>
                       <thead><tr><th scope="col">Assertion</th><th scope="col">Promise</th><th scope="col">Verdict</th></tr></thead>
@@ -556,7 +556,7 @@ export default function Run({ id }) {
                   <div key={i} className="tape-line">
                     <span className="ts">{ts(ev.at)}</span>
                     <span className="op">re-vote</span>
-                    <span className="detail">{ev.member} on {ev.dimension}: {ev.verdict.toUpperCase()} — {ev.rationale}</span>
+                    <span className="detail">{ev.member} on {ev.dimension}: {ev.verdict.toUpperCase()}, {ev.rationale}</span>
                   </div>
                 );
               }
@@ -564,7 +564,7 @@ export default function Run({ id }) {
                 return <div key={i} className="tape-step"><span style={{ color: 'var(--red)' }}>{ev.note}</span><span className="rule" /></div>;
               }
               if (ev.type === 'ceiling.raised') {
-                return <div key={i} className="tape-step"><span>Ceiling raised to {ev.ceiling}cr — reservation extended, on the record</span><span className="rule" /></div>;
+                return <div key={i} className="tape-step"><span>Ceiling raised to {ev.ceiling}cr, reservation extended, on the record</span><span className="rule" /></div>;
               }
               if (ev.type === 'attention.raised') {
                 return <AttentionCard key={i} missionId={mission.id} ev={ev} decided={decidedIds.has(ev.requestId) || killed} />;
@@ -574,7 +574,7 @@ export default function Run({ id }) {
                   <div key={i} className="tape-line">
                     <span className="ts">{ts(ev.at)}</span>
                     <span className="op">decision</span>
-                    <span className="detail">{ev.kind}: {ev.decision} — “{ev.justification}”</span>
+                    <span className="detail">{ev.kind}: {ev.decision}, “{ev.justification}”</span>
                   </div>
                 );
               }
@@ -584,7 +584,7 @@ export default function Run({ id }) {
                     <div className="who"><span className="sym" aria-hidden="true">REV</span><b>Terminal review</b><span className="role">saw only the goal and the artifact</span></div>
                     <p>{ev.verdict === 'pass'
                       ? 'Fresh-eyes pass: the artifact answers the goal as stated. No gaps.'
-                      : `Fresh-eyes review found ${ev.gaps.length} gap(s) — a reviewer who never saw the work judged the work.`}</p>
+                      : `Fresh-eyes review found ${ev.gaps.length} gap(s), a reviewer who never saw the work judged the work.`}</p>
                   </div>
                 );
               }
@@ -619,7 +619,7 @@ export default function Run({ id }) {
                 return (
                   <div key={i} className="tape-step">
                     <span style={{ color: ev.closure && ev.closure.open > 0 ? 'var(--rose)' : 'var(--green)' }}>
-                      {mission.voided ? 'Mission closed · artifact voided on review' : ev.closure && ev.closure.open > 0 ? `Mission closed with ${ev.closure.open} open promise(s) — reported as incomplete, not relabeled done` : 'Mission done'}
+                      {mission.voided ? 'Mission closed · artifact voided on review' : ev.closure && ev.closure.open > 0 ? `Mission closed with ${ev.closure.open} open promise(s), reported as incomplete, not relabeled done` : 'Mission done'}
                       {' · '}{ev.total?.toFixed(1)}cr of {mission.contract.ceiling}cr ceiling · {fmtElapsed(ev.elapsed || 0)}
                       {ev.closure ? ` · ${ev.closure.sealed}/${ev.closure.total} promises sealed${ev.closure.acceptedRisk ? `, ${ev.closure.acceptedRisk} accepted risk` : ''}` : ''}
                     </span>
@@ -630,7 +630,7 @@ export default function Run({ id }) {
               return null;
             })}
             {mission.narrative && (
-              <div className="narrative"><span className="k">In plain words — written by the house from the tape</span><p>{mission.narrative}</p></div>
+              <div className="narrative"><span className="k">In plain words, written by the house from the tape</span><p>{mission.narrative}</p></div>
             )}
             {mission.status === 'OPEN' && (
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>

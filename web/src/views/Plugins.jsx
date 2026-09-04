@@ -13,7 +13,7 @@ export default function Plugins() {
   return (
     <div className="page">
       <h1 className="pg-title">Plugins</h1>
-      <p className="lede">Extend what missions can do. Enabling a plugin changes the plans the house writes — the effect is named on each card, not implied.</p>
+      <p className="lede">Extend what missions can do. Enabling a plugin changes the plans the house writes, the effect is named on each card, not implied.</p>
       {err && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>{err}</p>}
       <div className="plugin-grid section-gap">
         {(s.pluginCatalog || []).map((p) => {

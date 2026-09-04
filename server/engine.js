@@ -1,9 +1,9 @@
 // The mission engine. Writes the contract (plan + estimate + acceptance
 // dimensions) before anything runs, then executes the run as a cursor-driven
-// event script streamed over SSE. Every event gets a monotonic seq — the
+// event script streamed over SSE. Every event gets a monotonic seq, the
 // ledger is the single source of truth for live view, replay, and provenance.
 //
-// Runs can pause (attention items, ceiling) and terminate early (kill) — and
+// Runs can pause (attention items, ceiling) and terminate early (kill), and
 // every terminal or paused state still produces an artifact. Demo mode: the
 // script is authored, the artifacts are real. A provider layer can swap in
 // live model calls when ANTHROPIC_API_KEY is present (future).
@@ -22,16 +22,16 @@ import { looksLikeCsv, profileCsv, dataSummary } from './data.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
-// BYOK: a seat is LIVE when the workspace holds a key for its provider.
+// BYOK: a model is LIVE when the workspace holds a key for its provider.
 export function liveSeat(modelIdOrRef) {
   const model = modelById(modelIdOrRef);
   const k = model && model.provider ? store.keyFor(model.provider) : null;
-  return k ? { model, key: k.key, baseUrl: model.baseUrl || k.baseUrl || null } : null; // a seat's own host wins over the provider default
+  return k ? { model, key: k.key, baseUrl: model.baseUrl || k.baseUrl || null } : null; // a model's own host wins over the provider default
 }
 
 function positionPrompt(mission, model) {
-  const sources = (mission.sources || []).slice(0, 6).map((s, i) => `[${i + 1}] ${s.title} — ${s.extract.slice(0, 220)}`).join('\n');
-  return `You are ${model.name}, one seat on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources on the table (refer to them by number where they bear on your position):\n${sources}\n` : ''}In 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
+  const sources = (mission.sources || []).slice(0, 6).map((s, i) => `[${i + 1}] ${s.title}, ${s.extract.slice(0, 220)}`).join('\n');
+  return `You are ${model.name}, one model on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources on the table (refer to them by number where they bear on your position):\n${sources}\n` : ''}In 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
 }
 
 // Serial counter continues from the persisted ledger so restarts never mint
@@ -47,51 +47,51 @@ const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0,
 /* ------------------------------- CONTRACTS -------------------------------- */
 
 // Plans are milestone graphs (ii-agent's PlanSchema idea, independently
-// implemented): each step names what it depends on, and its access class —
+// implemented): each step names what it depends on, and its access class,
 // read (observes), write (produces local artifacts), external (acts on the
 // world; always an approval checkpoint). Steps with no dependency between
 // them run in parallel on the tape.
 const PLANS = {
   brief: (s) => [
     { id: 's1', title: `Frame the decision behind “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
-    { id: 's2', title: 'Sweep sources — filings, sector analyses, press', tool: 'search', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's2', title: 'Sweep sources: filings, sector analyses, press', tool: 'search', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Grade every claim A–D by source strength', tool: 'cite-guard', cost: 10, access: 'read', dependsOn: ['s2'] },
-    { id: 's4', title: 'Panel deliberation — positions, challenges, verdict', tool: 'council', cost: 18, access: 'read', dependsOn: ['s2'] },
+    { id: 's4', title: 'Panel deliberation: positions, challenges, verdict', tool: 'council', cost: 18, access: 'read', dependsOn: ['s2'] },
     { id: 's5', title: 'Steelman the opposite conclusion', tool: 'steelman', cost: 8, access: 'read', dependsOn: ['s4'] },
     { id: 's6', title: 'Compose the decision brief', tool: 'compose', cost: 12, access: 'write', dependsOn: ['s3', 's5'] },
   ],
   deck: (s) => [
     { id: 's1', title: `Extract the argument in “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
-    { id: 's2', title: 'Storyboard the narrative arc — nine beats', tool: 'storyboard', cost: 10, access: 'read', dependsOn: ['s1'] },
+    { id: 's2', title: 'Storyboard the narrative arc, nine beats', tool: 'storyboard', cost: 10, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Panel deliberation on the through-line', tool: 'council', cost: 16, access: 'read', dependsOn: ['s1'] },
-    { id: 's4', title: 'Draft slides — one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
-    { id: 's5', title: 'Deck Doctor pass — kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
+    { id: 's4', title: 'Draft slides: one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Deck Doctor pass: kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
   ],
   site: (s) => [
-    { id: 's1', title: `Position the offer — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's1', title: `Position the offer, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Panel deliberation on promise & proof', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8, access: 'write', dependsOn: ['s1'] },
-    { id: 's4', title: 'Build the page — semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
-    { id: 's5', title: 'Access audit — contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
+    { id: 's4', title: 'Build the page, semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Access audit: contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
   ],
   mobile: (s) => [
-    { id: 's1', title: `Map the app — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's1', title: `Map the app, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Panel deliberation on the core flow', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Screen inventory & navigation', tool: 'storyboard', cost: 8, access: 'read', dependsOn: ['s1'] },
-    { id: 's4', title: 'Build the tappable prototype — 4 screens, tab bar', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
-    { id: 's5', title: 'Access audit — touch targets, contrast', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
+    { id: 's4', title: 'Build the tappable prototype, 4 screens, tab bar', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
+    { id: 's5', title: 'Access audit: touch targets, contrast', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
   ],
   analysis: (s) => [
-    { id: 's1', title: `Define the question — “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
+    { id: 's1', title: `Define the question, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8, access: 'read', dependsOn: ['s1'] },
-    { id: 's3', title: 'Interrogate — segments, mix shift, outliers', tool: 'analyze', cost: 14, access: 'read', dependsOn: ['s2'] },
+    { id: 's3', title: 'Interrogate: segments, mix shift, outliers', tool: 'analyze', cost: 14, access: 'read', dependsOn: ['s2'] },
     { id: 's4', title: 'Panel deliberation on the read', tool: 'council', cost: 14, access: 'read', dependsOn: ['s2'] },
-    { id: 's5', title: 'Chart Smith — honest forms only', tool: 'chart-smith', cost: 8, access: 'write', dependsOn: ['s3'] },
+    { id: 's5', title: 'Chart Smith: honest forms only', tool: 'chart-smith', cost: 8, access: 'write', dependsOn: ['s3'] },
     { id: 's6', title: 'Compose dashboard with caveats attached', tool: 'compose', cost: 10, access: 'write', dependsOn: ['s4', 's5'] },
   ],
 };
 
-// Queued connectors add an EXTERNAL delivery step — the only step class that
+// Queued connectors add an EXTERNAL delivery step, the only step class that
 // always holds for approval before it runs.
 const CONNECTOR_STEPS = {
   slack: { title: 'Post the delivery to Slack (queued connector)', tool: 'connector-post', cost: 2 },
@@ -99,7 +99,7 @@ const CONNECTOR_STEPS = {
   gmail: { title: 'Draft a delivery email in Gmail (queued connector)', tool: 'connector-post', cost: 2 },
 };
 
-// Acceptance dimensions per desk — the panel gate votes on these.
+// Acceptance dimensions per desk, the panel gate votes on these.
 export const DIMENSIONS = {
   mobile: ['Core flow works', 'Touch targets', 'Consistent navigation'],
   brief: ['Attribution', 'Completeness', 'Freshness'],
@@ -109,30 +109,30 @@ export const DIMENSIONS = {
 };
 
 // Plan steps that are skills (cite-guard, steelman, deck-doctor, copy-cutter,
-// a11y-audit, chart-smith …) only appear when that skill is on the desk — so
+// a11y-audit, chart-smith …) only appear when that skill is on the desk, so
 // installing a skill genuinely changes every future ticket.
 const SKILL_TOOLS = new Set(SKILLS.map((s) => s.id));
 
-// Why each step is on the ticket — house-written, deterministic, honest.
+// Why each step is on the ticket, house-written, deterministic, honest.
 // Shown on the ticket and carried in provenance so a reader can see the
 // reasoning behind the estimate, not just the number.
 export const RATIONALE = {
   scope: 'Fixes the question first so every later step, and the estimate, means something.',
   search: 'Retrieves real, dated sources; nothing downstream may cite what was not retrieved.',
-  'cite-guard': 'Grades every claim and refuses ungraded ones — the brief cannot ship an unsourced sentence.',
+  'cite-guard': 'Grades every claim and refuses ungraded ones, the brief cannot ship an unsourced sentence.',
   steelman: 'Builds the strongest case against the recommendation so the dissent is real, not decorative.',
   storyboard: 'Orders the beats before any slide is written; tension is decided here, not in the copy.',
-  compose: 'Writes the deliverable from graded material. Live lead seats author it on your own key.',
+  compose: 'Writes the deliverable from graded material. Live lead models author it on your own key.',
   'deck-doctor': 'Splits or cuts any slide carrying more than one idea.',
   'copy-cutter': 'Reduces copy to promise → proof → action; refuses filler.',
-  build: 'Produces the working deliverable — semantic, responsive — and owns its structural assertions.',
+  build: 'Produces the working deliverable, semantic, responsive, and owns its structural assertions.',
   'a11y-audit': 'Contrast, focus order and touch targets checked against the real output.',
   ingest: 'Loads and profiles the data before any conclusion is drawn.',
   analyze: 'Tests the obvious explanation against the alternative and isolates what moves opposite.',
   'chart-smith': 'Chooses honest chart forms and draws the finding on the chart itself.',
-  'connector-post': 'Delivers outside the workspace — always behind an approval checkpoint.',
+  'connector-post': 'Delivers outside the workspace, always behind an approval checkpoint.',
   design: 'Decides layout, hierarchy and states before any pixel; a draft, not a promise of final styling.',
-  council: 'Every seat states a position; advisers challenge; dissent is recorded and survives into the artifact.',
+  council: 'Every model states a position; advisers challenge; dissent is recorded and survives into the artifact.',
 };
 function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, connectors }) {
   const bits = [`${desk.name}: ${plan.length} steps, ordered by dependency so independent steps run in parallel.`];
@@ -141,7 +141,7 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   if (removedSkills.length) bits.push(`Skill steps not on the desk were removed (${removedSkills.join(', ')}); their dependents re-pointed so the graph stays connected.`);
   if (connectors.length) bits.push(`Connected apps add an external delivery step each (${connectors.join(', ')}), gated by approval.`);
   const live = seatsAll.filter((x) => x.live).length;
-  bits.push(live ? `${live} of ${seatsAll.length} panel seats are live on your own keys and priced at 0 house credits; the rest share the panel cost.` : `All ${seatsAll.length} panel seats are house seats and share the panel cost.`);
+  bits.push(live ? `${live} of ${seatsAll.length} panel models are live on your own keys and priced at 0 house credits; the rest share the panel cost.` : `All ${seatsAll.length} panel models are house models and share the panel cost.`);
   bits.push('The ceiling is the estimate plus 25%; nothing beyond it is spent without a decision.');
   return bits.join(' ');
 }
@@ -156,7 +156,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   // Fast research keeps only scope → sweep → compose; deep keeps the full plan.
   if (desk.id === 'brief' && depth === 'fast') raw = raw.filter((p) => ['scope', 'search', 'compose'].includes(p.tool)).map((p) => (p.tool === 'compose' ? { ...p, dependsOn: ['s2'], title: 'Compose the fast brief' } : p));
   // Design mode produces a design draft instead of a build.
-  if (variant === 'design' && ['site', 'mobile'].includes(desk.id)) raw = raw.map((p) => (p.tool === 'build' ? { ...p, title: p.title.replace(/^Build the page.*$|^Build the tappable prototype.*$/, 'Draft the design — layout, hierarchy, states'), tool: 'design' } : p)).filter((p) => p.tool !== 'a11y-audit');
+  if (variant === 'design' && ['site', 'mobile'].includes(desk.id)) raw = raw.map((p) => (p.tool === 'build' ? { ...p, title: p.title.replace(/^Build the page.*$|^Build the tappable prototype.*$/, 'Draft the design, layout, hierarchy, states'), tool: 'design' } : p)).filter((p) => p.tool !== 'a11y-audit');
   // Skill steps only exist when the skill is on the desk; dependents re-point
   // to the removed step's own dependencies so the graph stays connected.
   const removed = new Set(raw.filter((p) => installed && SKILL_TOOLS.has(p.tool) && !installed.has(p.tool)).map((p) => p.id));
@@ -164,7 +164,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
   const resolveDeps = (ids) => ids.flatMap((d) => (removed.has(d) ? resolveDeps(byId[d].dependsOn) : [d]));
   raw = raw.filter((p) => !removed.has(p.id)).map((p) => ({ ...p, dependsOn: [...new Set(resolveDeps(p.dependsOn))] }));
 
-  // Per-seat pricing on the panel step: house seats share the cost; a BYOK
+  // Per-seat pricing on the panel step: house models share the cost; a BYOK
   // seat bills your own key, so it costs the house nothing.
   raw = raw.map((p) => {
     if (p.tool !== 'council') return p;
@@ -220,7 +220,7 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     depth: depth || 'deep',
     chatId: chatId || null,
     // Owner-supplied sources: text attachments are on the table from the
-    // start — citable, and their figures count as sourced.
+    // start, citable, and their figures count as sourced.
     attachments: (attachments || []).map((d) => ({ name: d.name, chars: d.text.length })),
     // Owner data: the first CSV attached to an analysis mission is the data the charts plot.
     data: ['analysis', 'brief'].includes(desk.id) ? ((attachments || []).filter((d) => looksLikeCsv(d.name, d.text)).map((d) => profileCsv(d.name, d.text)).find(Boolean) || null) : null,
@@ -259,8 +259,8 @@ function tellTheStory(m) {
 /* ------------------------------ PLAN EDITING ------------------------------ */
 
 // The owner edits the ticket before stamping it: trim, reorder, retitle or
-// add steps. The contract is recomputed — estimate, ceiling, access counts,
-// assertion ownership — and the edit is recorded on the contract itself.
+// add steps. The contract is recomputed, estimate, ceiling, access counts,
+// assertion ownership, and the edit is recorded on the contract itself.
 export const PLAN_TOOLS = () => [...Object.keys(TOOL_LINES), 'council'];
 const DEFAULT_COST = { scope: 6, search: 14, 'cite-guard': 8, steelman: 8, storyboard: 8, compose: 12, 'deck-doctor': 6, 'copy-cutter': 7, build: 16, 'a11y-audit': 6, ingest: 8, analyze: 12, 'chart-smith': 8, 'connector-post': 6, design: 12, council: 12 };
 export function editPlan(missionId, steps) {
@@ -305,9 +305,9 @@ export function editPlan(missionId, steps) {
 /* ------------------------------ COUNCIL SCRIPT ---------------------------- */
 
 const VOICES = {
-  opus: (s) => `Lead the ${s} with the strongest single claim and let everything else defend it. The risk isn't being wrong — it's being vague enough that nobody can tell.`,
+  opus: (s) => `Lead the ${s} with the strongest single claim and let everything else defend it. The risk isn't being wrong, it's being vague enough that nobody can tell.`,
   sonnet: (s) => `Keep the scope honest: answer exactly what was asked about ${s}, flag what we couldn't verify, ship on time. Completeness is a trap here.`,
-  gpt: (s) => `Comparable cases suggest a standard structure works for ${s} — but two of the usual assumptions don't transfer. I'd break convention on those and follow it elsewhere.`,
+  gpt: (s) => `Comparable cases suggest a standard structure works for ${s}, but two of the usual assumptions don't transfer. I'd break convention on those and follow it elsewhere.`,
   gemini: (s) => `The retrieval set on ${s} skews recent. I weighted older primary sources back in; the picture changes at the margin, not the core.`,
   deepseek: (s) => `Disagree with the emerging consensus on ${s}. The majority read leans on an analogy that hasn't been tested. I want the counter-case in the final artifact, not a footnote.`,
   llama: (s) => `Baseline check on ${s}: a straightforward reading gets 80% of the way. Whatever we add beyond that must earn its place or it's decoration.`,
@@ -315,7 +315,7 @@ const VOICES = {
 
 const CHALLENGES = [
   { from: 'deepseek', text: 'Your strongest claim rests on the weakest source class. Either upgrade the evidence or downgrade the claim.' },
-  { from: 'gpt', text: 'Accepting the dissent on timing — tightening the recommendation from “when ready” to a dated window.' },
+  { from: 'gpt', text: 'Accepting the dissent on timing, tightening the recommendation from “when ready” to a dated window.' },
 ];
 
 // Gate: every member votes pass/fail/unverifiable on every dimension.
@@ -336,7 +336,7 @@ function gateScript(mission, stepId, baseT) {
         dimension: d,
         verdict: isFail ? 'unverifiable' : 'pass',
         rationale: isFail
-          ? `Cannot verify ${d.toLowerCase()} from the material examined — counts as a fail, never a benefit-of-the-doubt pass.`
+          ? `Cannot verify ${d.toLowerCase()} from the material examined, counts as a fail, never a benefit-of-the-doubt pass.`
           : 'Checked against the draft; holds.',
       });
     }
@@ -345,10 +345,10 @@ function gateScript(mission, stepId, baseT) {
   const skepticName = modelById(skeptic).name;
   let t = baseT;
   const ev = [];
-  ev.push({ t: (t += 1600), type: 'council.gate', stepId, rows, cleared: false, note: `${skepticName} returns UNVERIFIABLE on ${failDim} — the gate does not clear.` });
+  ev.push({ t: (t += 1600), type: 'council.gate', stepId, rows, cleared: false, note: `${skepticName} returns UNVERIFIABLE on ${failDim}, the gate does not clear.` });
   ev.push({ t: (t += 1900), type: 'council.patch', stepId, model: lead.name, symbol: lead.symbol, text: `Patch: an explicit ${failDim.toLowerCase()} caveat is written into the artifact itself, with the unverified span marked. Re-vote requested.` });
   ev.push({ t: (t += 1500), type: 'council.revote', stepId, member: skepticName, dimension: failDim, verdict: 'pass', rationale: 'Caveat makes the limit visible in the deliverable; passes with the mark carried.' });
-  ev.push({ t: (t += 700), type: 'council.gate', stepId, rows: rows.map((r) => (r.verdict === 'unverifiable' ? { ...r, verdict: 'pass', rationale: 'Passes after patch — caveat carried into the artifact.' } : r)), cleared: true, note: 'All seats pass all dimensions. Gate cleared with the patch on the record.' });
+  ev.push({ t: (t += 700), type: 'council.gate', stepId, rows: rows.map((r) => (r.verdict === 'unverifiable' ? { ...r, verdict: 'pass', rationale: 'Passes after patch, caveat carried into the artifact.' } : r)), cleared: true, note: 'All models pass all dimensions. Gate cleared with the patch on the record.' });
   return { events: ev, end: t };
 }
 
@@ -393,16 +393,16 @@ const TOOL_LINES = {
   build: [['scaffold', 'semantic structure · nav, hero, proof, close'], ['style', 'committed palette + type system applied'], ['responsive', 'breaks at 800px verified']],
   'a11y-audit': [['contrast', 'AA pass · lowest pair 5.1:1'], ['keyboard', 'focus order verified end to end']],
   ingest: [['load', '12 periods × 8 segments loaded (sample set)'], ['profile', 'no gaps · 2 outliers flagged for inspection']],
-  analyze: [['decompose', 'topline split by segment and cohort'], ['test', 'mix-shift hypothesis vs performance: mix shift wins'], ['residual', 'one segment moves opposite — isolated']],
+  analyze: [['decompose', 'topline split by segment and cohort'], ['test', 'mix-shift hypothesis vs performance: mix shift wins'], ['residual', 'one segment moves opposite, isolated']],
   'chart-smith': [['form', 'line + segment bars chosen · dual axis refused'], ['annotate', 'the finding is drawn on the chart, not beside it']],
-  'connector-post': [['compose', 'delivery summary drafted with artifact link'], ['post', 'simulated post — connector is queued intent, live OAuth wiring pending']],
+  'connector-post': [['compose', 'delivery summary drafted with artifact link'], ['post', 'simulated post, connector is queued intent, live OAuth wiring pending']],
   design: [['layout', 'grid, hierarchy and spacing decided before any pixel'], ['states', 'empty, loading, error and success states drawn'], ['annotate', 'every region labeled with its intent']],
 };
 
 // The amnesiac terminal review: by construction sees only (goal, artifact).
 // Scripted: the site desk surfaces a real GAP and raises an attention item.
 // The amnesiac terminal review: by construction sees only the goal and the
-// artifact itself — never mission state. It judges what shipped.
+// artifact itself, never mission state. It judges what shipped.
 function reviewFor({ desk, goal, html }) {
   const h = html || '';
   if (desk === 'site' && (/awaits your real case study/.test(h) || /replace with real capture/i.test(h))) {
@@ -415,7 +415,7 @@ function reviewFor({ desk, goal, html }) {
     };
   }
   if (desk === 'brief' && !/Recorded dissent/.test(h)) {
-    return { verdict: 'gaps', gaps: [{ id: 'GAP-002', severity: 'major', description: 'The brief carries no recorded dissent — the panel disagreement was erased from the deliverable.' }] };
+    return { verdict: 'gaps', gaps: [{ id: 'GAP-002', severity: 'major', description: 'The brief carries no recorded dissent, the panel disagreement was erased from the deliverable.' }] };
   }
   return { verdict: 'pass', gaps: [] };
 }
@@ -462,11 +462,11 @@ function buildScript(mission) {
     let byokSeats = 0;
     if (step.tool === 'council') {
       byokSeats = (step.seats || []).filter((x) => x.live).length;
-      if (byokSeats) script.push({ t: t - 300, type: 'log', stepId: step.id, label: 'byok', detail: `${byokSeats} live seat(s) billed to your own keys — priced at 0 house credits on the ticket` });
+      if (byokSeats) script.push({ t: t - 300, type: 'log', stepId: step.id, label: 'byok', detail: `${byokSeats} live model(s) billed to your own keys, priced at 0 house credits on the ticket` });
     }
     if (overrun && step.id === overrunStep) {
       jitter = Math.max(jitter, Math.round((mission.contract.ceiling * 1.08 - projected) * 10) / 10);
-      script.push({ t: t - 400, type: 'log', stepId: step.id, label: 'retry', detail: 'two model retries burned on a malformed draft — cost running hot' });
+      script.push({ t: t - 400, type: 'log', stepId: step.id, label: 'retry', detail: 'two model retries burned on a malformed draft, cost running hot' });
     }
     projected += jitter;
     script.push({ t, type: 'step.status', stepId: step.id, status: 'FILLED' });
@@ -567,10 +567,10 @@ async function applyEvent(m, ev, notify, runner) {
   if (ev.type === 'log' && ev.connector) {
     try {
       const text = await evidenceFor(ev.connector);
-      record.detail = text ? `${text} · live` : `${ev.connector}: no live token in memory — reconnect on the Connectors page`;
+      record.detail = text ? `${text} · live` : `${ev.connector}: no live token in memory, reconnect on the Connectors page`;
       record.live = !!text;
     } catch (e) {
-      record.detail = `${ev.connector}: live read failed (${String(e.message || e).slice(0, 120)}) — recorded, not hidden`;
+      record.detail = `${ev.connector}: live read failed (${String(e.message || e).slice(0, 120)}), recorded, not hidden`;
       record.live = false;
     }
   }
@@ -606,11 +606,11 @@ async function applyEvent(m, ev, notify, runner) {
         m.retrieval = { ok: true, query, count: sources.length, engines, ms: Date.now() - started, at: Date.now() };
         const owned = (m.sources || []).filter((s) => s.engine === 'attachment');
         m.sources = [...owned, ...sources].map((s, i) => ({ ...s, id: `src-${i + 1}` }));
-        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}” — the brief will say so` }, notify);
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: true, detail: sources.length ? `${sources.length} real sources retrieved for “${query}” in ${(m.retrieval.ms / 1000).toFixed(1)}s via ${Object.entries(engines).map(([k, e]) => `${k} ${e.ok ? e.count : 'failed'}`).join(' + ')}: ${sources.map((s) => s.title).join(' · ')}` : `no sources found for “${query}”, the brief will say so` }, notify);
       } catch (e) {
         m.retrieval = { ok: false, error: String(e.message || e).slice(0, 160), at: Date.now() };
         m.sources = [];
-        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}) — recorded; the brief carries no retrieved reading` }, notify);
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'retrieve', live: false, detail: `retrieval failed (${m.retrieval.error}), recorded; the brief carries no retrieved reading` }, notify);
       }
       return 'ok';
     }
@@ -622,12 +622,12 @@ async function applyEvent(m, ev, notify, runner) {
     if (step && step.tool === 'ingest' && !m.ingested) {
       m.ingested = true;
       pushEvent(m, record, notify);
-      pushEvent(m, { type: 'log', stepId: step.id, label: 'ingest', live: !!m.data, detail: m.data ? `${m.data.name}: ${m.data.notes.join(' · ')} — the charts plot this, not sample data` : 'no CSV attached — the charts plot the house sample series, labelled as such' }, notify);
+      pushEvent(m, { type: 'log', stepId: step.id, label: 'ingest', live: !!m.data, detail: m.data ? `${m.data.name}: ${m.data.notes.join(' · ')}, the charts plot this, not sample data` : 'no CSV attached: the charts plot the house sample series, labelled as such' }, notify);
       return 'ok';
     }
   }
 
-  // Live authoring: at the step that writes the deliverable, a live lead seat
+  // Live authoring: at the step that writes the deliverable, a live lead model
   // authors the substance itself. Success or failure, the ledger says which.
   if (ev.type === 'step.status' && ev.status === 'LIVE') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
@@ -638,10 +638,10 @@ async function applyEvent(m, ev, notify, runner) {
         let log;
         try {
           m.authored = await authorContent(m, live);
-          log = { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it` };
+          log = { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it` };
         } catch (e) {
           m.authored = { live: false, model: live.model.name, modelId: live.model.modelId, error: String(e.message || e).slice(0, 200), at: Date.now() };
-          log = { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${live.model.name} could not author (${m.authored.error}) — house-scripted substance used and recorded as such` };
+          log = { type: 'log', stepId: step.id, label: 'author', live: false, detail: `${live.model.name} could not author (${m.authored.error}), house-scripted substance used and recorded as such` };
         }
         pushEvent(m, log, notify);
         return 'ok';
@@ -656,7 +656,7 @@ async function applyEvent(m, ev, notify, runner) {
       // if the user raises the ceiling; abort still yields a partial artifact.
       const stepIdx = m.contract.plan.findIndex((p) => p.id === ev.stepId);
       m.partial = true;
-      pushEvent(m, { type: 'ceiling.reached', stepId: ev.stepId, wouldBe, ceiling: m.contract.ceiling, note: `Step ${stepIdx + 1} of ${m.contract.plan.length} would take spend to ${wouldBe}cr — over the ${m.contract.ceiling}cr ceiling. Nothing further is spent without a decision.` }, notify);
+      pushEvent(m, { type: 'ceiling.reached', stepId: ev.stepId, wouldBe, ceiling: m.contract.ceiling, note: `Step ${stepIdx + 1} of ${m.contract.plan.length} would take spend to ${wouldBe}cr, over the ${m.contract.ceiling}cr ceiling. Nothing further is spent without a decision.` }, notify);
       runner.deferredCost = ev;
       raiseAttention(m, notify, {
         kind: 'ceiling', prompt: `The hard ceiling (${m.contract.ceiling}cr) stops this mission at step ${stepIdx + 1}. Raise it, or take the partial artifact?`,
@@ -688,11 +688,11 @@ async function applyEvent(m, ev, notify, runner) {
         try {
           const c = await critiqueContent(m, live);
           m.critiques.push({ seat: seatId, ...c });
-          pushEvent(m, { type: 'council.critique', seat: seatId, model: c.model, live: true, verdict: c.verdict, issues: c.issues, text: c.verdict === 'pass' ? `${c.model}: the draft passes my read.` : `${c.model}: revise — ${c.issues.join(' · ') || 'no issues stated'}` }, notify);
+          pushEvent(m, { type: 'council.critique', seat: seatId, model: c.model, live: true, verdict: c.verdict, issues: c.issues, text: c.verdict === 'pass' ? `${c.model}: the draft passes my read.` : `${c.model}: revise, ${c.issues.join(' · ') || 'no issues stated'}` }, notify);
           if (c.verdict === 'revise' && c.issues.length) issues.push(...c.issues.map((x) => `${c.model}: ${x}`));
         } catch (e) {
           m.critiques.push({ seat: seatId, model: live.model.name, error: String(e.message || e).slice(0, 160) });
-          pushEvent(m, { type: 'council.critique', seat: seatId, model: live.model.name, live: false, verdict: 'unavailable', issues: [], text: `${live.model.name} could not critique (${String(e.message || e).slice(0, 100)}) — recorded` }, notify);
+          pushEvent(m, { type: 'council.critique', seat: seatId, model: live.model.name, live: false, verdict: 'unavailable', issues: [], text: `${live.model.name} could not critique (${String(e.message || e).slice(0, 100)}), recorded` }, notify);
         }
       }
       if (issues.length) {
@@ -700,9 +700,9 @@ async function applyEvent(m, ev, notify, runner) {
         if (lead) {
           try {
             m.authored = await authorContent(m, lead, { revise: issues.join('; ') });
-            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: true, detail: `${m.authored.model} revised the draft on adviser critique (${issues.length} issue(s)) — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
+            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: true, detail: `${m.authored.model} revised the draft on adviser critique (${issues.length} issue(s)), ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
           } catch (e) {
-            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: false, detail: `${lead.model.name} could not revise on critique (${String(e.message || e).slice(0, 100)}) — the draft stands; the gate decides` }, notify);
+            pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: false, detail: `${lead.model.name} could not revise on critique (${String(e.message || e).slice(0, 100)}), the draft stands; the gate decides` }, notify);
           }
         }
       }
@@ -771,7 +771,7 @@ function runValidation(m, notify, runner) {
   pushEvent(m, { type: 'gate', round, cleared: openAfterRisk.length === 0, sealed: gate.sealed, failed: gate.failed, dissenting: gate.dissenting, missing: gate.missing, acceptedRisks: m.acceptedRisks || [],
     note: openAfterRisk.length === 0
       ? `Gate cleared: ${gate.sealed.length}/${ids.length} assertions sealed by both lanes${(m.acceptedRisks || []).length ? ` · ${(m.acceptedRisks || []).length} carried as accepted risk` : ''}.`
-      : `Gate NOT cleared: ${openAfterRisk.join(', ')} — ${gate.failed.length} failed, ${gate.dissenting.length} dissenting, ${gate.missing.length} missing.` }, notify);
+      : `Gate NOT cleared: ${openAfterRisk.join(', ')}, ${gate.failed.length} failed, ${gate.dissenting.length} dissenting, ${gate.missing.length} missing.` }, notify);
   m.gateResult = gate;
   if (openAfterRisk.length === 0) return 'pushed';
   // A patch that did not clear is not offered twice: the honest options left
@@ -780,7 +780,7 @@ function runValidation(m, notify, runner) {
   const patchable = alreadyPatched.length < openAfterRisk.length;
   raiseAttention(m, notify, {
     kind: 'gate', assertions: openAfterRisk,
-    prompt: `The gate did not clear: ${openAfterRisk.map((id) => { const d = rows.find((r) => r.id === id && !r.passed && r.detail)?.detail; return `${id} — ${(m.contract.assertions.find((a) => a.id === id) || {}).title}${d ? ` (${d})` : ''}`; }).join('; ')}. ${alreadyPatched.length ? `A patch was already applied to ${alreadyPatched.join(', ')} and did not clear it. ` : ''}${patchable ? 'Patch the artifact and re-validate, accept the risk on the record, or stop?' : 'Accept the risk on the record, or stop?'}`,
+    prompt: `The gate did not clear: ${openAfterRisk.map((id) => { const d = rows.find((r) => r.id === id && !r.passed && r.detail)?.detail; return `${id}, ${(m.contract.assertions.find((a) => a.id === id) || {}).title}${d ? ` (${d})` : ''}`; }).join('; ')}. ${alreadyPatched.length ? `A patch was already applied to ${alreadyPatched.join(', ')} and did not clear it. ` : ''}${patchable ? 'Patch the artifact and re-validate, accept the risk on the record, or stop?' : 'Accept the risk on the record, or stop?'}`,
     options: patchable ? ['patch', 'accept-risk', 'stop-run'] : ['accept-risk', 'stop-run'],
   });
   store.flushMissions();
@@ -820,7 +820,7 @@ export function launchMission(missionId, notify) {
   const mission = store.mission(missionId);
   if (!mission || mission.status !== 'OPEN') return null;
   if (!store.reserveCredits(mission.contract.ceiling)) return null;
-  ledger('reserve', -mission.contract.ceiling, `${mission.serial} stamped — ceiling reserved`, { missionId: mission.id, serial: mission.serial });
+  ledger('reserve', -mission.contract.ceiling, `${mission.serial} stamped, ceiling reserved`, { missionId: mission.id, serial: mission.serial });
   mission.status = 'LIVE';
   mission.launchedAt = Date.now();
   if (mission.eventSeq === undefined) mission.eventSeq = 0;
@@ -848,7 +848,7 @@ export function rehydrate(notify) {
   for (const m of store.missions()) {
     if (!['LIVE', 'PAUSED_ATTENTION', 'PAUSED_CEILING'].includes(m.status)) continue;
     if (!Array.isArray(m.runScript) || typeof m.runCursor !== 'number') {
-      // Pre-persistence mission: nothing to resume from — close it honestly.
+      // Pre-persistence mission: nothing to resume from, close it honestly.
       m.status = 'LIVE';
       runners.set(m.id, { script: [], cursor: 0, timer: null, notify, deferredCost: null });
       killMission(m.id, notify);
@@ -870,7 +870,7 @@ export function killMission(missionId, notify) {
   if (runner?.timer) clearTimeout(runner.timer);
   runners.delete(missionId);
 
-  // Any undecided attention item dies with the run — recorded as voided, so
+  // Any undecided attention item dies with the run, recorded as voided, so
   // the open question stays on the record instead of vanishing.
   for (const req of (m.attention || []).filter((r) => !r.decision)) {
     req.decision = 'voided-by-kill';
@@ -884,7 +884,7 @@ export function killMission(missionId, notify) {
   m.contract.plan.forEach((p) => { if (p.status === 'LIVE') p.status = 'KILLED'; });
   const artifactNote = m.artifactId
     ? 'The artifact already produced is retained.'
-    : 'Completed work is kept — a partial artifact follows.';
+    : 'Completed work is kept, a partial artifact follows.';
   pushEvent(m, { type: 'run.killed', note: `Run stopped at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. ${artifactNote} Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
   tellTheStory(m);
   if (!m.artifactId) {
@@ -928,13 +928,13 @@ export async function decideAttention(missionId, requestId, decision, justificat
   const m = store.mission(missionId);
   if (!m) return { error: 'Mission not found.' };
   if (m.status === 'KILLED' || m.status === 'FILLED') {
-    return { error: `This position is already ${m.status.toLowerCase()} — the run ended before the decision landed.` };
+    return { error: `This position is already ${m.status.toLowerCase()}, the run ended before the decision landed.` };
   }
   const req = (m.attention || []).find((r) => r.id === requestId);
   if (!req) return { error: 'Attention item not found.' };
-  if (req.decision) return { error: 'Already decided — decisions are first-write-wins.' };
+  if (req.decision) return { error: 'Already decided: decisions are first-write-wins.' };
   if (!req.options.includes(decision)) return { error: `Decision must be one of: ${req.options.join(', ')}` };
-  if (!justification || !justification.trim()) return { error: 'A justification is required — it goes on the record.' };
+  if (!justification || !justification.trim()) return { error: 'A justification is required, it goes on the record.' };
 
   // Fund a raised ceiling BEFORE anything is recorded; a refusal changes nothing.
   let raisedCeiling = null;
@@ -943,7 +943,7 @@ export async function decideAttention(missionId, requestId, decision, justificat
     if (!store.reserveCredits(raisedCeiling - m.contract.ceiling)) {
       return { error: `House credits cannot fund the raised ceiling (${raisedCeiling}cr). Abort with the partial artifact, or top up first.` };
     }
-    ledger('reserve', -(raisedCeiling - m.contract.ceiling), `${m.serial} ceiling raised ${m.contract.ceiling} → ${raisedCeiling} cr — extra reserve taken`, { missionId: m.id, serial: m.serial });
+    ledger('reserve', -(raisedCeiling - m.contract.ceiling), `${m.serial} ceiling raised ${m.contract.ceiling} → ${raisedCeiling} cr, extra reserve taken`, { missionId: m.id, serial: m.serial });
   }
 
   req.decision = decision;
@@ -986,7 +986,7 @@ export async function decideAttention(missionId, requestId, decision, justificat
         runner.script = runner.script.filter((e, i) => i < runner.cursor || e.stepId !== req.stepId);
         m.runScript = runner.script;
       }
-      pushEvent(m, { type: 'step.skipped', stepId: req.stepId, note: `Skipped: “${step?.title}” — declined on the record. Nothing acted externally; nothing was spent on it.` }, notify);
+      pushEvent(m, { type: 'step.skipped', stepId: req.stepId, note: `Skipped: “${step?.title}”, declined on the record. Nothing acted externally; nothing was spent on it.` }, notify);
       scheduleNext(missionId);
     }
   } else if (req.kind === 'gate') {
@@ -1003,13 +1003,13 @@ export async function decideAttention(missionId, requestId, decision, justificat
         if (live) {
           try {
             m.authored = await authorContent(m, live, { revise: finding });
-            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: true, detail: `${m.authored.model} revised its draft against the gate finding (${finding}) — ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
+            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: true, detail: `${m.authored.model} revised its draft against the gate finding (${finding}), ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
           } catch (e) {
-            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: false, detail: `${live.model.name} could not revise (${String(e.message || e).slice(0, 120)}) — the draft stands and the gate will say so` }, notify);
+            pushEvent(m, { type: 'log', stepId: req.stepId || null, label: 'revise', live: false, detail: `${live.model.name} could not revise (${String(e.message || e).slice(0, 120)}), the draft stands and the gate will say so` }, notify);
           }
         }
       }
-      pushEvent(m, { type: 'artifact.patched', assertions: req.assertions, note: `Patch applied for ${req.assertions.join(', ')} — artifact regenerated, re-validating.` }, notify);
+      pushEvent(m, { type: 'artifact.patched', assertions: req.assertions, note: `Patch applied for ${req.assertions.join(', ')}, artifact regenerated, re-validating.` }, notify);
       if (m.artifactId) {
         const { html } = GENERATORS[m.desk](m);
         store.refreshArtifact(m.artifactId, { version: store.artifact(m.artifactId)?.version || 1 }, html);
@@ -1028,7 +1028,7 @@ export async function decideAttention(missionId, requestId, decision, justificat
   } else if (req.kind === 'review-gap') {
     if (decision === 'accept-gap') {
       m.status = 'LIVE';
-      pushEvent(m, { type: 'review.accepted', note: 'Gap accepted and recorded in provenance — the artifact ships with the gap named, not hidden.' }, notify);
+      pushEvent(m, { type: 'review.accepted', note: 'Gap accepted and recorded in provenance, the artifact ships with the gap named, not hidden.' }, notify);
       scheduleNext(missionId);
     } else {
       // Really void it: the ledger entry is stamped VOID, the artifact of
@@ -1039,7 +1039,7 @@ export async function decideAttention(missionId, requestId, decision, justificat
         const a = store.artifact(m.artifactId);
         store.refreshArtifact(m.artifactId, { voided: true, title: a && !a.title.startsWith('VOID') ? `VOID · ${a.title}` : a?.title }, GENERATORS[m.desk](m).html);
       }
-      pushEvent(m, { type: 'artifact.voided', note: 'Artifact VOIDED on terminal review — kept in Artifacts for audit, stamped void. The run closes with the void on the record.' }, notify);
+      pushEvent(m, { type: 'artifact.voided', note: 'Artifact VOIDED on terminal review, kept in Artifacts for audit, stamped void. The run closes with the void on the record.' }, notify);
       scheduleNext(missionId);
     }
   }

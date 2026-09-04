@@ -51,14 +51,14 @@ export default function ArtifactView({ id }) {
           <span>
             {artifact
               ? `${artifact.serial} · v${artifact.version}${artifact.supersedes ? ' (supersedes an earlier version)' : ''}${artifact.voided ? ' · VOID' : artifact.partial ? ' · partial' : ''} · ${artifact.cost.toFixed(1)}cr · panel: ${artifact.council.join(' · ')}`
-              : missing ? 'no artifact with this id has been delivered — the link may be stale' : 'loading provenance…'}
+              : missing ? 'no artifact with this id has been delivered, the link may be stale' : 'loading provenance…'}
           </span>
         </div>
         {artifact && (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.6rem' }}>
             {artifact.supersedes && <Link className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} to={`/compare/${artifact.supersedes}/${artifact.id}`} title="Side by side with the version this one supersedes, and the notes that drove the change">Compare with v{artifact.version - 1}</Link>}
-            <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title="Notes for the next version — the lead author is written against them" onClick={() => setNotesOpen((v) => !v)}>Notes{notes.length ? ` (${notes.length})` : ''}</button>
-            <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title={notes.length ? 'New ticket on the same desk and panel, written against your notes — its delivery becomes the next version' : 'New ticket on the same desk and panel — its delivery becomes the next version'} onClick={() => amend(notes.length > 0)}>{notes.length ? 'Amend with notes' : 'Amend & re-run'}</button>
+            <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title="Notes for the next version, the lead author is written against them" onClick={() => setNotesOpen((v) => !v)}>Notes{notes.length ? ` (${notes.length})` : ''}</button>
+            <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title={notes.length ? 'New ticket on the same desk and panel, written against your notes, its delivery becomes the next version' : 'New ticket on the same desk and panel, its delivery becomes the next version'} onClick={() => amend(notes.length > 0)}>{notes.length ? 'Amend with notes' : 'Amend & re-run'}</button>
             <button className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} title="Public link to this delivery, provenance included; revoke any time" onClick={() => share(artifact?.shareToken ? 'DELETE' : 'POST')}>{artifact?.shareToken ? 'Revoke share' : 'Share'}</button>
             <a className="btn-quiet" style={{ padding: '0.45rem 0.9rem' }} href={`/api/artifacts/${id}/html?download=1`}>
               <DownloadIcon /> Download

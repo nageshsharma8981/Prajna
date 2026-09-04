@@ -1,9 +1,9 @@
-// Definition of done — Zenith's two-layer contract, independently implemented.
+// Definition of done, Zenith's two-layer contract, independently implemented.
 // Each desk's ticket carries ATOMIC ASSERTIONS (testable promises about the
 // deliverable). Plan steps OWN assertions; two independent validator LANES
 // prove them against the real artifact HTML; a GATE seals what both lanes
 // pass and reports dissent (lanes disagree) and missing (no lane covered).
-// These are real checks on real output — never a scripted vote.
+// These are real checks on real output, never a scripted vote.
 
 // The deliverable body: what the user receives, minus the house's own
 // provenance footer and audit object (which legitimately carry lists).
@@ -52,7 +52,7 @@ export const ASSERTIONS = {
       surface: (h) => { const refs = [...h.matchAll(/data-ref="(src-\d+)"/g)].map((m) => m[1]); return refs.length > 0 && refs.every((r) => h.includes(`id="${r}"`)); } },
     { id: 'VAL-REFS-CITED-ONLY', title: 'The references table lists only sources actually cited', owner: 'compose',
       scrutiny: (h) => { const cited = new Set([...h.matchAll(/data-ref="(src-\d+)"/g)].map((m) => m[1])); const listed = [...h.matchAll(/<tr id="(src-\d+)"/g)].map((m) => m[1]); return listed.length > 0 && listed.every((r) => cited.has(r)); },
-      surface: (h) => has(h, /References — cited sources only/) },
+      surface: (h) => has(h, /References, cited sources only/) },
     { id: 'VAL-DISSENT-RECORDED', title: 'Recorded dissent appears in the brief, not erased', owner: 'council',
       scrutiny: (h) => has(h, /Recorded dissent/), surface: (h) => has(h, /class="dissent"/) },
     { id: 'VAL-VERDICT-FIRST', title: 'The verdict is stated before the evidence', owner: 'compose',
@@ -80,7 +80,7 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /@media\(max-width:800px\)/), surface: (h) => has(h, /grid-template-columns:1fr;/) },
     { id: 'VAL-PROOF-REAL', title: 'The proof section shows real proof, not a placeholder', owner: 'copy-cutter',
       scrutiny: (h) => !has(h, /This slot awaits your real case study/) && !has(h, /replace with real capture/i),
-      surface: (h) => has(h, /Evidence pending — supplied by the owner/) || (!has(h, /awaits your real/) && !has(h, /replace with real/i)) },
+      surface: (h) => has(h, /Evidence pending, supplied by the owner/) || (!has(h, /awaits your real/) && !has(h, /replace with real/i)) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'build',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
     { ...HONESTY, owner: 'build' },

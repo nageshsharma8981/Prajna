@@ -11,7 +11,7 @@ export default function Releases() {
   return (
     <div className="page">
       <h1 className="pg-title">Release notes</h1>
-      <p className="lede">Running version <b>{data.current}</b>. {data.releases.length} versions on the record, newest first — every one verified before it shipped.</p>
+      <p className="lede">Running version <b>{data.current}</b>. {data.releases.length} versions on the record, newest first, every one verified before it shipped.</p>
       <div className="releases">
         {data.releases.map((r, i) => (
           <details key={r.version} className="release" open={i === 0}>
