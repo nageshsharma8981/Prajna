@@ -29,6 +29,8 @@ export function digestText({ days = 1 } = {}) {
   lines.push('');
   if (delivered.length) { lines.push('Delivered:'); for (const m of delivered.slice(0, 12)) lines.push(`  • ${m.serial}, ${m.subject || m.goal} (${m.deskName.replace(' desk', '')}, ${n(m.settlement?.settled ?? m.spent)} cr)`); lines.push(''); }
   lines.push(`Balance ${n(w.credits)} credits, ${n(w.reserved)} reserved, ${n(w.spent)} spent to date.`);
+  const runs = (ws().standingOrders || []).flatMap((o) => (o.runs || []).filter((r) => r.at >= since).map((r) => ({ ...r, order: o.serial })));
+  if (runs.length) { const ran = runs.filter((r) => !r.skipped), skipped = runs.filter((r) => r.skipped); lines.push(`Standing orders: ${ran.length} ran${ran.length ? ` (${ran.map((r) => r.serial).join(', ')})` : ''}, ${skipped.length} skipped${skipped.length ? ` (${skipped.map((r) => `${r.order}: ${r.skipped}`).join('; ')})` : ''}.`); }
   const hc = ws().lastHouseCheck;
   if (hc) lines.push(hc.failed?.length ? `House check: ${hc.failed.length} problem${hc.failed.length === 1 ? '' : 's'} found. ${hc.failed.map((f) => `${f.id}: ${f.detail}`).join('; ')}. Open Settings for the full result.` : `House check: ${hc.ok} of ${hc.total} ok at ${new Date(hc.at).toISOString().replace('T', ' ').slice(0, 16)} UTC.`);
   lines.push('');

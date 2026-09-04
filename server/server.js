@@ -18,6 +18,7 @@ import { recordContext, answerFromRecord, missionsOfChat } from './record.js';
 import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
+import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
@@ -242,7 +243,8 @@ function notify(missionId, event) {
 function pub(m) {
   if (!m || typeof m !== 'object') return m;
   const { runScript, deferredCost, ...rest } = m;
-  return rest;
+  const so = m.id ? standingFor(m.id) : null;
+  return so ? { ...rest, standing: { id: so.id, cadence: so.cadence, nextAt: so.nextAt, paused: so.paused } } : rest;
 }
 // Boards never need the event ledger, the run view streams it. Bootstrap
 // carries a count instead, which keeps the payload small as history grows.
@@ -444,6 +446,7 @@ async function handle(req, res) {
       providers: Object.fromEntries(Object.entries(PROVIDERS).map(([id, p]) => [id, { label: p.label, hint: p.hint, kind: p.kind || 'model' }])),
       legalVersion: LEGAL.version,
       houseCheck: ws().lastHouseCheck || null,
+      standing: standingOrders(),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
@@ -496,6 +499,21 @@ async function handle(req, res) {
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     return json(res, 200, pub(m));
   }
+
+  // ---- Standing orders: a delivered ticket that re-runs itself ----
+  const standingDeps = () => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify });
+  if (p === '/api/standing' && req.method === 'GET') return json(res, 200, { orders: standingOrders(), cadences: Object.keys(CADENCES) });
+  const standingNew = p.match(/^\/api\/missions\/([\w]+)\/standing$/);
+  if (standingNew && req.method === 'POST') {
+    const body = await readBody(req);
+    const r = addStandingOrder(standingNew[1], String(body.cadence || 'weekly'));
+    if (r.error) return json(res, 400, { error: r.error });
+    return json(res, 200, r.order);
+  }
+  const standingOne = p.match(/^\/api\/standing\/([\w]+)(?:\/(pause|run))?$/);
+  if (standingOne && req.method === 'DELETE') return json(res, removeStandingOrder(standingOne[1]) ? 200 : 404, { ok: true });
+  if (standingOne && req.method === 'POST' && standingOne[2] === 'pause') { const body = await readBody(req); const o = pauseStandingOrder(standingOne[1], !!body.paused); return o ? json(res, 200, o) : json(res, 404, { error: 'Standing order not found.' }); }
+  if (standingOne && req.method === 'POST' && standingOne[2] === 'run') { const o = standingOrders().find((x) => x.id === standingOne[1]); if (!o) return json(res, 404, { error: 'Standing order not found.' }); return json(res, 200, { order: o, run: runOrder(o, standingDeps()) }); }
 
   const launchMatch = p.match(/^\/api\/missions\/([\w]+)\/launch$/);
   if (launchMatch && req.method === 'POST') {
@@ -1174,5 +1192,6 @@ rehydrate(notify);
 { const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
 scheduleDigest();
 scheduleHouseCheck();
+scheduleStandingOrders(() => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify }));
 seedTestTokens();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));

@@ -248,6 +248,7 @@ export default function Run({ id }) {
     return map;
   }, [mission]);
   const stepNo = (sid) => { const i = mission?.contract.plan.findIndex((p) => p.id === sid); return i >= 0 ? i + 1 : ''; };
+  const [cadence, setCadence] = useState('weekly');
   const amend = async () => {
     setBusy(true); setActionError(null);
     try {
@@ -330,6 +331,16 @@ export default function Run({ id }) {
         {(filled || killed) && !mission.voidedBeforeRun && (
           <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
         )}
+        {filled && !mission.voidedBeforeRun && !mission.standing && (
+          <span className="standing-make">
+            <select className="key-input" value={cadence} onChange={(e) => setCadence(e.target.value)} aria-label="Repeat cadence" style={{ width: 'auto', padding: '0.4rem 0.6rem' }}><option value="daily">Every day</option><option value="weekly">Every week</option></select>
+            <button className="btn-quiet" disabled={busy} title="Re-run this ticket on a cadence. Each run is a new version with its own reserve; a short balance skips the run and says so." onClick={async () => {
+              setBusy(true); setActionError(null);
+              try { const r = await fetch(`/api/missions/${mission.id}/standing`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cadence }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Refused.'); await store.refresh(); setBusy(false); } catch (e) { setActionError(e.message); setBusy(false); }
+            }}>Repeat</button>
+          </span>
+        )}
+        {mission.standing && <span className="lineage-tag" title="This ticket is on a standing order; manage it under Settings.">Standing order, {mission.standing.cadence}{mission.standing.paused ? ', paused' : `, next ${new Date(mission.standing.nextAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}</span>}
         {mission.status !== 'OPEN' && <button className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} title={mission.shareToken ? 'Revoke the public link to this record' : 'Public link to the whole record, contract, tape, decisions, artifact, revocable any time'} onClick={async () => {
           const r = await fetch(`/api/missions/${mission.id}/share`, { method: mission.shareToken ? 'DELETE' : 'POST' });
           const j = await r.json().catch(() => ({}));

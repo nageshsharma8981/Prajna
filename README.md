@@ -833,3 +833,14 @@ tickets with a ledger line saying what moved. What only a person can fix,
 the house rules or a refused token, is named with where to do it. The
 check runs again afterwards so the result shows the house as it now
 stands. `POST /api/housecheck/repair`.
+
+## v0.69: Standing orders (2026-09-04)
+
+A delivered ticket can repeat itself. Choose every day or every week on
+the run page and press Repeat; each run is a new version in the same
+lineage, stamped and reserved like any other, delivered again to the apps
+the parent delivered to. When the balance cannot cover the ceiling the run
+is skipped and the reason recorded, never silently dropped. Manage orders
+under Settings: run now, pause, resume, stop. `GET /api/standing`,
+`POST /api/missions/:id/standing`, `POST /api/standing/:id/run|pause`,
+`DELETE /api/standing/:id`.
