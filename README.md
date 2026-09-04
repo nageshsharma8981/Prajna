@@ -918,3 +918,13 @@ taken close as interrupted, since run scripts do not travel; keys and
 tokens never travel and are loaded again after. So a house can move from
 a laptop to a server, or come back from a backup, with the record intact.
 `prajna import <zip> --replace`. A test exports, erases and restores.
+
+## v0.77: The house keeps its own backups (2026-09-04)
+
+Five minutes after it starts, and once a day after that, the house writes
+its own export to the data directory and keeps the last seven. The house
+check gains a backups row that fails when the latest is missing, older
+than 36 hours or unreadable. Settings lists them with Download and
+Restore (typed REPLACE); backups survive an erase, so a mistaken erase has
+a way back. `prajna backup`, `prajna backups`. A test writes one, checks
+its health, erases the house and restores from it.

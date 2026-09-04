@@ -120,6 +120,37 @@ export function importWorkspace(buf) {
   return { missions: missions.length, artifacts: artifacts.length, files, tapes, interrupted, chats: (ui.chats || []).length };
 }
 
+// Backups: the house writes its own export to data/backups, keeps the last
+// seven, and can tell whether the latest is fresh and readable.
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+export function listBackups() {
+  try {
+    return fs.readdirSync(BACKUP_DIR).filter((f) => /^prajna-backup-.*\.zip$/.test(f)).map((name) => { const st = fs.statSync(path.join(BACKUP_DIR, name)); return { name, bytes: st.size, at: st.mtimeMs }; }).sort((a, b) => b.at - a.at);
+  } catch { return []; }
+}
+export function writeBackup({ version, keep = 7 }) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const { zip, count } = exportWorkspace({ version });
+  const name = `prajna-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+  const file = path.join(BACKUP_DIR, name);
+  fs.writeFileSync(file + '.tmp', zip); fs.renameSync(file + '.tmp', file);
+  const all = listBackups();
+  for (const old of all.slice(keep)) { try { fs.unlinkSync(path.join(BACKUP_DIR, old.name)); } catch { /* gone */ } }
+  return { name, bytes: zip.length, entries: count, kept: Math.min(all.length, keep) };
+}
+export function readBackup(name) {
+  if (!/^prajna-backup-[\w-]+\.zip$/.test(name)) return null;
+  try { return fs.readFileSync(path.join(BACKUP_DIR, name)); } catch { return null; }
+}
+export function backupHealth(now = Date.now()) {
+  const latest = listBackups()[0];
+  if (!latest) return { ok: false, detail: 'no backup yet' };
+  const age = now - latest.at;
+  let readable = false; try { readable = zipEntries(fs.readFileSync(path.join(BACKUP_DIR, latest.name))).some((e) => e.name === 'missions.json'); } catch { readable = false; }
+  const hours = Math.round(age / 3600000);
+  return { ok: readable && age < 36 * 3600000, detail: `${listBackups().length} kept, latest ${hours < 1 ? 'under an hour' : `${hours}h`} old, ${(latest.bytes / 1024).toFixed(0)} KB, ${readable ? 'readable' : 'NOT readable'}` };
+}
+
 // Erase: every file the workspace wrote, gone; the house re-seeds itself.
 // The consent record keeps only its version and time (proof of acceptance,
 // no personal data). Returns what was removed.
@@ -128,5 +159,6 @@ export function eraseFiles() {
   const rm = (p) => { try { fs.rmSync(p, { recursive: true, force: true }); removed.files++; } catch { /* already gone */ } };
   for (const f of ['missions.json', 'artifacts.json', 'workspace.json', 'connectors.json', 'models.json', 'workspace-ui.json']) rm(path.join(DATA_DIR, f));
   for (const d of ['artifacts', 'tape', 'media']) { rm(path.join(DATA_DIR, d)); try { fs.mkdirSync(path.join(DATA_DIR, d), { recursive: true }); } catch { /* fine */ } }
+  // Backups are deliberately kept: they are the way back from a mistaken erase.
   return removed;
 }

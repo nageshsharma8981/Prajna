@@ -17,6 +17,7 @@
 //   prajna repair                      put right what the house can, then check again
 //   prajna export [--out dir]          take your data: the whole workspace as one zip
 //   prajna import <zip> --replace      restore a workspace from its export, replacing this one
+//   prajna backup                      write a backup now; prajna backups lists the seven kept
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted, never the access code, never a provider key).
@@ -251,6 +252,8 @@ async function importZip() {
   if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
   console.log(`Restored ${j.missions} missions, ${j.artifacts} artifacts, ${j.chats} chats, ${j.files} files${j.interrupted ? `; ${j.interrupted} run(s) closed as interrupted` : ''}. Load keys and tokens again; they never travel.`);
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, export: exportZip, import: importZip, get: async () => save(need(), positional[0]) };
+async function backup() { const j = await api(need(), '/api/backup', { method: 'POST' }); console.log(`${j.name}, ${(j.bytes / 1024).toFixed(0)} KB, ${j.kept} kept.`); }
+async function backups() { const { backups: list, health } = await api(need(), '/api/backups'); if (!list.length) { console.log('No backups yet; the first is written five minutes after the house starts. Write one now: prajna backup'); return; } for (const b of list) console.log(`${b.name}  ${(b.bytes / 1024).toFixed(0).padStart(6)} KB  ${when(b.at)}`); if (health) console.log(`${health.ok ? 'ok  ' : 'FAIL'} ${health.detail}`); }
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, export: exportZip, import: importZip, backup, backups, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

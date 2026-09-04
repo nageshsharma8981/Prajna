@@ -172,3 +172,17 @@ test('restore: an export goes back in whole after an erase', async () => {
   for (const a of after.artifacts) assert.equal((await fetch(`${BASE}/api/artifacts/${a.id}/html`)).status, 200, a.id);
   const c = await post('/api/housecheck'); assert.equal(c.j.ok, c.j.total, JSON.stringify(c.j.rows.filter((x) => !x.ok)));
 });
+
+test('backups: written on demand, listed, healthy, downloadable, and a way back', async () => {
+  const w = await post('/api/missions', { goal: 'Backup test: a brief', deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200);
+  const b = await post('/api/backup'); assert.equal(b.status, 200, JSON.stringify(b.j)); assert.match(b.j.name, /^prajna-backup-.*\.zip$/); assert.ok(b.j.bytes > 1000);
+  const list = await api('/api/backups'); assert.equal(list.j.backups[0].name, b.j.name); assert.equal(list.j.health.ok, true, list.j.health.detail);
+  const dl = await fetch(`${BASE}/api/backups/${b.j.name}`); assert.equal(dl.status, 200); assert.equal(Buffer.from(await dl.arrayBuffer()).readUInt32LE(0), 0x04034b50);
+  assert.equal((await fetch(`${BASE}/api/backups/prajna-backup-nope.zip`)).status, 404);
+  const c = await post('/api/housecheck'); const row = c.j.rows.find((r) => r.id === 'backups'); assert.ok(row && row.ok, JSON.stringify(row));
+  const e = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
+  assert.equal((await api('/api/backups')).j.backups.length >= 1, true, 'backups survive an erase');
+  const no = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'no' }); assert.equal(no.status, 400);
+  const r = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'REPLACE' }); assert.equal(r.status, 200, JSON.stringify(r.j));
+  assert.ok((await api('/api/bootstrap')).j.missions.some((m) => m.id === w.j.id), 'the ticket came back from the backup');
+});

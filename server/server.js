@@ -19,7 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
-import { exportWorkspace, eraseFiles, importWorkspace } from './export.js';
+import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -59,6 +59,7 @@ async function houseCheck() {
   const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
+  if (process.uptime() > 600 || listBackups().length) { const bh = backupHealth(); add('backups', bh.ok, bh.detail); }
   const sh = standingHealth();
   if (sh.total) add('standing', !sh.orphaned.length && !sh.overdue.length, `${sh.total} standing order(s)${sh.orphaned.length ? `, ${sh.orphaned.length} orphaned (ticket gone): ${sh.orphaned.map((o) => o.serial).join(', ')}` : ''}${sh.overdue.length ? `, ${sh.overdue.length} overdue by more than one interval: ${sh.overdue.map((o) => o.serial).join(', ')}` : ''}`);
   const c = ws().consent;
@@ -104,6 +105,13 @@ async function houseRepair() {
   const c = ws().consent;
   if (!c || c.version !== LEGAL.version) actions.push({ id: 'consent', ok: false, detail: 'only a person can accept the house rules; the acceptance screen opens on the next load' });
   return { actions, check: await houseCheck() };
+}
+// The house backs itself up: five minutes after boot if the latest backup
+// is older than twenty hours, then once a day. Seven are kept.
+function scheduleBackups() {
+  const run = (force) => { try { const latest = listBackups()[0]; if (!force && latest && Date.now() - latest.at < 20 * 3600000) return; const r = writeBackup({ version: VERSION }); console.log(`prajna: backup ${r.name}, ${(r.bytes / 1024).toFixed(0)} KB, ${r.kept} kept`); } catch (e) { console.error('prajna: backup failed,', e.message); } };
+  setTimeout(() => run(false), 5 * 60 * 1000).unref();
+  setInterval(() => run(false), 24 * 60 * 60 * 1000).unref();
 }
 // The house checks itself a minute after boot and once a day after that;
 // failures go to the log, the digest and the Home page.
@@ -353,6 +361,14 @@ async function handle(req, res) {
 
   // ---- Health and the public status page (always reachable, never secret) ----
   if (p === '/api/releases' && req.method === 'GET') return json(res, 200, { current: VERSION, releases: releases() });
+  if (p === '/api/backups' && req.method === 'GET') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, { backups: listBackups(), health: listBackups().length ? backupHealth() : null }); }
+  const backupGet = p.match(/^\/api\/backups\/([\w.-]+)$/);
+  if (backupGet && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const buf = readBackup(backupGet[1]); if (!buf) return json(res, 404, { error: 'No such backup.' });
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': buf.length, 'content-disposition': `attachment; filename="${backupGet[1]}"`, 'cache-control': 'no-store' });
+    return res.end(buf);
+  }
   if (p === '/api/export' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const { zip, count } = exportWorkspace({ version: VERSION });
@@ -449,6 +465,23 @@ async function handle(req, res) {
     if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
   }
 
+  // ---- Backups: run now, list, download, restore ----
+  if (p === '/api/backup' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); try { return json(res, 200, writeBackup({ version: VERSION })); } catch (e) { return json(res, 500, { error: `Backup failed: ${e.message}` }); } }
+  const backupOne = p.match(/^\/api\/backups\/([\w.-]+)\/restore$/);
+  if (backupOne && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    if (body.confirm !== 'REPLACE') return json(res, 400, { error: 'Type REPLACE to confirm. Nothing was changed.' });
+    const buf = readBackup(backupOne[1]);
+    if (!buf) return json(res, 404, { error: 'No such backup.' });
+    for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
+    const r = importWorkspace(buf);
+    if (r.error) return json(res, 400, { error: r.error });
+    store.flushMissions(); store.flushArtifacts(); store.flushWorkspace(); if (store.state.connectors) store.flushConnectors(); store.flushModels();
+    console.log(`prajna: workspace restored from backup ${backupOne[1]}`);
+    return json(res, 200, { ok: true, ...r, from: backupOne[1] });
+  }
+
   // ---- Restore: a workspace export goes back in whole, by typed confirmation ----
   if (p === '/api/import' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
@@ -504,6 +537,7 @@ async function handle(req, res) {
       legalVersion: LEGAL.version,
       houseCheck: ws().lastHouseCheck || null,
       standing: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })),
+      backups: listBackups().slice(0, 5),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
       keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
@@ -1252,6 +1286,7 @@ rehydrate(notify);
 { const n = store.archiveFinished(); if (n) console.log(`prajna: archived the tape of ${n} finished mission(s)`); }
 scheduleDigest();
 scheduleHouseCheck();
+scheduleBackups();
 scheduleStandingOrders(() => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify }));
 seedTestTokens();
 server.listen(PORT, () => console.log(`Prajñā listening on http://localhost:${PORT}`));
