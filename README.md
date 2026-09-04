@@ -977,3 +977,13 @@ wraps, the sym and the text on one line, the actions on the next, under
 the text, and action groups wrap too; the gate table scrolls inside its
 own box instead of pushing the page. Checked at 375 pixels wide with no
 horizontal overflow.
+
+## v0.80: The rest of the house on a phone (2026-09-04)
+
+The phone pass reached Connectors, Plugins, Keys, Tools, Media, the
+welcome card, chat mode, the assets list, an artifact page, the legal
+pages and the status page. Two needed work: the artifact bar, whose title
+and meta line collapsed to one word per line beside the buttons, now
+takes a full line with the buttons wrapping beneath; and the keys page's
+OAuth callback address now breaks instead of running off the edge.
+Everything else measured clean at 375 pixels.

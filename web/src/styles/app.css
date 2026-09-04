@@ -1039,6 +1039,13 @@ h1.pg-title {
   .board-row .num { text-align: left; }
   .account > * { min-width: 0; }
   .gate-table { display: block; overflow-x: auto; }
+  /* The artifact bar: the title and its meta line take a full line, the buttons wrap beneath. */
+  .artifact-bar { flex-wrap: wrap; gap: 0.6rem 0.6rem; padding: 0.6rem 0.9rem; }
+  .artifact-bar .meta { flex: 1 1 100%; order: -1; }
+  .artifact-bar .meta b { white-space: normal; }
+  .artifact-bar .meta span { white-space: normal; overflow-wrap: anywhere; }
+  .artifact-bar > :not(.meta) { flex-wrap: wrap; max-width: 100%; }
+  .key-saved code { overflow-wrap: anywhere; }
   .toggle-btn { padding: 0.3rem 0.5rem; letter-spacing: 0.08em; }
   .ticket-tally { flex-wrap: wrap; gap: 1rem 1.6rem; }
   .masthead .flapline { font-size: 0.8rem; }
