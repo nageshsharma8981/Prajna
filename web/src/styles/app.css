@@ -1382,3 +1382,7 @@ abbr.cite { cursor: help; }
 .compare-frames figcaption { font-family: var(--mono); font-size: 0.68rem; color: var(--bone-faint); padding: 0.2rem 0.4rem; }
 .compare-frames .artifact-frame { flex: 1; min-height: 60vh; }
 @media (max-width: 900px) { .compare-strip, .compare-frames { grid-template-columns: 1fr; } }
+
+.narrative { margin: 0.8rem 1rem 1rem; border: 1px solid var(--line-strong); border-left: 4px solid var(--led); border-radius: 8px; padding: 0.8rem 1rem; background: var(--panel); }
+.narrative .k { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-faint); font-weight: 700; }
+.narrative p { margin: 0.4rem 0 0; font-size: 0.92rem; line-height: 1.6; }

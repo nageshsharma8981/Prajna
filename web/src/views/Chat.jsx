@@ -115,9 +115,9 @@ export default function Chat({ id }) {
                 <div className="bubble">{m.text}{m.attachments?.length ? <div className="attach-row">{m.attachments.map((a, i) => <span key={i} className="attach-chip">{a.name || a}</span>)}</div> : null}</div>
               ) : (
                 <div className="answer">
-                  <div className="answer-meta">{m.kind === 'live' ? `${m.model} · live on your key` : m.kind === 'run' ? 'mission' : m.model || 'Prajñā'}</div>
+                  <div className="answer-meta">{m.kind === 'live' ? `${m.model} · live on your key` : m.kind === 'run' ? 'mission' : m.kind === 'narrative' ? 'the house · what happened, from the tape' : m.model || 'Prajñā'}</div>
                   <p>{m.text}</p>
-                  {m.missionId && <RunCard missionId={m.missionId} />}
+                  {m.missionId && m.kind !== 'narrative' && <RunCard missionId={m.missionId} />}
                 </div>
               )}
             </div>

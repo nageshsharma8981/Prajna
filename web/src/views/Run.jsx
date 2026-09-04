@@ -185,6 +185,7 @@ export default function Run({ id }) {
         }
         setEvents((prev) => [...prev, ev]);
         if (ev.type === 'run.launched') setMission((m) => (m ? { ...m, status: 'LIVE', launchedAt: ev.at } : m));
+        if (ev.type === 'run.done' || ev.type === 'run.killed') fetch(`/api/missions/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j?.narrative) setMission((m) => (m ? { ...m, narrative: j.narrative } : m)); });
         if (ev.type === 'log' && ev.label === 'retrieve') fetch(`/api/missions/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) setMission((m) => (m ? { ...m, sources: j.sources || [], retrieval: j.retrieval || null } : m)); });
         if (ev.type === 'step.status') {
           setMission((m) => {
@@ -602,6 +603,9 @@ export default function Run({ id }) {
               }
               return null;
             })}
+            {mission.narrative && (
+              <div className="narrative"><span className="k">In plain words — written by the house from the tape</span><p>{mission.narrative}</p></div>
+            )}
             {mission.status === 'OPEN' && (
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <span>This ticket is written but not stamped. Nothing has run, nothing is reserved, nothing is spent.</span>

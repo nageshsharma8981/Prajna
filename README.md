@@ -442,3 +442,14 @@ the owner notes that drove the newer one and a ledger comparison — mode,
 assertions sealed, validation rounds, patches, accepted risks, sources,
 settled cost, delivery time — with differences highlighted. Every superseding
 artifact has a "Compare with v(n-1)" button in its bar.
+
+## v0.26 — In plain words (2026-09-04)
+
+When a run ends — delivered or stopped — the house writes a narrative from the
+tape: what the ticket was, what the sweep found, who on the panel spoke live,
+who wrote the substance, what the advisers asked to change, what the gate
+refused and what the owner decided (with the justification), ceiling and
+approval decisions, the terminal review, settlement against the estimate, and
+what was delivered. Deterministic and ledger-backed; no model is asked to
+summarise. It lands in the chat thread as a message, sits at the end of the
+tape on the run page, and travels in the audit bundle.

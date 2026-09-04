@@ -15,6 +15,8 @@ import { GENERATORS, subjectOf } from './artifacts.js';
 import { callModel } from './providers.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve } from './retrieve.js';
+import { narrateRun } from './narrate.js';
+import { addMessage } from './workspace.js';
 import { evidenceFor } from './oauth.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
@@ -237,6 +239,17 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     artifactId: null,
   };
   return store.addMission(mission);
+}
+
+// The plain-words narrative, written from the tape when a run ends. It is
+// stored on the mission and, when the mission came from a chat, dropped into
+// that thread so the thread tells the whole story.
+function tellTheStory(m) {
+  try {
+    m.narrative = narrateRun(m);
+    store.flushMissions();
+    if (m.chatId) addMessage(m.chatId, { role: 'assistant', text: m.narrative, missionId: m.id, kind: 'narrative' });
+  } catch (e) { console.error('prajna: narrative failed', e); }
 }
 
 /* ------------------------------ PLAN EDITING ------------------------------ */
@@ -716,7 +729,7 @@ async function applyEvent(m, ev, notify, runner) {
   }
 
   pushEvent(m, record, notify);
-  if (ev.type === 'run.done') settle(m, notify);
+  if (ev.type === 'run.done') { settle(m, notify); tellTheStory(m); }
   return 'ok';
 }
 
@@ -856,6 +869,7 @@ export function killMission(missionId, notify) {
     ? 'The artifact already produced is retained.'
     : 'Completed work is kept — a partial artifact follows.';
   pushEvent(m, { type: 'run.killed', note: `Run stopped at step ${Math.min(filled + 1, m.contract.plan.length)} of ${m.contract.plan.length}. ${artifactNote} Nothing beyond ${m.spent.toFixed(1)}cr was spent.` }, notify);
+  tellTheStory(m);
   if (!m.artifactId) {
     const a = makeArtifact(m, notify);
     pushEvent(m, { type: 'artifact.ready', ...a, partial: true }, notify);

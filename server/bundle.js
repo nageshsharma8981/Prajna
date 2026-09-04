@@ -43,6 +43,7 @@ details summary{cursor:pointer;font-weight:700}
 <div><span>Lineage</span><b>${m.lineage ? `v${m.lineage.version}, supersedes ${esc(m.lineage.parentSerial)}` : 'v1'}</b></div>
 </div>
 
+${m.narrative ? `<h2>In plain words</h2><p>${esc(m.narrative)}</p>` : ''}
 <h2>Contract</h2>
 ${m.contract.why ? `<p>${esc(m.contract.why)}</p>` : ''}
 <table><thead><tr><th>#</th><th>Step</th><th>Tool</th><th>Access</th><th>Cost</th><th>Status</th><th>Why</th></tr></thead><tbody>
