@@ -16,6 +16,7 @@
 //   prajna check                       the house check: disk, tapes, artifacts, reserve, rules, tokens, last link
 //   prajna repair                      put right what the house can, then check again
 //   prajna export [--out dir]          take your data: the whole workspace as one zip
+//   prajna import <zip> --replace      restore a workspace from its export, replacing this one
 //
 // The session file holds the workspace URL and the session cookie (an HMAC
 // the server minted, never the access code, never a provider key).
@@ -240,6 +241,16 @@ async function exportZip() {
   fs.writeFileSync(file, buf);
   console.log(`${file} (${(buf.length / 1024).toFixed(0)} KB, ${r.headers.get('x-entries')} entries). Keys and tokens are never in it.`);
 }
-const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, export: exportZip, get: async () => save(need(), positional[0]) };
+async function importZip() {
+  const cfg = need();
+  const file = positional[0]; if (!file) throw new Error('Give the export zip: prajna import <zip> --replace');
+  if (!flag('replace')) throw new Error('This replaces the whole workspace. Add --replace to confirm.');
+  const buf = fs.readFileSync(file);
+  const r = await fetch(cfg.workspace + '/api/import?confirm=REPLACE', { method: 'POST', headers: { 'content-type': 'application/zip', ...(cfg.cookie ? { cookie: cfg.cookie } : {}) }, body: buf });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  console.log(`Restored ${j.missions} missions, ${j.artifacts} artifacts, ${j.chats} chats, ${j.files} files${j.interrupted ? `; ${j.interrupted} run(s) closed as interrupted` : ''}. Load keys and tokens again; they never travel.`);
+}
+const CMDS = { login, run, status, tape, artifacts, bundle, watch, sweep, accept, repeat, standing, check, repair, export: exportZip, import: importZip, get: async () => save(need(), positional[0]) };
 if (!CMDS[cmd]) { console.log(fs.readFileSync(new URL(import.meta.url)).toString().split('\n').slice(1, 12).map((l) => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(cmd ? 2 : 0); }
 CMDS[cmd]().catch((e) => { console.error(red(e.message)); process.exit(1); });

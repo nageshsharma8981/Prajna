@@ -19,7 +19,7 @@ import { record as ledger } from './ledger.js';
 import { digestText, sendMail, scheduleDigest } from './digest.js';
 import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
-import { exportWorkspace, eraseFiles } from './export.js';
+import { exportWorkspace, eraseFiles, importWorkspace } from './export.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -276,6 +276,16 @@ function json(res, code, body) {
 // Bounded, object-only body parsing: a hostile or malformed body must never
 // crash the process or hang a handler.
 const BODY_LIMIT = 64 * 1024;
+// A raw body for uploads (the export zip); bigger limit, a Buffer, no parsing.
+function readRaw(req, limit = 64 * 1024 * 1024) {
+  return new Promise((resolve) => {
+    const chunks = []; let size = 0; let settled = false;
+    const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+    req.on('data', (c) => { size += c.length; if (size > limit) { done({ __tooLarge: true }); req.destroy(); return; } chunks.push(c); });
+    req.on('end', () => done(Buffer.concat(chunks)));
+    req.on('error', () => done({ __error: true }));
+  });
+}
 function readBody(req) {
   return new Promise((resolve) => {
     let data = '';
@@ -437,6 +447,21 @@ async function handle(req, res) {
   if (p.startsWith('/api/') && req.method !== 'GET' && !['/api/session', '/api/consent', '/api/logout'].includes(p)) {
     const c = ws().consent;
     if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
+  }
+
+  // ---- Restore: a workspace export goes back in whole, by typed confirmation ----
+  if (p === '/api/import' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (url.searchParams.get('confirm') !== 'REPLACE') return json(res, 400, { error: 'Add ?confirm=REPLACE: the restore replaces the whole workspace. Nothing was changed.' });
+    const buf = await readRaw(req);
+    if (buf.__tooLarge) return json(res, 413, { error: 'The export is larger than 64 MB.' });
+    if (!Buffer.isBuffer(buf) || buf.length < 22) return json(res, 400, { error: 'Send the export zip as the request body.' });
+    for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
+    const r = importWorkspace(buf);
+    if (r.error) return json(res, 400, { error: r.error });
+    store.flushMissions(); store.flushArtifacts(); store.flushWorkspace(); if (store.state.connectors) store.flushConnectors(); store.flushModels();
+    console.log(`prajna: workspace restored from export (${r.missions} missions, ${r.artifacts} artifacts, ${r.files} files, ${r.tapes} tapes, ${r.interrupted} interrupted)`);
+    return json(res, 200, { ok: true, ...r });
   }
 
   // ---- Erase: the owner's own workspace, by typed confirmation, then a fresh house ----

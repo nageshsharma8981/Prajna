@@ -907,3 +907,14 @@ ERASE, stops live runs, removes every file and seeds a fresh house,
 keeping only the version and time of the rules acceptance as proof. The
 policies say so (rules version 2026-09-04.2). `prajna export [--out dir]`.
 Two more tests cover both.
+
+## v0.76: Move house (2026-09-04)
+
+An export goes back in whole. Settings → Restore from an export takes a
+Take-your-data zip and replaces the workspace with it, behind a typed
+REPLACE: missions with their tapes re-archived, artifacts, chats, notes,
+ledger, media, standing orders. Runs that were live when the export was
+taken close as interrupted, since run scripts do not travel; keys and
+tokens never travel and are loaded again after. So a house can move from
+a laptop to a server, or come back from a backup, with the record intact.
+`prajna import <zip> --replace`. A test exports, erases and restores.

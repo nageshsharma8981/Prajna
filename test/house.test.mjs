@@ -151,3 +151,24 @@ test('erase: typed confirmation only, then a fresh house with the consent record
   assert.equal(after.profile.name, '', 'profile erased');
   const c = await post('/api/housecheck'); assert.equal(c.status, 200); assert.equal(c.j.ok, c.j.total, JSON.stringify(c.j.rows.filter((x) => !x.ok)));
 });
+
+test('restore: an export goes back in whole after an erase', async () => {
+  const w = await post('/api/missions', { goal: 'Restore test: a brief', deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200);
+  const live = await post('/api/missions', { goal: 'Restore test: a run in flight', deskId: 'brief', depth: 'fast' }); assert.equal((await post(`/api/missions/${live.j.id}/launch`)).status, 200);
+  const before = (await api('/api/bootstrap')).j;
+  assert.equal(before.missions.find((m) => m.id === live.j.id).status, 'LIVE');
+  const zip = Buffer.from(await (await fetch(`${BASE}/api/export`)).arrayBuffer());
+  const e = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
+  assert.equal((await api('/api/bootstrap')).j.missions.length, 3);
+  const noConfirm = await fetch(`${BASE}/api/import`, { method: 'POST', body: zip }); assert.equal(noConfirm.status, 400);
+  const junk = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', body: Buffer.from('not a zip at all, but long enough to pass the size check') }); assert.equal(junk.status, 400);
+  const r = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', headers: { 'content-type': 'application/zip' }, body: zip }); const j = await r.json(); assert.equal(r.status, 200, JSON.stringify(j));
+  const after = (await api('/api/bootstrap')).j;
+  assert.equal(after.missions.length, before.missions.length, 'missions restored');
+  assert.equal(after.artifacts.length, before.artifacts.length, 'artifacts restored');
+  assert.ok(after.missions.some((m) => m.id === w.j.id), 'the open ticket came back');
+  const back = after.missions.find((m) => m.id === live.j.id); assert.equal(back.status, 'KILLED'); assert.equal(back.partial, true); assert.ok(back.settlement, 'interrupted run settled');
+  assert.equal(j.interrupted, 1);
+  for (const a of after.artifacts) assert.equal((await fetch(`${BASE}/api/artifacts/${a.id}/html`)).status, 200, a.id);
+  const c = await post('/api/housecheck'); assert.equal(c.j.ok, c.j.total, JSON.stringify(c.j.rows.filter((x) => !x.ok)));
+});

@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { store, DATA_DIR } from './store.js';
+import { zipEntries, zipRead } from './docs.js';
 import { ws } from './workspace.js';
 
 const CRC = (() => { const t = new Uint32Array(256); for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[i] = c >>> 0; } return t; })();
@@ -68,6 +69,55 @@ export function exportWorkspace({ version }) {
   const mediaDir = path.join(DATA_DIR, 'media');
   try { for (const f of fs.readdirSync(mediaDir)) { try { entries.push({ name: `media/${f}`, data: fs.readFileSync(path.join(mediaDir, f)) }); } catch { /* skip unreadable */ } } } catch { /* no media dir */ }
   return { zip: zipStore(entries, now), count: entries.length, missions: missions.length, artifacts: artifacts.length };
+}
+
+// Restore: a workspace export goes back in whole. Every file is rewritten
+// from the zip, archived tapes are re-archived from the events the export
+// carried, and runs that were live when the export was taken close as
+// interrupted, since their run scripts do not travel. Returns the counts.
+export function importWorkspace(buf) {
+  let es;
+  try { es = zipEntries(buf); } catch (e) { return { error: `Not a zip archive (${e.message}).` }; }
+  const get = (n) => { const e = es.find((x) => x.name === n); return e ? zipRead(buf, e) : null; };
+  const need = ['workspace.json', 'workspace-ui.json', 'missions.json', 'artifacts.json'];
+  const missing = need.filter((n) => !get(n));
+  if (missing.length) return { error: `Not a Prajñā export: missing ${missing.join(', ')}.` };
+  let workspace, ui, missions, artifacts, connectors, models;
+  try {
+    workspace = JSON.parse(get('workspace.json')); ui = JSON.parse(get('workspace-ui.json')); missions = JSON.parse(get('missions.json')); artifacts = JSON.parse(get('artifacts.json'));
+    connectors = get('connectors.json') ? JSON.parse(get('connectors.json')) : null; models = get('models.json') ? JSON.parse(get('models.json')) : [];
+  } catch (e) { return { error: `The export's JSON is damaged (${e.message}).` }; }
+  if (!Array.isArray(missions) || !Array.isArray(artifacts) || typeof workspace !== 'object' || typeof ui !== 'object') return { error: 'The export does not have the shape of a workspace.' };
+  eraseFiles();
+  const w = (f, v) => fs.writeFileSync(path.join(DATA_DIR, f), JSON.stringify(v));
+  let interrupted = 0, tapes = 0;
+  for (const m of missions) {
+    if (m.status === 'LIVE' || String(m.status || '').startsWith('PAUSED')) {
+      m.status = 'KILLED'; m.partial = true; m.importNote = 'This run was live when the export was taken; it closes here as interrupted.'; interrupted++;
+      // Its reserve comes home: settle what it spent, release the rest, on the ledger.
+      const ceiling = m.contract?.ceiling || 0, spent = Math.round((m.spent || 0) * 10) / 10;
+      const released = Math.round(Math.max(0, ceiling - spent) * 10) / 10;
+      m.settlement = { reserved: ceiling, settled: spent, released };
+      workspace.reserved = Math.round(Math.max(0, (workspace.reserved || 0) - released) * 10) / 10;
+      workspace.credits = Math.round(((workspace.credits || 0) + released) * 10) / 10;
+      if (!Array.isArray(ui.ledger)) ui.ledger = [];
+      ui.ledger.unshift({ id: `l_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, at: Date.now(), kind: 'settle', delta: -spent, balanceAfter: workspace.credits, reservedAfter: workspace.reserved, note: `${m.serial} closed as interrupted on restore: ${spent} cr settled, ${released} cr released`, missionId: m.id, serial: m.serial, released });
+    }
+    if (m.eventsArchived && (m.events || []).length) {
+      fs.writeFileSync(path.join(DATA_DIR, 'tape', `${m.id}.json`), JSON.stringify({ schema: 'prajna.tape.v1', missionId: m.id, serial: m.serial, archivedAt: Date.now(), events: m.events, runScript: null }));
+      m.eventCount = m.events.length; m.events = []; tapes++;
+    }
+  }
+  w('workspace.json', workspace); w('workspace-ui.json', ui); w('missions.json', missions); w('artifacts.json', artifacts);
+  if (connectors) w('connectors.json', connectors); w('models.json', models);
+  let files = 0;
+  for (const e of es) {
+    if (e.name.startsWith('artifacts/') && e.name.endsWith('.html')) { fs.writeFileSync(path.join(DATA_DIR, 'artifacts', path.basename(e.name)), zipRead(buf, e)); files++; }
+    else if (e.name.startsWith('media/') && e.name.length > 6) { fs.writeFileSync(path.join(DATA_DIR, 'media', path.basename(e.name)), zipRead(buf, e)); files++; }
+  }
+  store.state.missions = missions; store.state.artifacts = artifacts; store.state.workspace = workspace; store.state.connectors = connectors; store.state.customModels = models;
+  store.state.ws = null; // workspace-ui.json is re-read on the next touch
+  return { missions: missions.length, artifacts: artifacts.length, files, tapes, interrupted, chats: (ui.chats || []).length };
 }
 
 // Erase: every file the workspace wrote, gone; the house re-seeds itself.

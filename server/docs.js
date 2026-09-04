@@ -4,6 +4,8 @@
 // strips the markup. Good enough for evidence; not a full converter.
 import zlib from 'node:zlib';
 
+export function zipEntries(buf) { return entries(buf); }
+export function zipRead(buf, e) { return read(buf, e); }
 function entries(buf) {
   const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
   if (eocd < 0) throw new Error('not a zip archive');
