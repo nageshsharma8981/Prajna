@@ -658,7 +658,7 @@ async function handle(req, res) {
     const link = m?.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null;
     const kind = sharedFile[2];
     const buf = kind === 'docx' ? docxFromArtifact({ artifact: a, mission: m, html, publicUrl: link })
-      : kind === 'pptx' ? pptxFromArtifact({ artifact: a, mission: m, html, publicUrl: link })
+      : kind === 'pptx' ? pptxFromArtifact({ artifact: a, mission: m, html, mediaBytes: (name) => { try { return fs.readFileSync(path.join(MEDIA_DIR, path.basename(name))); } catch { return null; } }, publicUrl: link })
       : m && xlsxFromMission({ artifact: a, mission: m, publicUrl: link });
     if (!buf) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end(kind === 'pptx' ? 'This delivery has no slides.' : 'This delivery has no data table.'); }
     const type = kind === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -1133,7 +1133,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       return json(res, 400, { error: `${PROVIDERS[provider]?.label || provider} refused: ${String(e.message || e).slice(0, 220)}` });
     }
   }
-  const mediaGet = p.match(/^\/api\/media\/([a-f0-9]{16})$/);
+  // By id, with or without the file's extension: a page may name the file.
+  const mediaGet = p.match(/^\/api\/media\/([a-f0-9]{16})(?:\.[a-z0-9]{2,5})?$/);
   if (mediaGet) {
     const rec = ws().media.find((m) => m.id === mediaGet[1]);
     if (!rec) return json(res, 404, { error: 'Not on the books.' });
@@ -1276,7 +1277,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     const html = a ? store.artifactHtml(a.id) : null;
     if (!a || !html) return json(res, 404, { error: 'Artifact not found.' });
     const m = a.missionId ? store.mission(a.missionId) : null;
-    const buf = pptxFromArtifact({ artifact: a, mission: m, html, publicUrl: m?.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null });
+    const buf = pptxFromArtifact({ artifact: a, mission: m, html, mediaBytes: (name) => { try { return fs.readFileSync(path.join(MEDIA_DIR, path.basename(name))); } catch { return null; } }, publicUrl: m?.shareToken ? `${(process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, '')}/r/${m.shareToken}` : null });
     if (!buf) return json(res, 400, { error: 'This delivery has no slides, so there is nothing to put in a deck.' });
     const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'deck'}.pptx`;
     res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });

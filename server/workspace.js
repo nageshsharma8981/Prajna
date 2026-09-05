@@ -105,7 +105,7 @@ function ensure() {
   if (!st.ws) {
     st.ws = store._read('workspace-ui.json', null) || {
       chats: [], projects: [{ id: 'p_default', name: 'My workspace', createdAt: Date.now(), chatIds: [] }],
-      plugins: ['claude-skills', 'documents'], tools: { 'task-agent': true, media: false, browser: false },
+      plugins: ['claude-skills', 'documents'], tools: { 'task-agent': true, media: true, browser: false }, // media on: it spends nothing until an image key is held, and a deck without pictures is a wall of text
       mcp: [],
       profile: { name: '', email: '', handle: '', bio: '', avatar: 'P' },
       personalization: { tone: 'calm and precise', defaultModel: 'opus', defaultAdvisers: ['gpt', 'deepseek'], theme: 'night' },

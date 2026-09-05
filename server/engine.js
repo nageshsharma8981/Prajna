@@ -11,8 +11,11 @@
 import crypto from 'node:crypto';
 import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
-import { GENERATORS, subjectOf } from './artifacts.js';
-import { callModel } from './providers.js';
+import { GENERATORS, subjectOf, deckSlides } from './artifacts.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { callModel, generateImage } from './providers.js';
+import { DATA_DIR } from './store.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { composeFor } from './compose.js';
@@ -55,7 +58,7 @@ import { addMessage } from './workspace.js';
 import { record as ledger } from './ledger.js';
 import { looksLikeCsv, profileCsv, dataSummary } from './data.js';
 import { gather, deliver, DELIVERABLE_CONNECTORS } from './connect.js';
-import { ws } from './workspace.js';
+import { ws, flushWs } from './workspace.js';
 import { ASSERTIONS, validateArtifact, evaluateGate } from './validators.js';
 
 // BYOK: a model is LIVE when the workspace holds a key for its provider.
@@ -102,6 +105,7 @@ const PLANS = {
     { id: 's3', title: 'Panel deliberation on the through-line', tool: 'council', cost: 16, access: 'read', dependsOn: ['s1'] },
     { id: 's4', title: 'Draft slides: one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Deck Doctor pass: kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
+    { id: 's6', title: 'Illustrate: one image per slide on your image key', tool: 'illustrate', cost: 6, access: 'write', dependsOn: ['s5'] },
   ],
   site: (s) => [
     { id: 's1', title: `Position the offer, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
@@ -428,6 +432,7 @@ function councilScript(mission, stepId, baseT) {
 
 /* -------------------------------- RUN SCRIPT ------------------------------ */
 
+const PROVIDER_LABEL = { openai: 'OpenAI', google: 'Google' };
 const TOOL_LINES = {
   scope: [['parse-goal', 'decomposed into decision, audience, constraints'], ['frame', 'success criteria drafted · 3 explicit, 1 implicit']],
   search: [['web.search', '34 candidates → 19 kept after dedupe'], ['fetch', '11 primary documents retrieved'], ['extract', '61 claims extracted with source spans']],
@@ -651,6 +656,58 @@ async function applyEvent(m, ev, notify, runner) {
   // dated sources. Recorded whether or not anyone cites them.
   if (ev.type === 'step.status' && ev.status === 'LIVE') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'illustrate' && !m.visuals) {
+      pushEvent(m, record, notify);
+      m.visuals = [];
+      const prov = ['openai', 'google'].find((id) => store.keyFor(id));
+      const k = prov ? store.keyFor(prov) : null;
+      const slides = deckSlides(m);
+      const wanted = slides.map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
+      if (!k) {
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `no image key in memory (OpenAI or Google), so the house draws its own ${wanted.length} visuals; load a key under Your keys and re-run for generated images` }, notify);
+        return 'ok';
+      }
+      if (!ws().tools?.media) {
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: 'Media Generation is switched off under Tools, so the house draws its own visuals' }, notify);
+        return 'ok';
+      }
+      const mediaDir = path.join(DATA_DIR, 'media'); fs.mkdirSync(mediaDir, { recursive: true });
+      const style = 'Cinematic editorial photograph, natural light, shallow depth of field, no text, no logos, no watermarks, muted warm palette, wide 3:2 composition with space on the left for a headline';
+      let made = 0; const failed = [];
+      // Three at a time, ninety seconds each at most: a slow or stalled
+      // provider costs the deck a minute and a half, never seven of them.
+      const capped = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`no picture within ${ms / 1000}s`)), ms))]);
+      const queue = wanted.slice(); const results = [];
+      await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
+        while (queue.length) {
+          const job = queue.shift(); const started = Date.now();
+          const prompt = `${style}. Subject: ${String(job.sl.h).replace(/<[^>]+>/g, '')}. Context: ${String(job.sl.s).replace(/<[^>]+>/g, '').slice(0, 300)}`;
+          try { results.push({ ...job, prompt, started, out: await capped(generateImage({ provider: prov, key: k.key, baseUrl: k.baseUrl, prompt, size: '1536x1024' }), 90000) }); }
+          catch (e) { results.push({ ...job, prompt, started, error: e }); }
+        }
+      }));
+      results.sort((x, y) => x.i - y.i);
+      for (const { sl, i, prompt, started, out, error } of results) {
+        try {
+          if (error) throw error;
+          const id = crypto.randomBytes(8).toString('hex');
+          const ext = out.mime.includes('jpeg') ? 'jpg' : out.mime.includes('webp') ? 'webp' : 'png';
+          fs.writeFileSync(path.join(mediaDir, `${id}.${ext}`), out.bytes);
+          const rec = { id, ext, mime: out.mime, prompt, provider: prov, model: out.model, bytes: out.bytes.length, ms: Date.now() - started, createdAt: Date.now(), missionId: m.id, slide: i };
+          ws().media.unshift(rec); ws().media = ws().media.slice(0, 400); flushWs();
+          m.visuals.push({ slide: i, file: `${id}.${ext}`, id, prompt, model: out.model, ms: rec.ms });
+          if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1;
+          const at = (m.keyUse.models[out.model] = m.keyUse.models[out.model] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1;
+          made += 1;
+          pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: true, detail: `slide ${i + 1}: ${out.model} drew “${String(sl.h).replace(/<[^>]+>/g, '').slice(0, 60)}” (${Math.round(out.bytes.length / 1024)} KB in ${(rec.ms / 1000).toFixed(1)}s) · billed to your key` }, notify);
+        } catch (e) {
+          failed.push(`slide ${i + 1} (${String(e.message || e).slice(0, 80)})`);
+          pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `slide ${i + 1}: ${PROVIDER_LABEL[prov] || prov} refused (${String(e.message || e).slice(0, 100)}), the house draws that one itself` }, notify);
+        }
+      }
+      pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: made > 0, detail: `${made} of ${wanted.length} slides illustrated on your ${PROVIDER_LABEL[prov] || prov} key${failed.length ? `; the house drew ${failed.length}: ${failed.join(', ')}` : ''}` }, notify);
+      return 'ok';
+    }
     if (step && step.tool === 'search' && !m.retrieval) {
       pushEvent(m, record, notify);
       // The Browser tool: pages the ticket names are read first and kept as owned sources.

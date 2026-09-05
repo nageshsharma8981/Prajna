@@ -143,6 +143,12 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /ArrowRight/) && has(h, /ArrowLeft/), surface: (h) => has(h, /addEventListener\('click'/) },
     // A deck is presented, not scrolled. Notes on every slide, a presenter
     // panel, fullscreen, an address per slide, and a handout when printed.
+    // A wall of text is not a slide. Every slide that carries an argument
+    // carries a visual: the generated image when a key drew one, the house's
+    // own drawing when not, and never a blank.
+    { id: 'VAL-ILLUSTRATED', title: 'The title and every argument slide carry a visual, with alt text when it is a generated image', owner: 'compose',
+      scrutiny: (h) => count(h, /class="slide (?:title |)has-visual/g) >= 7,
+      surface: (h) => { const imgs = [...h.matchAll(/<img class="visual" ([^>]*)>/g)]; return imgs.every((m) => /alt="[^"]{8,}"/.test(m[1])) && (imgs.length > 0 || count(h, /class="visual house"/g) >= 7); } },
     { id: 'VAL-PRESENTABLE', title: 'Every slide carries presenter notes, and the deck has a presenter panel, fullscreen and a slide address', owner: 'compose',
       scrutiny: (h) => count(h, /<aside class="notes" hidden>/g) === count(h, /<section class="slide/g) && has(h, /class="presenter" hidden/) && has(h, /requestFullscreen/),
       surface: (h) => has(h, /id="slide-1"/) && has(h, /hashchange/) && has(h, /@media print/) },

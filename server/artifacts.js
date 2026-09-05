@@ -28,6 +28,7 @@ function provenanceObject(mission) {
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
     deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, link: d.link || null, linkOk: d.linkOk ?? null, linkRevokedAt: d.linkRevokedAt || null, error: d.error || null })),
     dissent: mission.dissent || null,
+    visuals: Array.isArray(mission.visuals) && mission.visuals.length ? { count: mission.visuals.length, model: mission.visuals[0].model, files: mission.visuals.map((v) => v.file) } : null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     writtenBy: mission.writtenBy || null,
     houseBrief: mission.houseBrief || null,
@@ -404,13 +405,13 @@ function deckRuntime() {
   show(at(), false);
 }
 
-export function deckArtifact(mission) {
+// The nine slides a deck lays out, from the model's six beats or the
+// house's own. Shared with the engine, which illustrates the same list.
+export function deckSlides(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
-  const tpl = DECK_TEMPLATES.find((x) => x.id === mission.template)?.theme || null;
-  const paper = tpl ? tpl.paper : '#f4f1e8', ink = tpl ? tpl.ink : '#14140f', acc = tpl ? tpl.acc : '#b0472f', font = tpl ? tpl.font : "'Helvetica Neue',Helvetica,Arial,sans-serif";
   const A = authored(mission);
-  const slides = A ? [
+  return A ? [
     { k: 'title', h: t, s: esc(str(A.sub, 'The argument in nine slides.')), notes: 'Say the title and the one line, then stop. Let the room read it. Do not narrate the agenda.' },
     ...A.slides.slice(0, 2).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)), notes: esc(str(x.notes)) })),
     { k: 'big', h: 'One sentence.', s: esc(str(A.one, t)), notes: 'Read the sentence aloud exactly as written, once. This is the line the room should be able to repeat back at the end.' },
@@ -427,12 +428,39 @@ export function deckArtifact(mission) {
     { k: 'claim', n: 'The ask', h: 'What you want, what it buys, what it proves.', s: 'A specific amount, a specific runway, and the two milestones that de-risk the next round.', notes: 'The amount, the months it buys, the two things that will be true at the end. Then ask for the meeting, not the money.' },
     { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.', notes: 'End on the claim, not on thank you. Leave this slide up while you take questions.' },
   ];
+}
+
+// The house's own drawing for a slide that has no generated image: a
+// deterministic composition from the slide's words, so two runs of the same
+// deck look the same and no slide is ever a blank wall of text.
+function houseVisual(sl, i, acc, ink) {
+  const seed = [...String(sl.h || '') + i].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const r = (n) => ((seed >> (n % 24)) % 97) / 97;
+  const shapes = Array.from({ length: 5 }, (_, j) => `<circle cx="${Math.round(1100 + r(j * 3) * 700)}" cy="${Math.round(150 + r(j * 5) * 700)}" r="${Math.round(120 + r(j * 7) * 260)}" fill="${j % 2 ? acc : ink}" opacity="${(0.08 + r(j * 11) * 0.14).toFixed(2)}"/>`).join('');
+  return `<svg class="visual house" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="1920" height="1080" fill="${ink}" opacity="0.04"/>${shapes}<path d="M0 ${Math.round(700 + r(2) * 200)} Q 960 ${Math.round(500 + r(4) * 300)} 1920 ${Math.round(760 + r(6) * 200)}" stroke="${acc}" stroke-width="3" fill="none" opacity="0.35"/></svg>`;
+}
+
+export function deckArtifact(mission) {
+  const subject = subjectOf(mission.goal);
+  const t = esc(subject);
+  const tpl = DECK_TEMPLATES.find((x) => x.id === mission.template)?.theme || null;
+  const paper = tpl ? tpl.paper : '#f4f1e8', ink = tpl ? tpl.ink : '#14140f', acc = tpl ? tpl.acc : '#b0472f', font = tpl ? tpl.font : "'Helvetica Neue',Helvetica,Arial,sans-serif";
+  const A = authored(mission);
+  const slides = deckSlides(mission);
+  const visuals = Array.isArray(mission.visuals) ? mission.visuals : [];
+  const visualOf = (sl, i) => {
+    const v = visuals.find((x) => x.slide === i);
+    if (v) return { html: `<img class="visual" src="/api/media/${esc(v.id)}" alt="${esc(v.prompt.replace(/^.*?Subject: /, '').slice(0, 200))}" loading="${i === 0 ? 'eager' : 'lazy'}">`, attr: ` data-visual="${esc(v.file)}"`, cls: ' has-visual' };
+    if (sl.k === 'title' || sl.k === 'claim') return { html: houseVisual(sl, i, acc, ink), attr: '', cls: ' has-visual house-visual' };
+    return { html: '', attr: '', cls: '' };
+  };
   const notesOf = (sl) => sl.notes ? `<aside class="notes" hidden>${sl.notes}</aside>` : '';
   const slideHtml = slides.map((sl, i) => {
-    if (sl.k === 'title') return `<section class="slide title" id="slide-1"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
+    const V = visualOf(sl, i);
+    if (sl.k === 'title') return `<section class="slide title${V.cls}" id="slide-1"${V.attr}>${V.html}<div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
     if (sl.k === 'big') return `<section class="slide big" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
     if (sl.k === 'end') return `<section class="slide end" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
-    return `<section class="slide" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    return `<section class="slide${V.cls}" id="slide-${i + 1}"${V.attr}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
   }).join('\n');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -453,10 +481,17 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .end{background:var(--ink)}.end h2{color:var(--paper)}.end .sub{color:#a5a294}
 .deck-dissent{margin:2rem 0 0;max-width:60ch;font-size:.9rem;color:#d7c9a5;border-left:3px solid var(--acc);padding-left:.9rem}.deck-dissent b{color:var(--paper)}
 .pg{position:absolute;bottom:2.2vh;right:3vw;font-size:.75rem;letter-spacing:.1em;color:#98948a;margin:0}
+.visual{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.slide.has-visual>div{position:relative;z-index:2;max-width:56%}
+.slide.has-visual:not(.house-visual)::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(10,10,8,.82) 0%,rgba(10,10,8,.62) 45%,rgba(10,10,8,.15) 100%)}
+.slide.has-visual:not(.house-visual) h1,.slide.has-visual:not(.house-visual) h2{color:#fbf7ee}.slide.has-visual:not(.house-visual) .sub{color:#e6ddcc}
+.slide.has-visual:not(.house-visual) .pg{color:#cfc8b8}.slide.has-visual .run,.slide.has-visual .pg{z-index:2}
+@media(max-width:700px){.slide.has-visual>div{max-width:100%}.slide.has-visual:not(.house-visual)::before{background:linear-gradient(180deg,rgba(10,10,8,.25) 0%,rgba(10,10,8,.85) 60%)}}
 .hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2;transition:opacity .6s}.hint.fade{opacity:0}
 .progress{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(0,0,0,.15);z-index:5}.progress i{display:block;height:100%;background:var(--acc);transform-origin:left;transform:scaleX(0);transition:transform .3s}
 .chrome{position:fixed;top:1.2vh;right:3vw;z-index:5;display:flex;gap:.4rem}
 .chrome button{background:rgba(0,0,0,.55);color:#f4f1e8;border:none;font:600 .7rem/1 inherit;letter-spacing:.1em;text-transform:uppercase;padding:.55rem .8rem;border-radius:4px;cursor:pointer;min-height:32px}.chrome button:hover{background:var(--acc)}
+[hidden]{display:none!important}
 .presenter{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#111;color:#eee;padding:1rem 3vw 1.2rem;display:grid;grid-template-columns:1fr auto;gap:.4rem 2rem;border-top:3px solid var(--acc);max-height:38vh;overflow:auto;font-size:.95rem}
 .presenter .p-now{grid-column:1;font-weight:700;color:#fff;margin:0}.presenter .p-clock{grid-column:2;grid-row:1/3;font:700 2rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--acc);align-self:start}
 .presenter .p-notes{grid-column:1;margin:0;color:#ddd;max-width:70ch;line-height:1.5}.presenter .p-next{grid-column:1;margin:0;font-size:.8rem;color:#999}

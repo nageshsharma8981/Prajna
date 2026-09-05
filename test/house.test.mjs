@@ -1085,6 +1085,8 @@ test('every desk delivers with a live model, not just the research desk', async 
   const model = http.createServer((req, res) => {
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => {
+      // The deck also asks this key for pictures; a one-pixel PNG is a picture.
+      if (/images\/generations/.test(req.url)) { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ data: [{ b64_json: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' }] })); }
       const prompt = JSON.parse(body).messages[0].content;
       const payload = /CRITIQUE the draft/.test(prompt) ? { verdict: 'pass', issues: [] } : DRAFTS[desk];
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -1773,4 +1775,96 @@ test('the artifact view frames a delivery with what its runtime needs', async ()
   assert.ok(/allow:"fullscreen"|allow="fullscreen"/.test(bundle), 'and permits fullscreen');
   // The frame still points at the house's own page, not somewhere else.
   assert.ok(/\/api\/artifacts\/[^"'`]*\/html/.test(bundle), 'the frame source is the delivered page');
+});
+
+test('a deck is illustrated on the owner\'s image key, and drawn by the house without one', async () => {
+  // One image per slide that carries an argument, generated on the owner's
+  // key from that slide's own words; embedded in the page and in the
+  // PowerPoint; and when no image key is held, the house draws its own and
+  // the tape says so rather than shipping a wall of text.
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  const beats = ['The problem', 'The shift', 'The mechanism', 'The proof', 'The economics', 'The ask'];
+  const draft = { sub: 'Six beats.', one: 'One sentence.', close: 'The close.', slides: beats.map((n, i) => ({ n, h: `Headline ${i + 1} about the ferry`, s: `Support ${i + 1}.`, notes: `Note ${i + 1}.` })) };
+  let images = 0; const prompts = [];
+  const model = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (/images\/generations/.test(req.url)) { images += 1; prompts.push(JSON.parse(body).prompt); return res.end(JSON.stringify({ data: [{ b64_json: PNG.toString('base64') }] })); }
+      const p = JSON.parse(body).messages[0].content;
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/CRITIQUE the draft/.test(p) ? { verdict: 'pass', issues: [] } : draft) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }));
+    });
+  });
+  await new Promise((r) => model.listen(0, '127.0.0.1', r));
+  const run = async (B, cookie, lead) => {
+    const call = async (p, body, method = 'POST') => { const r = await fetch(B + p, { method, headers: { 'content-type': 'application/json', cookie }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    const w = await call('/api/missions', { goal: 'Illustration test: a deck for a Kochi ferry pass', deskId: 'deck', depth: 'fast', lead, advisers: [] });
+    await call(`/api/missions/${w.j.id}/launch`);
+    let m; const t0 = Date.now();
+    while (Date.now() - t0 < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['raise-ceiling', 'accept-risk', 'approve', 'continue'].find((o) => a.options.includes(o)) || a.options[0]; await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `illustration test, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return m;
+  };
+  const house = async (name, port) => {
+    const DIR = fs.mkdtempSync(path.join(os.tmpdir(), `prajna-${name}-`));
+    const B = `http://localhost:${port}`;
+    const child = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(port), PRAJNA_DATA_DIR: DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+    const cookie = jar(await fetch(B + '/'));
+    const legal = await (await fetch(`${B}/api/legal`)).json();
+    await fetch(`${B}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Owner' }) });
+    await fetch(`${B}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ name: 'Owner' }) });
+    return { DIR, B, child, cookie };
+  };
+  const lit = await house('lit', PORT + 10);
+  const dark = await house('dark', PORT + 11);
+  try {
+    const base = `http://127.0.0.1:${model.address().port}/v1`;
+    const hdr = (c) => ({ 'content-type': 'application/json', cookie: c });
+    // With a key: every argument slide is drawn on it.
+    await fetch(`${lit.B}/api/keys/openai`, { method: 'PUT', headers: hdr(lit.cookie), body: JSON.stringify({ key: 'sk-test-key', baseUrl: base }) });
+    const leadLit = await (await fetch(`${lit.B}/api/models`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
+    const m1 = await run(lit.B, lit.cookie, leadLit.id);
+    assert.equal(m1.status, 'FILLED');
+    assert.ok(m1.contract.plan.some((p) => p.tool === 'illustrate'), 'the contract carries the illustrate step');
+    assert.equal(images, 7, 'seven images asked for: the title and six arguments');
+    assert.equal((m1.visuals || []).length, 7, 'seven visuals on the record');
+    assert.ok(prompts.every((p) => /no text, no logos/.test(p)), 'every prompt asks for a clean plate');
+    assert.ok(prompts.some((p) => /Headline 3 about the ferry/.test(p)), 'each prompt is built from its own slide');
+    const html = await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/html`)).text();
+    assert.equal((html.match(/<img class="visual"/g) || []).length, 7, 'seven images in the page');
+    assert.ok(/<img class="visual" src="\/api\/media\/[a-f0-9]{16}" alt="[^"]{8,}"/.test(html), 'each by its id, with alt text');
+    // The picture the page actually asks for, at the address it asks for it.
+    const src = (html.match(/<img class="visual" src="([^"]+)"/) || [])[1];
+    const served = await fetch(`${lit.B}${src}`, { headers: { cookie: lit.cookie } });
+    assert.equal(served.status, 200, `the house serves the picture the page asks for: ${src}`);
+    assert.match(served.headers.get('content-type') || '', /^image\//, 'as an image');
+    assert.ok(html.includes('[hidden]{display:none!important}'), 'the presenter panel and the overview stay hidden until asked for');
+    assert.ok(fs.existsSync(path.join(lit.DIR, 'media', m1.visuals[0].file)), 'and keeps it on disk');
+    const gate = (m1.events || []).filter((e) => e.type === 'gate').pop();
+    assert.ok(gate && gate.sealed.includes('VAL-ILLUSTRATED'), 'the gate sealed the illustration');
+    // And the PowerPoint carries the same pictures.
+    const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
+    const names = pptx.toString('latin1');
+    assert.ok(names.includes('ppt/media/image1.png'), 'the title picture is in the package');
+    assert.ok((names.match(/ppt\/media\/image\d+\.png/g) || []).length >= 7, 'seven pictures travel');
+    assert.ok(/<p:pic>[\s\S]*?descr="[^"]{8,}"[\s\S]*?r:embed="rId3"/.test(names), 'a picture placed on the slide, with its description');
+    assert.ok(names.includes('Extension="png" ContentType="image/png"'), 'declared in the content types');
+    // Without a key: the house draws, and says so.
+    const leadDark = await (await fetch(`${dark.B}/api/models`, { method: 'POST', headers: hdr(dark.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
+    const m2 = await run(dark.B, dark.cookie, leadDark.id);
+    assert.equal(m2.status, 'FILLED');
+    assert.equal((m2.visuals || []).length, 0);
+    assert.ok((m2.events || []).some((e) => e.type === 'log' && /no image key in memory/.test(e.detail)), 'the tape says why');
+    const html2 = await (await fetch(`${dark.B}/api/artifacts/${m2.artifactId}/html`)).text();
+    assert.equal((html2.match(/class="visual house"/g) || []).length, 7, 'seven house drawings');
+    assert.equal((html2.match(/<img class="visual"/g) || []).length, 0);
+    assert.ok(((m2.events || []).filter((e) => e.type === 'gate').pop() || { sealed: [] }).sealed.includes('VAL-ILLUSTRATED'), 'and the gate is satisfied by them');
+  } finally { lit.child.kill(); dark.child.kill(); model.close(); fs.rmSync(lit.DIR, { recursive: true, force: true }); fs.rmSync(dark.DIR, { recursive: true, force: true }); }
 });

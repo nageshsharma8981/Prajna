@@ -1519,6 +1519,41 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.38: The deck is illustrated (5 Sep 2026)
+
+Asked for directly: the deck's quality was not good, and it needed relevant
+images. It had none. Every slide was text on a coloured card.
+
+The deck contract now carries a step of its own, "Illustrate: one image per
+slide on your image key". For the title and each of the six argument
+slides, the house writes a prompt from that slide's own headline and
+support line, in a fixed editorial style (natural light, no text, no logos,
+room on the left for the headline), and generates the picture on the
+owner's OpenAI or Gemini image key. Each picture is kept in the house's
+media store, named on the tape with its size and time and billed to the
+key, and recorded in the provenance. The slide shows it full-bleed with the
+text over a scrim, and the PowerPoint export carries the same picture as a
+picture part on the slide, with a solid panel behind the text so it reads
+in every renderer. When no image key is held, the house draws its own
+composition for each slide from the slide's words and the tape says why;
+a deck is never a wall of text. The Media Generation tool is now on by
+default for a new house, since it spends nothing until a key is held.
+
+A new gate assertion, VAL-ILLUSTRATED, refuses a deck whose title or
+argument slides carry no visual, or a generated image without alt text.
+
+Two of my own defects were found on the way and fixed. The page asked for
+each picture by its file name and the house served it only by id, so no
+picture loaded; the test had fetched the id and passed, and now fetches
+what the page asks for. And since v1.33 the deck's presenter panel and
+all-slides overview had been visible at load, because their display rule
+overrode the hidden attribute: a near-black overlay on every deck. Hidden
+now hides, and the test checks for the rule.
+
+Proved with a mock image provider returning real pictures: seven images
+generated, seven loaded in the page at 1536 by 1024, seven picture parts in
+the PowerPoint, rendered and looked at.
+
 ## v1.37: The frame lets the delivery work (5 Sep 2026)
 
 Every desk's delivery now runs, and every one was verified on its raw page.
