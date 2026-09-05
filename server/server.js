@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store, houseRevision } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
-import { PROVIDERS, testKey, maskKey } from './providers.js';
+import { PROVIDERS, testKey, maskKey, synthesizeSpeech } from './providers.js';
 import { liveSeat, editPlan, PLAN_TOOLS } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS, chatFor } from './workspace.js';
@@ -730,6 +730,34 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     ws().houseBrief = text; flushWs();
     return json(res, 200, { houseBrief: text, chars: text.length });
   }
+  // The narration voice: a name the speech provider knows, kept on the house
+  // and used by every film from then on. Preview speaks one line on the key
+  // so the choice can be heard before a deck is run.
+  if (p === '/api/voice' && req.method === 'PUT') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
+    const body = await readBody(req);
+    const voice = String(body.voice || '').trim().slice(0, 40);
+    if (voice && !/^[A-Za-z][A-Za-z0-9 _-]{1,39}$/.test(voice)) return json(res, 400, { error: 'A voice is a short name the provider knows, such as alloy or Kore.' });
+    ws().voice = voice || null; flushWs();
+    return json(res, 200, { voice: ws().voice });
+  }
+  if (p === '/api/voice/preview' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (ownerGate(req, res)) return;
+    const body = await readBody(req);
+    const prov = ['openai', 'google'].find((id) => store.keyFor(id));
+    if (!prov) return json(res, 400, { error: 'No speech key in memory. Load an OpenAI or Google key under Your keys to hear a voice.' });
+    const k = store.keyFor(prov);
+    const voice = String(body.voice || ws().voice || '').trim().slice(0, 40) || null;
+    try {
+      const out = await synthesizeSpeech({ provider: prov, key: k.key, baseUrl: k.baseUrl, voice, text: String(body.text || '').trim().slice(0, 200) || 'This is how the film will sound. Every slide is read in this voice, from its own notes.' });
+      res.writeHead(200, { 'content-type': out.mime, 'content-length': out.bytes.length, 'cache-control': 'no-store', 'x-voice': out.voice, 'x-model': out.model });
+      return res.end(out.bytes);
+    } catch (e) {
+      return json(res, 400, { error: `${PROVIDERS[prov]?.label || prov} refused: ${String(e.message || e).slice(0, 200)}` });
+    }
+  }
   if (p === '/api/hooks' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
     if (ownerGate(req, res)) return;
@@ -847,6 +875,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       limits: limits(),
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
+      voice: ws().voice || null,
       keysHeld: Object.keys(store.keys()).filter((prov) => PROVIDERS[prov]?.kind !== 'search').length,
       ranLive: store.missions().some((m) => m.authored?.live),
       me: meOf(req),

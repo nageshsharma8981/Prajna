@@ -1837,8 +1837,18 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
   try {
     const base = `http://127.0.0.1:${model.address().port}/v1`;
     const hdr = (c) => ({ 'content-type': 'application/json', cookie: c });
+    // The voice is the owner's to set, and can be heard before it is used;
+    // without a speech key the house says so instead of pretending.
+    assert.equal((await fetch(`${lit.B}/api/voice/preview`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).status, 400, 'nothing to hear without a key');
+    assert.match((await (await fetch(`${lit.B}/api/voice/preview`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json()).error, /No speech key in memory/);
+    assert.equal((await fetch(`${lit.B}/api/voice`, { method: 'PUT', headers: hdr(lit.cookie), body: JSON.stringify({ voice: 'bad voice!' }) })).status, 400, 'a voice is a name');
+    assert.equal((await (await fetch(`${lit.B}/api/voice`, { method: 'PUT', headers: hdr(lit.cookie), body: JSON.stringify({ voice: 'onyx' }) })).json()).voice, 'onyx');
+    assert.equal((await (await fetch(`${lit.B}/api/bootstrap`, { headers: hdr(lit.cookie) })).json()).voice, 'onyx', 'the house carries the voice');
     // With a key: every argument slide is drawn on it.
     await fetch(`${lit.B}/api/keys/openai`, { method: 'PUT', headers: hdr(lit.cookie), body: JSON.stringify({ key: 'sk-test-key', baseUrl: base }) });
+    const heard = await fetch(`${lit.B}/api/voice/preview`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' });
+    assert.equal(heard.status, 200, 'the voice can be heard on the key');
+    assert.match(heard.headers.get('content-type') || '', /^audio\/wav/); assert.equal(heard.headers.get('x-voice'), 'onyx');
     const leadLit = await (await fetch(`${lit.B}/api/models`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
     const m1 = await run(lit.B, lit.cookie, leadLit.id);
     assert.equal(m1.status, 'FILLED');
@@ -1861,10 +1871,11 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok(gate && gate.sealed.includes('VAL-ILLUSTRATED'), 'the gate sealed the illustration');
     // The notes were spoken, one clip per slide, kept and served as audio.
     assert.ok(m1.contract.plan.some((p) => p.tool === 'narrate'), 'the contract carries the narrate step');
-    assert.equal(spoken, 9, 'nine slides spoken');
+    assert.equal(spoken, 10, 'nine slides spoken, plus the one line heard in preview');
     assert.equal((m1.narration || []).length, 9, 'nine clips on the record');
     assert.ok(spokenText.some((t) => /Note 3\./.test(t)), 'each clip is that slide\'s own note');
-    assert.ok(m1.narration.every((n) => n.seconds > 0 && n.voice), 'each with its length and voice');
+    assert.ok(m1.narration.every((n) => n.seconds > 0 && n.voice === 'onyx'), 'each with its length, in the voice the house set');
+    assert.ok((m1.events || []).some((e) => e.type === 'log' && /in the voice “onyx”/.test(e.detail)), 'and the tape names the voice');
     const clip = await fetch(`${lit.B}/api/media/${m1.narration[0].id}`, { headers: { cookie: lit.cookie } });
     assert.equal(clip.status, 200); assert.match(clip.headers.get('content-type') || '', /^audio\/wav/, 'served as audio');
     assert.equal((html.match(/ data-narration="[a-f0-9]{16}"/g) || []).length, 9, 'every slide names its clip');
@@ -1877,6 +1888,11 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok((names.match(/ppt\/media\/image\d+\.png/g) || []).length >= 7, 'seven pictures travel');
     assert.ok(/<p:pic>[\s\S]*?descr="[^"]{8,}"[\s\S]*?r:embed="rId3"/.test(names), 'a picture placed on the slide, with its description');
     assert.ok(names.includes('Extension="png" ContentType="image/png"'), 'declared in the content types');
+    // The voice is the house's, not a guest's.
+    const guestJar = (await fetch(lit.B + '/')).headers.get('set-cookie').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+    await fetch(`${lit.B}/api/consent`, { method: 'POST', headers: hdr(guestJar), body: JSON.stringify({ accept: true, version: (await (await fetch(`${lit.B}/api/legal`)).json()).version, name: 'Guest' }) });
+    await fetch(`${lit.B}/api/me`, { method: 'POST', headers: hdr(guestJar), body: JSON.stringify({ name: 'Guest' }) });
+    assert.equal((await fetch(`${lit.B}/api/voice`, { method: 'PUT', headers: hdr(guestJar), body: JSON.stringify({ voice: 'nova' }) })).status, 403, 'a guest cannot set the voice');
     // Without a key: the house draws, and says so.
     const leadDark = await (await fetch(`${dark.B}/api/models`, { method: 'POST', headers: hdr(dark.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
     const m2 = await run(dark.B, dark.cookie, leadDark.id);

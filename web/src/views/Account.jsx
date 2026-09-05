@@ -20,6 +20,8 @@ export default function Account({ page }) {
   const [lim, setLim] = useState(null);
   const [hook, setHook] = useState(null);
   const [brief, setBrief] = useState(null);
+  const [voice, setVoice] = useState(null);
+  const [hearing, setHearing] = useState(false);
   const [restoreFile, setRestoreFile] = useState(null);
   const [err, setErr] = useState(null);
   const [form, setForm] = useState({});
@@ -202,6 +204,20 @@ export default function Account({ page }) {
                 {(s.consentLog || []).length === 0 && <span style={{ display: 'block', marginTop: '0.4rem' }}>Nobody has accepted the rules on this workspace yet.</span>}
                 {(s.consentLog || []).map((e, i) => <span key={i} style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.72rem' }}><b>{e.name || 'unnamed'}</b> · {new Date(e.acceptedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {e.ip || 'address unknown'} · accepted {e.version}</span>)}
               </span></div>
+              {(() => {
+                // The narration voice for every film. Heard before it is used.
+                const VOICES = [['', 'Default for the key (alloy on OpenAI, Kore on Google)'], ['alloy', 'alloy · neutral (OpenAI)'], ['ash', 'ash · low, calm (OpenAI)'], ['ballad', 'ballad · warm (OpenAI)'], ['coral', 'coral · bright (OpenAI)'], ['echo', 'echo · deep (OpenAI)'], ['fable', 'fable · British (OpenAI)'], ['nova', 'nova · clear (OpenAI)'], ['onyx', 'onyx · deep, male (OpenAI)'], ['sage', 'sage · soft (OpenAI)'], ['shimmer', 'shimmer · light (OpenAI)'], ['Kore', 'Kore · firm (Google)'], ['Puck', 'Puck · upbeat (Google)'], ['Charon', 'Charon · informative (Google)'], ['Aoede', 'Aoede · breezy (Google)'], ['Fenrir', 'Fenrir · excitable (Google)'], ['Leda', 'Leda · youthful (Google)']];
+                const v = voice === null ? (s.voice || '') : voice;
+                return (
+                  <div className="board-row" style={{ cursor: 'default', alignItems: 'flex-start' }}><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>VOX</span><span className="what"><b>Narration voice</b><span>The voice every film speaks in, from each slide's presenter notes, on your speech key. Hear it before a deck spends on it.</span>
+                    <select className="key-input" style={{ width: '100%', marginTop: '0.5rem', padding: '0.45rem' }} value={v} onChange={(e) => setVoice(e.target.value)} aria-label="Narration voice">{VOICES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
+                    <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.7rem' }}>{s.voice ? `In force: ${s.voice}.` : 'Nothing set: the key\'s default voice.'}{!s.keysHeld ? ' No speech key in memory, so nothing can be heard yet.' : ''}</span>
+                  </span><span style={{ display: 'flex', gap: '0.4rem', flexDirection: 'column' }}>
+                    <button className="toggle-btn" onClick={async () => { setErr(null); const r = await fetch('/api/voice', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ voice: v }) }); const j = await r.json().catch(() => ({})); if (!r.ok) { setErr(j.error || 'Refused.'); return; } setVoice(null); setMsg(j.voice ? `Narration voice set to ${j.voice}, used by the next film.` : 'Narration voice cleared, the key\'s default speaks.'); s.refresh(); }}>Save</button>
+                    <button className="toggle-btn" disabled={hearing} onClick={async () => { setErr(null); setHearing(true); try { const r = await fetch('/api/voice/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ voice: v }) }); if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'Refused.'); } const blob = await r.blob(); const a = new Audio(URL.createObjectURL(blob)); a.onended = () => setHearing(false); await a.play(); setMsg(`Speaking as ${r.headers.get('x-voice') || v || 'the default voice'} on ${r.headers.get('x-model') || 'your key'}. Billed to your key.`); } catch (e) { setErr(e.message); setHearing(false); } }}>{hearing ? 'Speaking…' : 'Hear it'}</button>
+                  </span></div>
+                );
+              })()}
               {(() => {
                 const text = brief === null ? (s.houseBrief || '') : brief;
                 return (

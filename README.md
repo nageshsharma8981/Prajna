@@ -1519,6 +1519,23 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.41: Choose the voice, and hear it first (5 Sep 2026)
+
+The film speaks in a voice nobody could choose. Settings now has a
+narration voice: seventeen names across OpenAI and Google, saved on the
+house and used by every film from then on, the owner's to set and not a
+guest's. Hear it speaks one line in that voice on your key, before a deck
+spends on nine of them; without a speech key it says so instead of
+pretending. The tape names the voice a deck was spoken in.
+
+The Media page's Video tab no longer calls the local motion toy the honest
+option and hosted video "not wired yet". It says where films come from:
+run a deck, press P, export.
+
+Proved in the Settings page: voice chosen and saved, in force, preview
+served as audio in that voice, played; and in the deck test: a set voice
+reaches every clip and the tape.
+
 ## v1.40: The landing page has a hero (5 Sep 2026)
 
 The deck got its pictures; the landing page still shipped a placeholder

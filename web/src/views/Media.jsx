@@ -6,7 +6,7 @@ import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
 const IMAGE_MODELS = [{ name: 'House procedural (local)', provider: null }, { name: 'GPT Image: your OpenAI key', provider: 'openai', modelId: 'gpt-image-1' }, { name: 'Gemini image: your Google key', provider: 'google', modelId: 'gemini-2.5-flash-image' }];
-const VIDEO_MODELS = [{ name: 'House motion (local, SVG)', provider: null }, { name: 'Veo: not wired yet', provider: 'veo' }];
+const VIDEO_MODELS = [{ name: 'House motion (local, shapes only)', provider: null }, { name: 'Narrated film from a deck: run a deck, press P', provider: 'veo' }];
 const STYLES = ['Poster', 'Infographic', 'Abstract', 'Storyboard'];
 
 function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -51,7 +51,7 @@ export default function Media() {
     const m = models[model];
     setErr(null);
     if (!m.provider) { setHosted(null); setOuts([{ prompt, style, motion: tab === 'video', at: Date.now() }, ...outs].slice(0, 6)); return; }
-    if (m.provider === 'veo') { setErr('Video generation on hosted models is not wired yet, the local motion engine is the honest option today.'); return; }
+    if (m.provider === 'veo') { setErr('Hosted clip generation is not offered here. Real films are made from decks: run a deck, and it narrates on your speech key, plays as a film with its pictures in motion, and exports a video file. Press P on any delivered deck.'); return; }
     setBusy(true);
     try {
       const r = await fetch('/api/media/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt: `${prompt}${style ? `, ${style.toLowerCase()} style` : ''}`, provider: m.provider, modelId: m.modelId }) });
