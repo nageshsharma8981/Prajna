@@ -50,6 +50,9 @@ test('nothing that changes the workspace runs before the house rules are accepte
 test('the fresh house is seeded and sound', async () => {
   const b = await api('/api/bootstrap'); assert.equal(b.status, 200);
   assert.ok(b.j.missions.filter((m) => m.status === 'FILLED').length >= 1, 'seeded delivered missions');
+  // Nobody has claimed this house, so everyone may act in it; nobody may see
+  // other people's names and addresses because of that.
+  assert.deepEqual(b.j.consentLog, [], 'an unclaimed house shows nobody\'s name to anyone');
   assert.ok(b.j.artifacts.length >= 1);
   const c = await post('/api/housecheck'); assert.equal(c.status, 200);
   assert.equal(c.j.ok, c.j.total, JSON.stringify(c.j.rows.filter((r) => !r.ok)));
@@ -696,16 +699,23 @@ test('when the sweep finds nothing, the house offers a smaller ticket instead of
 
 test('the house records who came through the door and says when the door is open', async () => {
   const legal = (await api('/api/legal')).j;
-  const before = (await api('/api/bootstrap')).j.consentLog || [];
+  // The record of who came through is the owner's, and only a claimed
+  // house has one: the first name signed here claims it, and reads the log.
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const ownerCookie = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) }));
+  await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: ownerCookie }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Ada' }) });
+  const asOwner = async () => (await fetch(`${BASE}/api/bootstrap`, { headers: { cookie: ownerCookie } })).json();
+  const before = (await asOwner()).consentLog || [];
   assert.equal((await post('/api/consent', { accept: true, version: legal.version, name: 'A Second Person' })).status, 200);
-  const b = (await api('/api/bootstrap')).j;
+  assert.deepEqual((await api('/api/bootstrap')).j.consentLog, [], 'a caller who is not the owner sees no names');
+  const b = await asOwner();
   assert.equal(b.openHouse, true, 'this test house has no access code');
   assert.ok(b.consentLog.length > before.length, 'the acceptance was appended, not overwritten');
   assert.equal(b.consentLog[0].name, 'A Second Person');
   assert.ok(b.consentLog[0].acceptedAt > 0 && b.consentLog[0].version === legal.version);
   // Acceptances accumulate: a second one does not erase the first.
   assert.equal((await post('/api/consent', { accept: true, version: legal.version, name: 'A Third Person' })).status, 200);
-  const b2 = (await api('/api/bootstrap')).j;
+  const b2 = await asOwner();
   assert.equal(b2.consentLog[0].name, 'A Third Person');
   assert.equal(b2.consentLog[1].name, 'A Second Person');
   assert.equal(b2.consentLog.length, b.consentLog.length + 1);
@@ -800,11 +810,13 @@ test('the pulse is cheap and moves only when the house does', async () => {
   // Reading does not move the house on.
   const p2 = await api('/api/pulse');
   assert.equal(p2.j.rev, p1.j.rev, 'a read changes nothing');
-  // Writing does.
-  assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: 'A change that moves the house on.' }) })).status, 200);
+  // Writing does, and a guest's write counts: the house is claimed by now,
+  // so a change any visitor may make is the honest probe.
+  const made = await api('/api/chats', { method: 'POST', body: JSON.stringify({ title: 'A change that moves the house on.' }) });
+  assert.equal(made.status, 200);
   const p3 = await api('/api/pulse');
   assert.ok(p3.j.rev > p2.j.rev, `the revision moved: ${p2.j.rev} → ${p3.j.rev}`);
-  assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: '' }) })).status, 200);
+  await api(`/api/chats/${made.j.id}`, { method: 'DELETE' });
   // It also carries what a waiting tab needs to know without a full pull.
   assert.equal(typeof p3.j.pending, 'number');
   assert.equal(typeof p3.j.live, 'number');

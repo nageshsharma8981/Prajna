@@ -2105,3 +2105,16 @@ of people on the workspace and nothing about any of them. Proved with two
 visitors: the owner sees who accepted and from where, the guest sees an
 empty record and the same count.
 
+## v1.54: An unclaimed house shows nobody's name (2026-09-06)
+
+v1.53 made the consent log the owner's. Checked against the live site, a
+fresh visitor could still see it, and the reason is a rule of the house:
+nobody has signed in there yet, so the house is unclaimed, and an
+unclaimed house treats everyone as its owner so that a fresh house is
+usable. A fair default for doing the work; the wrong default for other
+people's names, addresses and browsers.
+
+The consent log now requires a real owner: the first person to sign a
+name, or the name the environment sets. Until then nobody sees it, and the
+count is all anyone gets. The fresh-house test asserts it.
+

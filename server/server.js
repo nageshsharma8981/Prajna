@@ -931,7 +931,10 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       people: Object.keys(ws().visitors || {}).length,
       // Who accepted the house rules, with their address and browser, is the
       // owner's record. Everyone else gets the count and nothing about anyone.
-      consentLog: isOwner(req) ? (ws().consentLog || []).slice(0, 12) : [],
+      // And only a real owner: an unclaimed house lets anyone act so that a
+      // fresh house is usable, but other people's names and addresses are
+      // not part of that bargain.
+      consentLog: isOwner(req) && (ws().ownerId || ownerName()) ? (ws().consentLog || []).slice(0, 12) : [],
       openHouse: !ACCESS_CODE,
       evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
