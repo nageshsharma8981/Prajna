@@ -1346,3 +1346,70 @@ test('the weekly review says how the house is doing, against the week before', a
   assert.ok(four.j.now.started >= r.j.now.started, 'a longer window holds at least as much');
   assert.equal((await api('/api/review?weeks=99')).j.weeks, 8, 'the window is bounded');
 });
+
+test('a reader can see what each claim rests on, in the delivery itself', async () => {
+  // A model that cites well and a model that cites badly, against the same
+  // known article, so the delivery has to show the difference.
+  const article = 'The Kerala ferry subsidy programme lowered fares on coastal routes and raised passenger numbers across the district.';
+  const wiki = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    if (String(req.url).includes('list=search')) return res.end(JSON.stringify({ query: { search: [{ title: 'Kerala ferry subsidy', pageid: 7 }] } }));
+    res.end(JSON.stringify({ query: { pages: { 7: { pageid: 7, title: 'Kerala ferry subsidy', fullurl: 'https://example.org/ferry', extract: article } } } }));
+  });
+  let honest = true;
+  const model = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      const good = { text: 'The ferry subsidy raised passenger numbers on coastal routes.', grade: 'B', detail: 'Support.', src: 1 };
+      const bad = { text: 'Photosynthesis in mangrove seedlings governs quarterly retention.', grade: 'B', detail: 'Support.', src: 1 };
+      const claim = honest ? good : bad;
+      const draft = { stand: 'A brief.', verdict: 'Proceed narrowly. Stated before the evidence, in two sentences.',
+        claims: [1, 2, 3].map((n) => ({ ...claim, text: `${claim.text} (${n})` })), refuted: [], moves: [], tripwires: 'Stop if it fails.', dissent: { seat: 'an adviser', text: 'Doubted the pace.' } };
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/CRITIQUE the draft/.test(JSON.parse(body).messages[0].content) ? { verdict: 'pass', issues: [] } : draft) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }));
+    });
+  });
+  await new Promise((r) => wiki.listen(0, '127.0.0.1', r));
+  await new Promise((r) => model.listen(0, '127.0.0.1', r));
+  const DIR8 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-cites-'));
+  const P8 = PORT + 7;
+  const B8 = `http://localhost:${P8}`;
+  const child8 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P8), PRAJNA_DATA_DIR: DIR8, PRAJNA_WIKI_BASE: `http://127.0.0.1:${wiki.address().port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B8 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const runOne = async (lead) => {
+    const w = await call('/api/missions', { goal: 'Citation view: did the ferry subsidy raise passenger numbers?', deskId: 'brief', depth: 'fast', lead, advisers: [] });
+    await call(`/api/missions/${w.j.id}/launch`);
+    let m; const started = Date.now();
+    while (Date.now() - started < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['accept-risk', 'raise-ceiling', 'approve', 'continue'].find((o) => a.options.includes(o)) || a.options[0]; await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `citation view test, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    return m;
+  };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B8}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Citations' });
+    await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${model.address().port}/v1` }, 'PUT');
+    const lead = (await call('/api/models', { name: 'Citing Model', provider: 'openai', modelId: 'cite-1', baseUrl: `http://127.0.0.1:${model.address().port}/v1` })).j;
+
+    const good = await runOne(lead.id);
+    assert.equal(good.status, 'FILLED');
+    assert.ok(good.citations?.length, 'the check is kept on the record');
+    assert.ok(good.citations.every((c) => c.shared?.length), JSON.stringify(good.citations));
+    const goodHtml = await (await fetch(`${B8}/api/artifacts/${good.artifactId}/html`)).text();
+    assert.match(goodHtml, /rests on Kerala ferry subsidy, which uses/);
+    assert.match(goodHtml, /<em>passenger<\/em>|<em>subsidy<\/em>|<em>coastal<\/em>/);
+    assert.ok(!goodHtml.includes('does not mention'), 'a supported claim is not flagged');
+
+    honest = false;
+    const bad = await runOne(lead.id);
+    assert.equal(bad.status, 'FILLED', 'accepted on the record after the gate was answered');
+    const badHtml = await (await fetch(`${B8}/api/artifacts/${bad.artifactId}/html`)).text();
+    assert.match(badHtml, /the source named here does not mention/, 'the delivery admits what the check found');
+    assert.match(badHtml, /photosynthesis|mangrove|seedlings/);
+  } finally { child8.kill(); model.close(); wiki.close(); fs.rmSync(DIR8, { recursive: true, force: true }); }
+});

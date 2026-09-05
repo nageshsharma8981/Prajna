@@ -60,13 +60,18 @@ function unsupportedCitations(mission) {
   const cited = claims.filter((c) => Number(c.src) > 0 && sources[Number(c.src) - 1]);
   if (!cited.length) return { ok: true, detail: 'no claim cites a source on the table' };
   const bad = [];
+  const found = [];
   for (const c of cited) {
     const src = sources[Number(c.src) - 1];
     const hay = `${src.title || ''} ${src.extract || ''} ${src.text || ''}`.toLowerCase();
     const terms = distinctive(c.text);
-    if (!terms.length) continue; // nothing distinctive to look for; not judged
-    if (!terms.some((t) => hay.includes(t))) bad.push(`“${String(c.text).slice(0, 70)}…” cites [${c.src}] ${src.title}, which does not mention ${terms.slice(0, 3).join(', ')}`);
+    if (!terms.length) { found.push({ text: c.text, src: Number(c.src), title: src.title, judged: false }); continue; }
+    const shared = terms.filter((t) => hay.includes(t));
+    found.push({ text: c.text, src: Number(c.src), title: src.title, judged: true, shared, missing: shared.length ? [] : terms.slice(0, 4) });
+    if (!shared.length) bad.push(`“${String(c.text).slice(0, 70)}…” cites [${c.src}] ${src.title}, which does not mention ${terms.slice(0, 3).join(', ')}`);
   }
+  // What the check saw, kept on the mission so the delivery can show it.
+  if (mission) mission.citations = found;
   return bad.length
     ? { ok: false, detail: `${bad.length} of ${cited.length} cited claim(s) rest on a source that does not speak to them: ${bad.slice(0, 3).join('; ')}` }
     : { ok: true, detail: `${cited.length} cited claim(s) each share wording with the source they rest on` };

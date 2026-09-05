@@ -1491,3 +1491,16 @@ It is counted, never modelled, and a week whose predecessor was empty is
 not compared with silence: the house says there is nothing yet to
 compare against. Read it under Settings, and it goes to your address
 every Monday morning if you have given the house one.
+
+## v1.22: Every claim shows what it rests on (2026-09-05)
+
+The gate already refused a claim whose cited source never mentions it.
+That check was invisible to whoever read the delivery, which is the
+person it protects. Now each claim carries a line beneath it: the source
+it rests on and the words the two actually share, or, when a risk was
+accepted on the record and the delivery went out anyway, a plain
+statement that the source named there does not mention them.
+
+So a reader can weigh a claim without taking anyone's word for it,
+including the house's, and an accepted risk stays visible in the
+document rather than only in its provenance.
