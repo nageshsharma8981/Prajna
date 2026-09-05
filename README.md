@@ -1519,6 +1519,26 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.44: The deck file narrates in PowerPoint (5 Sep 2026)
+
+The PowerPoint export carried the pictures and the presenter notes; the
+spoken narration stayed on the web page. PowerPoint has a place for it:
+audio on the slide, behind a speaker, played from the icon or automatically
+once the presenter sets it to.
+
+Each slide's spoken clip now travels inside the package as slide audio, in
+the structure PowerPoint itself writes for inserted audio: the clip as a
+media part, related to the slide both ways PowerPoint expects, named as
+media on the slide, with a speaker icon drawn in code as its poster frame
+in the slide's corner, and declared in the content types. A deck spoken on
+the owner's key is a deck that speaks in PowerPoint.
+
+Proved on a delivered deck: nine clips as slide audio, the speaker present,
+every relationship in place, a valid package rendered by QuickLook with the
+speaker in the corner of the slide. Playback inside PowerPoint itself was
+not machine-checked here; the package follows the structure PowerPoint
+writes and the common libraries produce.
+
 ## v1.43: The film crosses, and leaves as MP4 (5 Sep 2026)
 
 Two things a film is judged on before anyone listens to it: how one shot

@@ -1893,6 +1893,12 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok((names.match(/ppt\/media\/image\d+\.png/g) || []).length >= 7, 'seven pictures travel');
     assert.ok(/<p:pic>[\s\S]*?descr="[^"]{8,}"[\s\S]*?r:embed="rId3"/.test(names), 'a picture placed on the slide, with its description');
     assert.ok(names.includes('Extension="png" ContentType="image/png"'), 'declared in the content types');
+    // And the narration, as audio on each slide behind a speaker.
+    assert.ok((names.match(/ppt\/media\/audio\d+\.wav/g) || []).length >= 9, 'nine clips travel as slide audio');
+    assert.ok(names.includes('ppt/media/speaker.png'), 'with a speaker icon to play them from');
+    assert.ok(names.includes('Extension="wav" ContentType="audio/wav"'), 'declared in the content types');
+    assert.ok(/relationships\/audio" Target="\.\.\/media\/audio1\.wav"/.test(names) && /2007\/relationships\/media" Target="\.\.\/media\/audio1\.wav"/.test(names), 'the slide is related to its clip both ways PowerPoint expects');
+    assert.ok(/<a:audioFile r:link="rId4"\/>/.test(names) && /p14:media[^>]*r:embed="rId5"/.test(names), 'and names it as media on the slide');
     // The voice is the house's, not a guest's.
     const guestJar = (await fetch(lit.B + '/')).headers.get('set-cookie').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
     await fetch(`${lit.B}/api/consent`, { method: 'POST', headers: hdr(guestJar), body: JSON.stringify({ accept: true, version: (await (await fetch(`${lit.B}/api/legal`)).json()).version, name: 'Guest' }) });
