@@ -1519,6 +1519,26 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.26: One gate, at the door (5 Sep 2026)
+
+Every write in this building was gated route by route, which means it was
+only as good as the last route somebody remembered to gate. A sweep found
+twelve that nobody had: a stranger with no session, no sign-in and no access
+code could delete this house's models, its projects, its chats and its
+registered servers, and could run housekeeping over its open tickets. Proved
+against a running house, not read off the source.
+
+The fix is a single default-deny check above every write to the API. Four
+paths stay open by name, and only these four: reading the door, accepting the
+house rules, signing in, and leaving. Nobody should be trapped inside a house
+they cannot change. Everything else now answers to the access code and to the
+guest policy before it reaches the route at all, and a route that wants to be
+looser has to say so on that list where it can be seen.
+
+Behaviour is unchanged for a house with no access code and guests working
+freely, which is the default. What changed is that setting a code now means
+what it says.
+
 ## v1.25: The composer says when the ask is thin (5 Sep 2026)
 
 A goal of four vague words buys a plan and a price about as specific as the

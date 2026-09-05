@@ -1503,3 +1503,55 @@ test('a goal too thin to price is questioned, never refused', async () => {
   const solid = await post('/api/missions', { goal: 'Should we open a second roastery in Mysore this year?', deskId: 'brief', depth: 'fast' });
   assert.equal(solid.j.thin, null, 'a specific ask carries no such note');
 });
+
+test('the door holds every write, not only the ones somebody remembered to gate', async () => {
+  // Gates written route by route are only as good as the last route anyone
+  // remembered. A dozen of them had been forgotten, so a stranger with no
+  // session at all could delete this house's models, projects and servers.
+  // The check now sits in one place, above every write in the building.
+  const DIR6 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-door-'));
+  const P6 = PORT + 5;
+  const B6 = `http://localhost:${P6}`;
+  const child6 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P6), PRAJNA_DATA_DIR: DIR6, PRAJNA_ACCESS_CODE: 'open-sesame' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(B6 + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), r }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B6}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+
+    // The door is shut: even accepting the house rules waits behind the code.
+    assert.equal((await call('/api/consent', null, { accept: true, version: '2026-09-04.2' })).status, 401);
+    const opened = await call('/api/session', null, { code: 'open-sesame' });
+    assert.equal(opened.status, 200);
+    const key = jar(opened.r);
+    const legal = (await call('/api/legal', key, null, 'GET')).j;
+    assert.equal((await call('/api/consent', key, { accept: true, version: legal.version, name: 'Holder' })).status, 200);
+
+    // With the house open and the rules accepted, a stranger holding no code
+    // still cannot change anything. These are the routes that carried no gate
+    // of their own before this check existed.
+    for (const [method, p, body] of [
+      ['DELETE', '/api/models/c_whatever', null],
+      ['POST', '/api/projects', { name: 'a project that is not theirs' }],
+      ['POST', '/api/mcp', { name: 'their server', url: 'https://example.invalid' }],
+      ['POST', '/api/housekeeping', { apply: true }],
+      ['POST', '/api/boards', { title: 'their board' }],
+      ['PATCH', '/api/profile', { name: 'someone else' }],
+      ['PATCH', '/api/plan', { plan: 'studio' }],
+      ['POST', '/api/chats', { title: 'a chat in a house they cannot enter' }],
+    ]) {
+      const r = await call(p, null, body, method);
+      assert.equal(r.status, 401, `${method} ${p} is refused without the code`);
+      assert.equal(r.j.locked, true, `${method} ${p} says the door is shut, not something vaguer`);
+    }
+
+    // Reading is a separate question, and the same write with the code works.
+    assert.equal((await call('/api/projects', key, { name: 'a project of their own' })).status, 200);
+    assert.equal((await call('/api/mcp', key, { name: 'their server', url: 'https://example.invalid' })).status, 200);
+
+    // Signing in and leaving stay open: a name against your own cookie is not
+    // a change to the house, and nobody should be trapped inside it.
+    assert.equal((await call('/api/me', key, { name: 'Holder' })).status, 200);
+    assert.equal((await call('/api/logout', key, null)).status, 200);
+  } finally { child6.kill(); fs.rmSync(DIR6, { recursive: true, force: true }); }
+});

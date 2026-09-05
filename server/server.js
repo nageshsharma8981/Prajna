@@ -268,6 +268,9 @@ function guestGate(req, res, act) {
     : `Only ${who} can stamp a ticket and spend the house's credits. Write the ticket and it will wait for them.`, guests: mode });
   return true;
 }
+// The only writes that answer before the door and the guest policy: reading
+// the door itself, accepting the house rules, signing in, and leaving.
+const OPEN_TO_ALL = ['/api/session', '/api/consent', '/api/logout', '/api/me'];
 function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
 function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
 
@@ -665,9 +668,17 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // Nothing that changes the workspace runs before the house rules are accepted.
-  if (p.startsWith('/api/') && req.method !== 'GET' && !['/api/session', '/api/consent', '/api/logout'].includes(p)) {
+  if (p.startsWith('/api/') && req.method !== 'GET' && !OPEN_TO_ALL.includes(p)) {
     const c = ws().consent;
     if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
+    // Default deny, in one place. Gates written route by route are only as
+    // good as the last route somebody remembered to gate, and a dozen of
+    // them had been forgotten: a stranger with no cookie could delete this
+    // house's models, projects, chats and MCP servers. The door and the
+    // guest policy now apply to every write in the building, and a route
+    // that wants to be looser has to say so on the list above.
+    if (!authed(req)) return json(res, 401, { locked: true });
+    if (guestGate(req, res, 'write')) return;
   }
 
   // ---- Backups: run now, list, download, restore ----
