@@ -284,6 +284,18 @@ function consentOk(req) { const c = myConsent(req); return !!c && c.version === 
 // the door itself, accepting the house rules, signing in, and leaving.
 const OPEN_TO_ALL = ['/api/session', '/api/consent', '/api/logout', '/api/me'];
 function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
+// Every browser that accepts the house rules leaves a record, and a public
+// address means that number only goes up. Signed names and the house's own
+// are kept for good; anonymous acceptances are kept to the most recent five
+// hundred, which is a long memory for a record nobody is named in.
+function pruneVisitors() {
+  const w = ws(); const v = visitors();
+  const anon = Object.entries(v).filter(([id, x]) => id !== w.ownerId && !(x && x.name));
+  if (anon.length <= 500) return 0;
+  anon.sort((a, b2) => (b2[1]?.consent?.acceptedAt || b2[1]?.at || 0) - (a[1]?.consent?.acceptedAt || a[1]?.at || 0));
+  for (const [id] of anon.slice(500)) delete v[id];
+  return anon.length - 500;
+}
 function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v && v.name ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
 
 function sessionCookie(req, value, maxAge) {
@@ -601,6 +613,7 @@ async function handle(req, res) {
       let wid = whoId(req);
       if (!wid) { wid = crypto.randomBytes(12).toString('hex'); res.setHeader('set-cookie', whoCookie(req, encodeURIComponent(signWho(wid)), 60 * 60 * 24 * 365)); }
       const v = visitors(); v[wid] = { ...(v[wid] || { at: Date.now() }), consent: entry };
+      pruneVisitors();
       // And against the house, which is what the house check and the record
       // read: the acceptance that opened this workspace in the first place.
       if (!w.consent || w.consent.version !== LEGAL.version) w.consent = entry;

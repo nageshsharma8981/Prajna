@@ -1519,6 +1519,25 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.29: The dissent is somebody real (5 Sep 2026)
+
+A decision brief has always carried a recorded dissent, and it was the
+weakest thing in the document. On a live run it was whatever the lead model
+invented about its own draft, which is not disagreement. On a scripted one it
+was a fixed paragraph attributed by name to a model that never read the page.
+
+Advisers were already doing the real work: a live adviser reads the lead's
+draft, returns a verdict, and its critique goes on the tape. That objection
+is now the recorded dissent. It is attributed to the model that made it, it
+is printed as written, and the brief says underneath whether the draft was
+revised in answer to it or stands as it was. A lead that invents a dissent
+about itself no longer reaches the page while a real one is available.
+
+Alongside it, the record of visitors now has a floor. Every browser that
+accepts the house rules leaves a record, and a public address means that
+number only goes up. Signed names and the house's own are kept for good;
+anonymous acceptances are kept to the most recent five hundred.
+
 ## v1.28: The claim shows the line it rests on (5 Sep 2026)
 
 Under every cited claim the delivery used to say the source "uses" three of

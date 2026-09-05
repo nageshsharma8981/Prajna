@@ -868,6 +868,12 @@ async function applyEvent(m, ev, notify, runner) {
           pushEvent(m, { type: 'council.critique', seat: seatId, model: live.model.name, live: false, verdict: 'unavailable', issues: [], text: `${live.model.name} could not critique (${String(e.message || e).slice(0, 100)}), recorded` }, notify);
         }
       }
+      // The dissent that reaches the document should be a real disagreement
+      // by a model that actually made it. Until now it was whatever the lead
+      // invented about its own draft, or a scripted line attributed to a
+      // model that never spoke. A live adviser that objected is the dissent.
+      const objected = m.critiques.find((c) => c.verdict === 'revise' && c.issues?.length);
+      if (objected) m.dissent = { model: objected.model, text: objected.issues.join(' '), live: true, answered: false };
       if (issues.length) {
         // Whoever actually wrote the draft answers the critique. If the lead
         // refused earlier and an adviser stood in, asking the lead to revise
@@ -882,6 +888,7 @@ async function applyEvent(m, ev, notify, runner) {
             if (before?.steppedIn) m.authored.steppedIn = before.steppedIn;
             // The revision is a call on the owner's key like any other.
             if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[lead.model.name] = m.keyUse.models[lead.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
+            if (m.dissent?.live) m.dissent.answered = true;
             pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: true, detail: `${m.authored.model} revised the draft on adviser critique (${issues.length} issue(s)), ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s` }, notify);
           } catch (e) {
             pushEvent(m, { type: 'log', stepId: null, label: 'revise', live: false, detail: `${lead.model.name} could not revise on critique (${String(e.message || e).slice(0, 100)}), the draft stands; the gate decides` }, notify);

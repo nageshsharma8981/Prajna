@@ -1628,3 +1628,64 @@ test('the house rules are accepted by a person, not by the building', async () =
     assert.equal((await call('/api/me', second, { name: 'Sam' })).j.owner, false);
   } finally { child7.kill(); fs.rmSync(DIR7, { recursive: true, force: true }); }
 });
+
+test('the recorded dissent is a real objection by a model that made it', async () => {
+  // The disagreement printed in a decision brief used to be whatever the lead
+  // invented about its own draft, or a scripted line attributed to a model
+  // that never spoke. An adviser that actually read the draft and objected is
+  // the dissent, and the document says whether the draft answered it.
+  const draft = {
+    stand: 'A stance for the lede.', verdict: 'Proceed narrowly. The recommendation is stated before the evidence.',
+    claims: [1, 2, 3].map((n) => ({ text: `A claim about the coastal ferry programme (${n}).`, grade: 'B', detail: `Support ${n}.`, src: 0, source: { title: `Source ${n}`, kind: 'analysis' } })),
+    refuted: [], moves: [{ move: 'A first move', commitment: 'small', signal: 'weekly numbers' }],
+    tripwires: 'Stop if the signal does not appear.',
+    // The lead's own polite self-doubt, which must not be what reaches the page.
+    dissent: { seat: 'an adviser', text: 'The lead invented this dissent about itself.' },
+  };
+  const OBJECTION = 'The verdict rests on a demand estimate the brief never sources.';
+  const lead = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/CRITIQUE the draft/.test(JSON.parse(body).messages[0].content) ? { verdict: 'pass', issues: [] } : draft) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } })); });
+  });
+  const adviser = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/CRITIQUE the draft/.test(JSON.parse(body).messages[0].content) ? { verdict: 'revise', issues: [OBJECTION] } : draft) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } })); });
+  });
+  await new Promise((r) => lead.listen(0, '127.0.0.1', r));
+  await new Promise((r) => adviser.listen(0, '127.0.0.1', r));
+  const DIR9 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-dissent-'));
+  const P9 = PORT + 8;
+  const B9 = `http://localhost:${P9}`;
+  const child9 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P9), PRAJNA_DATA_DIR: DIR9 }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B9}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Dissent' });
+    await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${lead.address().port}/v1` }, 'PUT');
+    const L = (await call('/api/models', { name: 'Drafting Model', provider: 'openai', modelId: 'draft-1', baseUrl: `http://127.0.0.1:${lead.address().port}/v1` })).j;
+    const A = (await call('/api/models', { name: 'Objecting Adviser', provider: 'openai', modelId: 'object-1', baseUrl: `http://127.0.0.1:${adviser.address().port}/v1` })).j;
+
+    const w = await call('/api/missions', { goal: 'Dissent test: should the coastal ferry programme be extended?', deskId: 'brief', depth: 'fast', lead: L.id, advisers: [A.id] });
+    await call(`/api/missions/${w.j.id}/launch`);
+    let m; const started = Date.now();
+    while (Date.now() - started < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['accept-risk', 'raise-ceiling', 'approve', 'continue'].find((o) => a.options.includes(o)) || a.options[0]; await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `dissent test, ${pick}` }); } }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    assert.equal(m.status, 'FILLED');
+    assert.equal(m.dissent.model, 'Objecting Adviser', 'the dissent names the model that made it');
+    assert.match(m.dissent.text, /demand estimate/, 'and carries what it actually said');
+    assert.equal(m.dissent.live, true);
+    assert.equal(m.dissent.answered, true, 'the draft was revised, so the record says so');
+
+    const html = await (await fetch(`${B9}/api/artifacts/${m.artifactId}/html`)).text();
+    assert.match(html, /Recorded dissent: Objecting Adviser/);
+    assert.ok(html.includes(OBJECTION), 'the objection is printed as written');
+    assert.ok(!html.includes('The lead invented this dissent about itself.'), "the lead's own invented dissent does not reach the page");
+    assert.match(html, /The draft was revised in answer to this/);
+  } finally { child9.kill(); lead.close(); adviser.close(); fs.rmSync(DIR9, { recursive: true, force: true }); }
+});

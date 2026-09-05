@@ -192,6 +192,7 @@ th{font:700 .72rem/1.3 Verdana,sans-serif;letter-spacing:.1em;text-transform:upp
 td{border-bottom:1px solid var(--rule);padding:.55rem .6rem .55rem 0;vertical-align:top}
 .dissent{border:1px solid var(--rule);background:#f6efe3;padding:.9rem 1.2rem;margin:1.2rem 0;color:#4c4a44}
 .dissent b{font-family:Verdana,sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.dissent small{display:block;margin-top:.5em;font-size:.75rem;color:#6b6857}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
@@ -225,8 +226,16 @@ ${A && Array.isArray(A.moves) && A.moves.length ? A.moves.slice(0, 4).map((mv) =
 <h2>4 · Tripwires: when to change your mind</h2>
 ${A ? `<p>${esc(str(A.tripwires, 'Tripwires were not stated by the lead model, treat the recommendation as unconditional at your own risk.'))}</p>` : '<p>Commit further only when <strong>both</strong> hold: (1) pilot conversion sustains above the threshold for two consecutive months; (2) the cost curve continues its current decline through the next cycle. If either fails, exit the pilot with learning banked, the position was sized to make that cheap.</p>'}
 
-<div class="dissent"><b>Recorded dissent: ${A ? esc(str(A.dissent?.seat, 'an adviser')) : 'DeepSeek R2'}</b><br>
-${A ? esc(str(A.dissent?.text, 'The lead model recorded no dissent. That absence is itself on the record.')) : "One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months."}</div>
+${(() => {
+  // A real objection, made by a named model that actually read the draft,
+  // beats one the lead wrote about itself. When an adviser objected, that is
+  // the dissent, and the document says whether the draft answered it.
+  const D = mission.dissent;
+  if (D?.live) return `<div class="dissent"><b>Recorded dissent: ${esc(D.model)}</b><br>
+${esc(D.text)}<br><small>${D.answered ? 'The draft was revised in answer to this, and the revision is on the tape.' : 'The draft stands as written. The objection was not answered.'}</small></div>`;
+  return `<div class="dissent"><b>Recorded dissent: ${A ? esc(str(A.dissent?.seat, 'an adviser')) : 'DeepSeek R2'}</b><br>
+${A ? esc(str(A.dissent?.text, 'The lead model recorded no dissent. That absence is itself on the record.')) : "One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months."}</div>`;
+})()}
 
 <h2>5 · References: cited sources only</h2>
 <p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? (R.length ? 'Linked entries were retrieved by the house at the sweep step and cited by the lead model; unlinked entries are source classes the model named without a retrieved document.' : 'Source classes were stated by the lead model; no document was fetched, treat each as a pointer to verify, not a verified citation.') : 'All entries are illustrative samples in this demonstration run.'}</p>
