@@ -78,6 +78,14 @@
   --bone-faint: #8f968a;
   --led: #ffb300;
   --on-led: #14140d; /* ink that sits on amber, in either theme */
+  --flap-seam: #141915; /* the dark seam where a split-flap card folds */
+  --well: #131711; /* a recess sunk below the hall floor */
+  --ink-deep: #221606; /* ink on lit amber, darker than --on-led */
+  --on-green: #0b1a12; /* ink that sits on the live green */
+  --mono-ink: #f1e7cf; /* monospace on a dark ground */
+  --fa-slab: #17201b; /* the illustrated slabs and coin on the feature card */
+  --fa-slab-2: #2b3a31;
+  --fa-coin: #f4f1e8;
   --led-deep: #8a6510;
   --led-bg: #0a0c0a;
   --paper: #f1ecdd;
@@ -119,6 +127,17 @@
   --bone-faint: #656c5e;
   --led: #ffb300;
   --on-led: #14140d;
+  --flap-seam: #141915;
+  --well: #131711;
+  --ink-deep: #221606;
+  --on-green: #0b1a12;
+  --mono-ink: #f1e7cf;
+  --fa-slab: #17201b;
+  --fa-slab-2: #2b3a31;
+  --fa-coin: #f4f1e8;
+  /* Amber that reads on the night hall is too light on day paper. */
+  --attn-ink: #7a4a00;
+  --attn-line: #b98a2a;
   --led-deep: #8a6510;
   --led-bg: #12140f;
   --paper: #fbf8ef;
@@ -302,7 +321,7 @@ a { color: inherit; }
 .flap-cell {
   position: relative;
   width: 1.16em; height: 1.52em;
-  background: linear-gradient(180deg, var(--flap-hi) 0%, var(--flap) 48%, #141915 52%, var(--flap) 100%);
+  background: linear-gradient(180deg, var(--flap-hi) 0%, var(--flap) 48%, var(--flap-seam) 52%, var(--flap) 100%);
   border-radius: 0.14em;
   border: 1px solid rgba(0, 0, 0, 0.55);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -478,7 +497,7 @@ a { color: inherit; }
 .ticket-band {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   background: var(--tint);
-  color: #221606;
+  color: var(--ink-deep);
   padding: 0.6rem 1.3rem 0.6rem 1.9rem;
 }
 .ticket-band .desk { font-stretch: 112%; font-weight: 800; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; }
@@ -577,7 +596,7 @@ a { color: inherit; }
   display: inline-grid; place-items: center;
   min-width: 4.6rem;
   padding: 0.32rem 0.55rem;
-  background: linear-gradient(180deg, var(--flap-hi), var(--flap) 48%, #141915 52%, var(--flap));
+  background: linear-gradient(180deg, var(--flap-hi), var(--flap) 48%, var(--flap-seam) 52%, var(--flap));
   border: 1px solid rgba(0, 0, 0, 0.55);
   border-radius: 3px;
   font-stretch: 112%; font-weight: 750; font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
@@ -630,7 +649,7 @@ a { color: inherit; }
 .burnrow { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem; margin-top: 0.35rem; }
 .burnbar {
   position: relative; flex: 1; height: 10px;
-  background: #131711;
+  background: var(--well);
   border: 1px solid var(--line-strong);
   border-radius: 2px;
   overflow: hidden;
@@ -1123,15 +1142,15 @@ h1.pg-title {
 .greet em { font-style: italic; color: var(--blue); }
 .greet span { font-size: 1.9rem; }
 .feature-cards { max-width: 56rem; margin: 3.5rem auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
-.feature-card { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; background: color-mix(in srgb, var(--blue) 55%, var(--hall)); color: #f4f1e8; border-radius: 14px; padding: 1.4rem 1.6rem; text-decoration: none; min-height: 150px; overflow: hidden; box-shadow: var(--shadow-soft); }
+.feature-card { display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; background: color-mix(in srgb, var(--blue) 55%, var(--hall)); color: var(--fa-coin); border-radius: 14px; padding: 1.4rem 1.6rem; text-decoration: none; min-height: 150px; overflow: hidden; box-shadow: var(--shadow-soft); }
 .feature-card b { font-size: 1.35rem; font-weight: 500; font-style: italic; line-height: 1.2; display: block; }
 .feature-card p { margin: 0.5rem 0 0; font-size: 0.85rem; opacity: 0.9; }
 .feature-art { position: relative; height: 120px; }
-.fa-slab { position: absolute; right: 0; top: 10px; width: 130px; height: 90px; border-radius: 8px; background: #17201b; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-.fa-slab.two { right: 18px; top: 22px; background: #2b3a31; }
+.fa-slab { position: absolute; right: 0; top: 10px; width: 130px; height: 90px; border-radius: 8px; background: var(--fa-slab); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+.fa-slab.two { right: 18px; top: 22px; background: var(--fa-slab-2); }
 .fa-slab.three { right: 36px; top: 34px; background: var(--led); }
 .fa-coin { position: absolute; right: 30px; top: 25px; width: 70px; height: 70px; border-radius: 50%; background: var(--led); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-.fa-coin.two { right: 0; top: 50px; width: 46px; height: 46px; background: #f4f1e8; }
+.fa-coin.two { right: 0; top: 50px; width: 46px; height: 46px; background: var(--fa-coin); }
 .standing-make { display: inline-flex; gap: 0.4rem; align-items: center; }
 .house-warn { margin: 0 0 1rem; padding: 0.7rem 1rem; border: 1px solid var(--amber); border-radius: 8px; font-size: 0.8rem; color: var(--bone); background: color-mix(in srgb, var(--amber) 12%, transparent); }
 .house-warn a { color: inherit; text-decoration: underline; }
@@ -1180,7 +1199,7 @@ h1.pg-title {
 .pop-item.quiet { font-size: 0.78rem; border-top: 1px solid var(--line); margin-top: 0.3rem; border-radius: 0; }
 .badge { font-size: 0.56rem; letter-spacing: 0.12em; font-weight: 800; border-radius: 999px; padding: 0.15rem 0.5rem; background: var(--flap); color: var(--flap-ink); }
 .badge.pro { background: var(--bone); color: var(--ground); }
-.badge.live { background: var(--green); color: #0b1a12; }
+.badge.live { background: var(--green); color: var(--on-green); }
 .veil { position: fixed; inset: 0; background: rgba(5,7,6,0.7); backdrop-filter: blur(3px); display: grid; place-items: start center; padding-top: 6vh; z-index: 60; animation: veilin 0.16s ease-out both; }
 .modal { width: min(36rem, 94vw); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: var(--shadow); padding: 1rem 1.2rem 1.1rem; animation: palin 0.2s var(--ease) both; max-height: 86vh; overflow: auto; }
 .modal.wide { width: min(64rem, 96vw); }
@@ -1340,7 +1359,7 @@ h1.pg-title {
 .gate-card .btn-stamp { align-self: flex-start; }
 .share-msg { margin: 0; padding: 0.5rem 1.2rem; font-size: 0.8rem; color: var(--bone-dim); background: var(--hall); border-bottom: 1px solid var(--line); word-break: break-all; }
 
-.code { color: #f1e7cf; }
+.code { color: var(--mono-ink); }
 .code code { color: inherit; }
 
 .plan-editor { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -1497,11 +1516,11 @@ abbr.cite { cursor: help; }
 /* Accessibility pass: the amber that reads on the night hall is too light on
    day paper, decision cues and the bell take a darker amber there; the
    disclaimer steps up one shade everywhere. */
-:root[data-theme="day"] .side-item.decisions, :root[data-theme="day"] .bell, :root[data-theme="day"] .side-item.decisions .badge-n { color: #7a4a00; }
-:root[data-theme="day"] .side-item.decisions { border-color: #b98a2a; }
-:root[data-theme="day"] .bell { border-color: #b98a2a; }
-:root[data-theme="day"] .pulse { background: #b98a2a; box-shadow: 0 0 6px #b98a2a; }
-:root[data-theme="day"] .palette-item.decide .t, :root[data-theme="day"] .plan-meta em, :root[data-theme="day"] .cite, :root[data-theme="day"] .tm-node b, :root[data-theme="day"] .plan-why b { color: #7a4a00; }
+:root[data-theme="day"] .side-item.decisions, :root[data-theme="day"] .bell, :root[data-theme="day"] .side-item.decisions .badge-n { color: var(--attn-ink); }
+:root[data-theme="day"] .side-item.decisions { border-color: var(--attn-line); }
+:root[data-theme="day"] .bell { border-color: var(--attn-line); }
+:root[data-theme="day"] .pulse { background: var(--attn-line); box-shadow: 0 0 6px var(--attn-line); }
+:root[data-theme="day"] .palette-item.decide .t, :root[data-theme="day"] .plan-meta em, :root[data-theme="day"] .cite, :root[data-theme="day"] .tm-node b, :root[data-theme="day"] .plan-why b { color: var(--attn-ink); }
 .disclaimer { color: var(--bone-dim); }
 
 :root[data-theme="day"] .badge-n { color: var(--led); }
@@ -1516,7 +1535,7 @@ abbr.cite { cursor: help; }
 .release .ver { font-family: var(--led-font); color: var(--led); font-weight: 700; min-width: 4.5rem; }
 .release .date { margin-left: auto; font-family: var(--mono); font-size: 0.7rem; color: var(--bone-faint); }
 .release-body { white-space: pre-wrap; font: inherit; font-size: 0.85rem; color: var(--bone-dim); margin: 0.6rem 0 0.3rem; line-height: 1.55; }
-:root[data-theme="day"] .release .ver { color: #7a4a00; }
+:root[data-theme="day"] .release .ver { color: var(--attn-ink); }
 
 .consent-card { width: min(52rem, 96vw); max-height: 92vh; display: flex; flex-direction: column; }
 .consent-tabs { display: flex; gap: 0.2rem; border-bottom: 1px solid var(--line); }
@@ -1543,7 +1562,7 @@ abbr.cite { cursor: help; }
 .handover ul { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.86rem; }
 .handover li b { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--led); margin-right: 0.4rem; }
 .handover li.quiet { color: var(--bone-faint); }
-:root[data-theme="day"] .handover li b { color: #7a4a00; }
+:root[data-theme="day"] .handover li b { color: var(--attn-ink); }
 
 .activity ul { list-style: none; padding: 0; margin: 0.4rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.82rem; }
 .activity li a { color: var(--bone); }
