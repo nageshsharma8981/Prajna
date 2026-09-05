@@ -870,6 +870,7 @@ h1.pg-title {
   flex: none; width: 4.4rem; text-align: center;
 }
 .palette-item .t { flex: 1; font-size: 0.88rem; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thin-hint { margin: 0.6rem 0 0; font-size: 0.72rem; color: var(--bone-dim); line-height: 1.5; }
 .writing-tail { font-family: var(--mono); font-size: 0.72rem; color: var(--bone-dim); margin: 0.35rem 0 0; line-height: 1.5; overflow-wrap: anywhere; }
 .src-live { font-style: normal; color: var(--green); font-size: 0.68rem; }
 .src-live.gone { color: var(--red); font-weight: 700; }

@@ -1519,6 +1519,17 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.25: The composer says when the ask is thin (5 Sep 2026)
+
+A goal of four vague words buys a plan and a price about as specific as the
+ask, and you only find that out after the contract is written. Now the
+composer says so while you type. Pick a desk, type a thin goal, and a quiet
+grey line appears under the box naming why it reads thin and the one question
+worth answering. It is debounced, it never blocks, it has no buttons, and it
+disappears the moment the goal has something to hold on to. The house still
+accepts a thin goal if you send it, exactly as before. It just no longer
+stays silent about the price of vagueness.
+
 ## v1.24: A thin ask makes a thin contract, and the house says which (2026-09-05)
 
 "Help me with marketing" got the same plan, the same price and the same

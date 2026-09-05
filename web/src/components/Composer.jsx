@@ -141,6 +141,23 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // A quiet word while you type: a goal too thin to price makes a plan and a
+  // price about as specific as the ask. Never a blocker, never a dialogue.
+  const [thin, setThin] = useState(null);
+  useEffect(() => {
+    const goal = text.trim();
+    const desk = { website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' }[mode];
+    if (!desk || goal.length < 3) { setThin(null); return undefined; }
+    let live = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/clarify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ goal, deskId: desk }) });
+        const j = await r.json();
+        if (live) setThin(r.ok && j.thin ? j : null);
+      } catch { if (live) setThin(null); }
+    }, 400);
+    return () => { live = false; clearTimeout(t); };
+  }, [text, mode]);
   const taRef = useRef(null);
   const fileRef = useRef(null);
   const recRef = useRef(null);
@@ -254,6 +271,9 @@ export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus
         <div className="samples-col">
           {m.samples.map((sm) => <button key={sm} className="sample-line" onClick={() => { setText(sm); taRef.current?.focus(); }}>{sm}</button>)}
         </div>
+      )}
+      {thin && !error && (
+        <p className="thin-hint" role="status">{thin.why} Worth saying: {thin.questions[0]}</p>
       )}
       {error && <p role="alert" className="ticket-error" style={{ margin: '0.6rem 0 0' }}>{error}</p>}
       {showCouncil && <CouncilModal models={models} lead={lead} advisers={advisers} plan={s.plan} onChange={({ lead: l, advisers: a }) => { setLead(l); setAdvisers(a); }} onClose={() => setShowCouncil(false)} />}
