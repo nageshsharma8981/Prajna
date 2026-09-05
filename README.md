@@ -1519,6 +1519,21 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.43: The film crosses, and leaves as MP4 (5 Sep 2026)
+
+Two things a film is judged on before anyone listens to it: how one shot
+becomes the next, and what file it leaves as.
+
+Slides now crossfade: the last frame of one shot dissolves under the first
+moments of the next, and a shot's end darkens gently rather than cutting to
+black between every slide. The export records at ten megabits with 192
+kilobit audio, and chooses the best container the browser can record: MP4
+where the browser offers it, WebM otherwise, named accordingly. The
+confirmation says which.
+
+Proved on a delivered deck: the film ran through a crossfade with no
+errors, and an export saved 6.4 MB as MP4 with the narration in it.
+
 ## v1.42: The ticket names the other bill (5 Sep 2026)
 
 A deck now spends on the owner's key at three steps, authoring, images and

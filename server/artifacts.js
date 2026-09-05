@@ -432,6 +432,7 @@ function deckFilm() {
   const spoken = slides.some((s) => s.audio);
   const loadImg = (src) => new Promise((res) => { if (!src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
   const wrap = (text, maxW, font) => { ctx.font = font; const words = String(text).split(/\s+/); const lines = []; let line = ''; for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); return lines; };
+  let last = null; // the frame the previous slide ended on, for the crossfade
   const draw = (s, im, t, fadeIn, fadeOut) => {
     ctx.fillStyle = '#0a0a08'; ctx.fillRect(0, 0, W, H);
     if (im) {
@@ -449,8 +450,11 @@ function deckFilm() {
     for (const l of wrap(s.sub, W * 0.5, small)) { ctx.font = small; ctx.fillText(l, 150, y + 24); y += 48; }
     if (s.label) { ctx.globalAlpha = 0.9; ctx.font = 'bold 22px Helvetica Neue, Helvetica, Arial, sans-serif'; ctx.fillStyle = acc; ctx.fillText(s.label.toUpperCase(), 150, H - 90); }
     ctx.globalAlpha = 1;
-    const fade = Math.min(fadeIn, fadeOut); if (fade < 1) { ctx.fillStyle = 'rgba(10,10,8,' + (1 - fade) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (fadeIn < 1 && last) { ctx.globalAlpha = 1 - fadeIn; ctx.drawImage(last, 0, 0); ctx.globalAlpha = 1; }
+    else if (fadeIn < 1) { ctx.fillStyle = 'rgba(10,10,8,' + (1 - fadeIn) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (fadeOut < 1) { ctx.fillStyle = 'rgba(10,10,8,' + (1 - fadeOut) * 0.35 + ')'; ctx.fillRect(0, 0, W, H); }
   };
+  const keep = () => { try { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(canvas, 0, 0); last = c; } catch (e) { last = null; } };
   const speak = (s) => new Promise((res) => {
     if (s.audio) {
       const a = new Audio(s.audio); a.crossOrigin = 'anonymous';
@@ -462,11 +466,12 @@ function deckFilm() {
     res();
   });
   const run = async (exporting) => {
-    playing = true; stopFlag = false; stage.hidden = false; document.body.classList.add('filming');
+    playing = true; stopFlag = false; last = null; stage.hidden = false; document.body.classList.add('filming');
     if (exporting) {
       ac = new (window.AudioContext || window.webkitAudioContext)(); dest = ac.createMediaStreamDestination();
       const stream = canvas.captureStream(30); if (spoken) dest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
-      chunks = []; recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' });
+      const mime = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+      chunks = []; recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 10000000, audioBitsPerSecond: 192000 }); recorder.mimeExt = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
       recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); }; recorder.start(500);
     }
     const imgs = await Promise.all(slides.map((s) => loadImg(s.img)));
@@ -476,13 +481,13 @@ function deckFilm() {
       const said = speak(s).then(() => { done = true; });
       const minMs = s.kind === 'title' || s.kind === 'end' ? 5000 : 6500; let tEnd = null;
       await new Promise((res) => { const frame = () => { const el = performance.now() - t0; if (done && tEnd == null) tEnd = Math.max(el, minMs) + 900; const total = tEnd == null ? Math.max(minMs, el + 1) : tEnd; const t = Math.min(1, el / Math.max(total, 8000)); draw(s, im, t, Math.min(1, el / 700), tEnd == null ? 1 : Math.min(1, (tEnd - el) / 700)); if (stopFlag || (tEnd != null && el >= tEnd)) return res(); tick(frame); }; tick(frame); });
-      await said;
+      await said; keep();
     }
     ctx.fillStyle = '#0a0a08'; ctx.fillRect(0, 0, W, H);
     if (exporting && recorder) {
       await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
-      const blob = new Blob(chunks, { type: 'video/webm' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = document.documentElement.dataset.serial + '-film.webm'; a.click();
-      status.textContent = 'Saved ' + Math.round(blob.size / 1024) + ' KB' + (spoken ? ' with narration.' : '. The browser voice cannot be recorded, so this file has no narration; load a speech key and re-run the deck for a spoken track.');
+      const ext = recorder.mimeExt || 'webm'; const blob = new Blob(chunks, { type: ext === 'mp4' ? 'video/mp4' : 'video/webm' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = document.documentElement.dataset.serial + '-film.' + ext; a.click();
+      status.textContent = 'Saved ' + Math.round(blob.size / 1024) + ' KB as ' + ext.toUpperCase() + (spoken ? ' with narration.' : '. The browser voice cannot be recorded, so this file has no narration; load a speech key and re-run the deck for a spoken track.');
       try { ac.close(); } catch (e) { /* fine */ }
     } else status.textContent = stopFlag ? 'Stopped.' : 'The end.';
     playing = false; if (!exporting) setTimeout(() => { if (!playing) { stage.hidden = true; document.body.classList.remove('filming'); } }, 1500);
