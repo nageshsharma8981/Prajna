@@ -2002,3 +2002,28 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal((await fetch(`${BS}/api/media/${pic}`)).status, 401, 'revoked: private again');
   } finally { lit.child.kill(); dark.child.kill(); shut.kill(); model.close(); fs.rmSync(lit.DIR, { recursive: true, force: true }); fs.rmSync(dark.DIR, { recursive: true, force: true }); fs.rmSync(DIRS, { recursive: true, force: true }); }
 });
+
+test('the release notes on the site are every release, newest first, dated', async () => {
+  // The site's release page is the README parsed. Twenty-seven releases had
+  // gone missing from it because their headings wrote the date one way and
+  // the parser read another, and they had been filed out of order. Both are
+  // things a test should have caught.
+  const r = await fetch(`${BASE}/api/releases`);
+  assert.equal(r.status, 200);
+  const { current, releases } = await r.json();
+  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+  assert.equal(current, pkg.version);
+  assert.ok(releases.length >= 150, `every release is on the page: ${releases.length}`);
+  const [maj, min] = pkg.version.split('.').map(Number);
+  assert.equal(releases[0].version, `v${maj}.${min}`, `the newest release on the page is this version: ${releases[0].version}`);
+  const num = (v) => v.slice(1).split('.').map(Number);
+  for (let i = 1; i < releases.length; i++) {
+    const [a, b] = [num(releases[i - 1].version), num(releases[i].version)];
+    assert.ok(a[0] > b[0] || (a[0] === b[0] && a[1] >= b[1]), `newest first, all the way down: ${releases[i - 1].version} before ${releases[i].version}`);
+  }
+  for (const rel of releases) {
+    assert.ok(rel.date === null || /^\d{4}-\d{2}-\d{2}$/.test(rel.date), `${rel.version} has an ISO date or none: ${rel.date}`);
+    assert.ok(rel.title && rel.body.length > 40, `${rel.version} carries a title and a body`);
+  }
+  assert.match(releases[0].date || '', /^\d{4}-\d{2}-\d{2}$/, 'and the newest is dated');
+});

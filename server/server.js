@@ -42,9 +42,13 @@ function releases() {
   let md = '';
   try { md = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8'); } catch { return []; }
   const out = [];
-  const re = /^## (v\d+\.\d+(?:\.\d+)?)[:,] ([^\n(]+?)\s*(?:\((\d{4}-\d{2}-\d{2})\))?\s*$/gm;
+  // A heading is "## vX.Y: Title (date)". The date may be written as
+  // 2026-09-05 or as 5 Sep 2026; both parse, and both leave here as ISO.
+  const re = /^## (v\d+\.\d+(?:\.\d+)?)[:,] ([^\n]+?)\s*(?:\((\d{4}-\d{2}-\d{2}|\d{1,2} [A-Z][a-z]{2} \d{4})\))?\s*$/gm;
+  const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  const iso = (d) => { if (!d) return null; const w = d.match(/^(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})$/); return w ? `${w[3]}-${MON[w[2]] || '01'}-${w[1].padStart(2, '0')}` : d; };
   let m; const marks = [];
-  while ((m = re.exec(md))) marks.push({ index: m.index, end: m.index + m[0].length, version: m[1], title: m[2].trim(), date: m[3] || null });
+  while ((m = re.exec(md))) marks.push({ index: m.index, end: m.index + m[0].length, version: m[1], title: m[2].trim(), date: iso(m[3]) });
   for (let i = 0; i < marks.length; i++) {
     const body = md.slice(marks[i].end, i + 1 < marks.length ? marks[i + 1].index : undefined).trim();
     out.push({ version: marks[i].version, title: marks[i].title, date: marks[i].date, body });

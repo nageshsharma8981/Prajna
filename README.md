@@ -1519,240 +1519,295 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
-## v1.51: The desks describe what they deliver (6 Sep 2026)
+## v1.24: A thin ask makes a thin contract, and the house says which (2026-09-05)
 
-The desk cards, the ticket's deliverable line and the ledger were written
-before the desks could draw, speak or film. A deck was "narrative-first";
-an app was a "tappable phone prototype". Neither is what you get now.
+"Help me with marketing" got the same plan, the same price and the same
+confident ticket as a real question. Both were honest about cost and
+dishonest about worth. A goal with too few words that mean anything is
+now questioned before it is priced: the house says why it is thin, asks
+the three things that would make it mean something on that desk, and
+records the note on the ticket.
 
-The catalogue says what each desk delivers today: briefs whose claims show
-the source line and whose readers record the decision; decks with a picture
-on every argument, notes spoken in your voice, a film to export and a
-PowerPoint that carries all of it; pages with a generated hero and a
-sign-up that works; working apps with an icon drawn on your key; analyses
-with charts you can read by pointing and the data as CSV. The deliverable
-on a deck ticket reads "Slide deck and film"; on an app ticket, "Working
-app". The ledger, which had no label for apps at all, names every kind.
+It never refuses. You can answer, or stamp it as it stands, or void it
+and ask again with more. The questions are deterministic, need no model,
+and a specific goal carries no note at all, because a false question is
+an insult.
 
-## v1.50: An amendment keeps what did not change (5 Sep 2026)
+## v1.25: The composer says when the ask is thin (2026-09-05)
 
-Amending a deck wrote a new version and bought everything again: seven
-pictures and nine clips on the owner's key, even when most slides were
-word for word what they were. The same words buy the same picture.
+A goal of four vague words buys a plan and a price about as specific as the
+ask, and you only find that out after the contract is written. Now the
+composer says so while you type. Pick a desk, type a thin goal, and a quiet
+grey line appears under the box naming why it reads thin and the one question
+worth answering. It is debounced, it never blocks, it has no buttons, and it
+disappears the moment the goal has something to hold on to. The house still
+accepts a thin goal if you send it, exactly as before. It just no longer
+stays silent about the price of vagueness.
 
-An amended version now keeps the parent's picture for every slide whose
-headline and support line did not change, and the parent's clip for every
-slide whose notes did not change, and the tape names which were kept and
-that nothing was billed for them. A landing page keeps its hero and an app
-its icon on the same rule. Only what changed is drawn or spoken again. The
-kept files are the same files, so the media store counts them as used and
-repair leaves them alone.
+## v1.26: One gate, at the door (2026-09-05)
 
-Proved by amending a narrated, illustrated deck with unchanged words: no
-picture drawn again, nothing spoken again, seven pictures and nine clips
-kept from the parent by name, the new version showing them.
+Every write in this building was gated route by route, which means it was
+only as good as the last route somebody remembered to gate. A sweep found
+twelve that nobody had: a stranger with no session, no sign-in and no access
+code could delete this house's models, its projects, its chats and its
+registered servers, and could run housekeeping over its open tickets. Proved
+against a running house, not read off the source.
 
-## v1.49: The audit bundle keeps its promise (5 Sep 2026)
+The fix is a single default-deny check above every write to the API. Four
+paths stay open by name, and only these four: reading the door, accepting the
+house rules, signing in, and leaving. Nobody should be trapped inside a house
+they cannot change. Everything else now answers to the access code and to the
+guest policy before it reaches the route at all, and a route that wants to be
+looser has to say so on that list where it can be seen.
 
-The audit bundle calls itself one self-contained file: contract, tape,
-decisions, validation, sources, settlement, and the delivery. An
-illustrated, narrated deck broke that quietly: its page asked the house for
-every picture and clip by address, and a bundle opened on another machine,
-or after the house was gone, showed a deck with holes in it and a film
-with no voice.
+Behaviour is unchanged for a house with no access code and guests working
+freely, which is the default. What changed is that setting a code now means
+what it says.
 
-Every picture and clip the delivery asks the house for now travels inside
-the bundle as data, and the film runtime prefers an inlined clip when one
-is present. Nothing in the bundle is fetched from the house.
+## v1.27: The house rules are accepted by a person (2026-09-05)
 
-Proved on a narrated, illustrated deck: no picture or clip in the bundle is
-fetched from the house; seven pictures and nine clips inside it.
+Consent was recorded against the building. The first visitor to accept the
+Terms, the Privacy and GDPR Policy and the AI Disclaimer opened the door for
+every stranger who came after, and none of them was ever shown the documents
+or asked. A document that says "you agree" cannot be agreed to on your behalf
+by whoever happened to arrive first.
 
-## v1.48: A shared deck keeps its pictures through a shut door (5 Sep 2026)
+Now every browser is given an identity of its own the moment it opens the
+page, before it asks for anything, and the gate reads that person's own
+acceptance. A second visitor sees the three documents, accepts them or does
+not, and inherits nothing either way. The house still keeps the acceptance
+that opened it, because that one was really made, and the house check still
+reads it. A client at the API with no browser identity still answers to the
+house record, which is the acceptance somebody did make.
 
-A shared page is public by its link. Its pictures and narration were served
-by the media route, which sits behind the house's door, so on a house with
-an access code a recipient would open a shared deck and find every picture
-missing and the film mute. Predicted from the route order, then proved.
+One thing changed alongside it: the house is claimed by the first person to
+sign a name, not by the first to be handed a cookie. Accepting the rules now
+leaves a record of its own, and a record with no name on it is nobody.
 
-A media file is now public exactly while some artifact whose mission points
-at it is shared, and by its unguessable id: the recipient with no code gets
-the picture and the narration; revoke the share and the door shuts on them
-again; a file no share uses stays behind the door as before.
+## v1.28: The claim shows the line it rests on (2026-09-05)
 
-Proved on a house with its door shut: unshared media refused; a shared deck
-served with its picture embedded; the picture and the clip served to a
-stranger; refused again after the share was revoked.
+Under every cited claim the delivery used to say the source "uses" three of
+the claim's words. That is a report about the source, and a reader had no way
+to check it without leaving the page and reading the whole article.
 
-## v1.47: The media store is counted and kept clean (5 Sep 2026)
+Now the check keeps the sentence it found. It scores every line in the
+retrieved source by how many of the claim's own words it carries, takes the
+best one, and the delivery quotes it directly under the claim. The reader
+sees what the source actually says and can judge the claim against it in
+place. When no single line carries the claim, the delivery says exactly that
+instead of quoting something that does not support it, and a claim whose
+source does not speak to it is still flagged as before.
 
-Every illustrated deck writes seven pictures and nine clips into the
-house's media store, around ten megabytes, and a landing page and an app
-add to it. The export and the backups already carry the store, so nothing
-is lost; but nothing reported its size and nothing removed a file that no
-mission or media record pointed at any more.
+## v1.29: The dissent is somebody real (2026-09-05)
 
-The house check now has a media-store row: how many files, how many
-megabytes, and how many orphans, a file pointed at by nothing. Green when
-there are none. Repair removes the orphans and says how much it freed, and
-keeps every file a mission or the media index still points at.
+A decision brief has always carried a recorded dissent, and it was the
+weakest thing in the document. On a live run it was whatever the lead model
+invented about its own draft, which is not disagreement. On a scripted one it
+was a fixed paragraph attributed by name to a model that never read the page.
 
-Proved in the deck test: sixteen files and no orphans after a narrated,
-illustrated deck; a planted orphan counted; repair removed it and kept the
-slide picture.
+Advisers were already doing the real work: a live adviser reads the lead's
+draft, returns a verdict, and its critique goes on the tape. That objection
+is now the recorded dissent. It is attributed to the model that made it, it
+is printed as written, and the brief says underneath whether the draft was
+revised in answer to it or stands as it was. A lead that invents a dissent
+about itself no longer reaches the page while a real one is available.
 
-## v1.46: The house says what your keys can do (5 Sep 2026)
+Alongside it, the record of visitors now has a floor. Every browser that
+accepts the house rules leaves a record, and a public address means that
+number only goes up. Signed names and the house's own are kept for good;
+anonymous acceptances are kept to the most recent five hundred.
 
-Decks, pages and apps now draw and speak on the owner's key, and a house
-with Media Generation off, or with no image or speech key held, quietly
-gets the house's own drawings and the browser's voice instead. Nothing on
-the site said so except the tape of a run already stamped.
+## v1.30: A key belongs to the owner (2026-09-05)
 
-The house check now has a media row. Green when Media Generation is on and
-a key that can draw and speak is held, and it says what that buys: decks
-illustrated and narrated, pages a hero, apps an icon. Not green when the
-tool is off, or on with no such key, and it says exactly what the house
-will do instead and where to load a key. The keys page, on loading an
-OpenAI or Google key, says that decks, pages and apps are now illustrated
-and narrated on it while Media Generation is on, and each provider's hint
-names the image and speech models a key there brings.
+Keys have always lived in memory only: never written to disk, never in an
+export or a backup, gone on a restart, and an old key file from an earlier
+build is deleted at boot. That is the important half, and it was already
+true. The other half is who can see a key while the house holds it.
 
-Proved in the deck test: the media row green with the key held, naming what
-it enables; not green without one, naming the fallback.
+A guest's workspace payload carried the masked form of every key, four
+characters at each end, along with the endpoint it calls and the hour it
+arrived. That is still the owner's credential, and it is now the owner's
+alone. A guest sees that the house holds a key, which is what tells them
+their work will run live, and nothing more about it. Testing a saved key is a
+call on the owner's account, so it is the owner's too, and the owner's OAuth
+client ids are no longer handed to anyone else.
 
-## v1.45: The app has an icon (5 Sep 2026)
+A test now sets a key, reads the house as owner and as guest, downloads an
+export, and walks every file the house wrote, and proves the key appears in
+none of them beyond the owner's own mask.
 
-The last desk without a picture. An app added to a home screen had no icon
-at all, and nothing on its own screens said what it was.
+## v1.31: The app works, and the result comes first (2026-09-05)
 
-The app contract now carries the illustrate step: one icon, drawn on the
-owner's image key from the app's name and what its first screen is for, as
-a flat centred symbol with no text, square, at 1024. It is the home-screen
-icon and the tab icon, it sits beside the app's name at the top of every
-screen, and it heads the settings sheet, which says who drew it. Without an
-image key the house draws its own from the app's initial on the accent
-colour, and says so. The open ticket's key plan counts it.
+Three things asked for in one message, all three shipped.
 
-Proved on a delivered app: the home-screen link points at the generated
-icon, it loads at 1024 by 1024 beside the name, and the settings sheet
-carries it with the line naming the model.
+**The mobile desk builds a working app, not a picture of one.** The
+delivery used to be four screens with static cards and a button that did
+nothing. It is now a real app running inside the phone frame: every screen
+is a live list with search that filters as you type; tapping an item opens
+it, with mark done, reopen, edit and delete; the primary button opens a
+sheet that adds one, validated in the sheet's own words (a title is needed,
+no duplicates); the dots at the top open settings with counts per screen, a
+dark theme, and a reset. Every change is kept on the device under the
+mission's serial and survives a reload, and each screen and item has its own
+address so the phone's Back button does what it should. On a narrow screen
+the bezel goes away, it runs full height, and it can be added to the home
+screen. The page says plainly that it is a web app, not a native build. The
+model now names what one item on each screen is called, so the button reads
+"Book a trip" rather than "Take the action". Proved by driving a delivered
+app in the browser: navigate, search, open, add, edit, mark done, delete,
+theme, reload.
 
-## v1.44: The deck file narrates in PowerPoint (5 Sep 2026)
+**The tape is folded away.** The run page led with the tape, every move on
+the record, and the delivery was a card somewhere down inside it. The tape is
+the record, not the result, so it is now hidden unless the reader asks for
+it, and the choice is remembered. In its place the page shows what the
+reader came for: the delivery with Open and Full screen, any decision that is
+waiting, and one line on what is happening while the run is live. A ticket
+not yet stamped still shows its plan.
 
-The PowerPoint export carried the pictures and the presenter notes; the
-spoken narration stayed on the web page. PowerPoint has a place for it:
-audio on the slide, behind a speaker, played from the icon or automatically
-once the presenter sets it to.
+**Opening is one click at the top.** "Open the delivery" now sits in the
+header, right after the status, the moment there is anything to open. No
+scrolling, no hunting.
 
-Each slide's spoken clip now travels inside the package as slide audio, in
-the structure PowerPoint itself writes for inserted audio: the clip as a
-media part, related to the slide both ways PowerPoint expects, named as
-media on the slide, with a speaker icon drawn in code as its poster frame
-in the slide's corner, and declared in the content types. A deck spoken on
-the owner's key is a deck that speaks in PowerPoint.
+## v1.32: The landing page's action works (2026-09-05)
 
-Proved on a delivered deck: nine clips as slide audio, the speaker present,
-every relationship in place, a valid package rendered by QuickLook with the
-speaker in the corner of the slide. Playback inside PowerPoint itself was
-not machine-checked here; the package follows the structure PowerPoint
-writes and the common libraries produce.
+A landing page has one job, to get a visitor to act, and every call to
+action on a delivered page was a dead link: two pointed at anchors and the
+closing one pointed at nothing at all. The same defect the app had, held to
+the same standard.
 
-## v1.43: The film crosses, and leaves as MP4 (5 Sep 2026)
+The closing action is now a working form. It validates in its own words: an
+address is needed, that does not look like an address, that address is
+already on the list. On success the form gives way to a confirmation
+addressed by name, focus moves to it so a screen reader hears it, and a line
+under it counts who is on the list. Entries are kept on the device under the
+mission's serial until the house connects the page to a mailbox or a sheet,
+and the confirmation says exactly that: nothing has been sent anywhere. The
+header and hero buttons scroll to the form and put the cursor in the email
+field. A new gate assertion, VAL-ACTION-WORKS, refuses a page whose closing
+action is a dead link, so this cannot quietly regress.
 
-Two things a film is judged on before anyone listens to it: how one shot
-becomes the next, and what file it leaves as.
+Proved by driving a delivered page in the browser: header button, empty
+address, bad address, success, duplicate, reload.
 
-Slides now crossfade: the last frame of one shot dissolves under the first
-moments of the next, and a shot's end darkens gently rather than cutting to
-black between every slide. The export records at ten megabits with 192
-kilobit audio, and chooses the best container the browser can record: MP4
-where the browser offers it, WebM otherwise, named accordingly. The
-confirmation says which.
+## v1.33: The deck presents (2026-09-05)
 
-Proved on a delivered deck: the film ran through a crossfade with no
-errors, and an export saved 6.4 MB as MP4 with the narration in it.
+The app works, the site's action works; the deck was next. It already
+advanced by arrow keys, space and click, which is a scroll of slides, not a
+presentation. Now it is one.
 
-## v1.42: The ticket names the other bill (5 Sep 2026)
+The model writes presenter notes for every slide, spoken not written, and
+the house writes them for the three slides it composes itself. N opens a
+presenter panel: this slide's notes, the next slide's title, and a clock
+that starts the first time the panel opens. F is fullscreen. Esc shows every
+slide at once and any of them is one click away. Every slide has an address
+(#4) so a link can open the deck on a slide, and the phone's Back button
+walks the deck backwards. Home, End, PageUp, PageDown and the digit keys do
+what a presenter expects; a swipe turns the page on a phone; a thin bar
+along the top shows how far along the room is. Print the page and you get a
+handout, one slide per page with its notes beneath. The hint line names all
+of it and fades once you have started.
 
-A deck now spends on the owner's key at three steps, authoring, images and
-speech, and a landing page at two. The contract priced the house credits
-for every step and said nothing before stamping about what the key would
-be asked for. Now an open ticket says it: "On your key, not house credits:
-1 authoring call to the lead; 7 images at 1536 by 1024 on OpenAI; 9
-narration clips on OpenAI in the voice onyx." Or, without keys, that the
-house will draw and the browser will speak, and if Media Generation is off
-that nothing will be made. It is counted against the keys held now, when the
-ticket is read, so it is never stale, and it disappears once the ticket is
-stamped, because then the record is the truth and not a forecast.
+A new gate assertion, VAL-PRESENTABLE, refuses a deck without notes on
+every slide, a presenter panel, fullscreen and slide addresses.
 
-A defect found on the way: the run page takes its mission from the live
-stream's snapshot, and the line saying what this kind of work has cost here
-before, added in v1.24, came only from the mission endpoint. It had never
-reached the page. Both lines are now merged in once the record is on
-screen, and both were seen on an open ticket in the browser.
+Proved by driving a delivered deck: address, arrows, Home, End, digit,
+notes, next, overview, jump, swipe, click, print stylesheet.
 
-## v1.41: Choose the voice, and hear it first (5 Sep 2026)
+## v1.34: The charts can be read (2026-09-05)
 
-The film speaks in a voice nobody could choose. Settings now has a
-narration voice: seventeen names across OpenAI and Google, saved on the
-house and used by every film from then on, the owner's to set and not a
-guest's. Hear it speaks one line in that voice on your key, before a deck
-spends on nine of them; without a speech key it says so instead of
-pretending. The tape names the voice a deck was spoken in.
+Fourth desk held to the standard. An analysis shipped two charts you could
+look at and nothing you could do with them: no way to read a value without
+guessing from the axis, no keyboard access, no table, no way to take the
+numbers with you.
 
-The Media page's Video tab no longer calls the local motion toy the honest
-option and hosted video "not wired yet". It says where films come from:
-run a deck, press P, export.
+Now every point and every bar can be pointed at or tabbed to, and a line
+under the chart says what it is: the period and its value, the change on the
+period before, whether it is the peak or the trough; the segment, its value,
+its share of the total, and whether it is the one furthest from the mean.
+A button draws the mean across the trend and says what it is. Beneath the
+charts the whole series is tabled, sortable by any column with the sort
+announced, peak and trough marked. The data leaves as a CSV made on the
+page, so a shared copy of the document still carries its numbers, and the
+page prints cleanly.
 
-Proved in the Settings page: voice chosen and saved, in force, preview
-served as audio in that voice, played; and in the deck test: a set voice
-reaches every clip and the tape.
+A new gate assertion, VAL-READABLE-CHARTS, refuses a chart nobody can read.
+Proved by driving a delivered analysis: hover, keyboard focus, outlier
+readout, mean toggle, twelve rows, both sort directions, the CSV's contents.
 
-## v1.40: The landing page has a hero (5 Sep 2026)
+## v1.35: The brief does the reader's job (2026-09-05)
 
-The deck got its pictures; the landing page still shipped a placeholder
-box where its hero image should be, labelled "Product still: replace with
-real capture". Same defect, same fix.
+Fifth desk, and the last. A decision brief exists so somebody can decide,
+and the delivered page let them read it and nothing more. Now it lets them
+do the reader's job on it.
 
-The site contract now carries the illustrate step too: one hero image,
-drawn on the owner's image key from the brand, the headline and the line
-under it, as a product photograph in a tall composition for the hero slot.
-The page shows it in place of the box, with alt text; the PowerPoint and
-Word exports are unaffected. When no image key is held the honest
-placeholder stays, exactly as before. Proved in the every-desk test: one
-hero on the record, shown with alt text, the placeholder gone.
+An evidence bar above the claims shows only the claims graded strongly
+enough to act on, A only or B and above, and says how many are shown; the
+rest are dimmed, not removed, because hiding evidence is not the house's
+call. Every source in the references now says which claims lean on it, and
+following a link in either direction lights its target. And the brief ends
+with the decision it was written for: agree, disagree, or need more, with a
+reason of at least a sentence, because the reason is the record. It is kept
+on the device under the mission's serial, shown with its date, changeable,
+and printed with the brief; nothing is sent anywhere, and the page says so.
 
-## v1.39: The deck plays as a narrated film (5 Sep 2026)
+A new gate assertion, VAL-BRIEF-WORKS, refuses a brief the reader cannot
+work with. Proved on a delivered brief: filter counts and dimming, links in
+both directions, the three refusals, the recorded decision, reload, edit.
 
-Asked for directly: video of real quality, with a spoken narrative,
-cinematic. The Media page had a local motion toy and no narration at all.
+With this, all five desks deliver things that work rather than depict: the
+app, the site, the deck, the analysis and the brief, each with a runtime of
+its own and a gate assertion that holds it there.
 
-The deck contract now ends with a step of its own, "Narrate: speak the
-presenter notes on your key, for the film". Every slide's notes are spoken
-by OpenAI's speech model or Gemini's on the owner's key, three at a time
-with a ninety-second cap, kept in the media store as WAV clips with their
-length and voice, named on the tape and recorded in the provenance. The
-voice can be set on the house; the default is a neutral one.
+## v1.36: Word keeps the prose, PowerPoint keeps the notes (2026-09-05)
 
-The deck itself now plays as a film. P, or the Film button, opens a stage:
-each slide's picture in slow motion under its headline and support line,
-which rise in as the narration for that slide plays, timed so a slide
-holds until its narration ends, a vignette and crossfades between slides,
-full screen, Esc to stop. Export records the stage and the narration
-together in the browser, with no server and no upload, and saves a real
-video file with the audio in it. When no speech key was held, the browser's
-own voice reads the notes so the film still plays, and the page says plainly
-that an exported file made that way carries no narration.
+The five-desk pass gave every delivery a runtime, and the Word and
+PowerPoint exports are built from the same page, so this is the check that
+the pass owed them.
 
-The film keeps time on a timer when the browser withholds animation frames,
-so a background tab does not stall it. A new gate assertion, VAL-FILM,
-refuses a deck that cannot play as a film or export one.
+The Word export took every paragraph and cell on the page, which now
+included the brief's decision section and the analysis's table note. A Word
+document that says "Recorded on this device, sent nowhere" makes no sense,
+so the page's working parts now stay on the page: the evidence bar, the
+decision form and what it recorded, chart readouts, table notes, app hints
+and form errors. The prose and the tables come through as before. Proved
+on a delivered brief: the chrome is gone and the sections are intact.
 
-Proved with a mock speech provider returning real audio: nine clips spoken
-and served, decoded at 2.5 seconds each; the film opened, advanced on time,
-stopped on Esc; an export recorded and saved a 2.5 MB video with narration.
+The PowerPoint export ignored the presenter notes, when PowerPoint has a
+notes pane for exactly that. Every slide now ships with its note in that
+pane: a notes part per slide, a notes master, the relationships and content
+types PowerPoint expects, and nothing printed on the slide face. Proved on
+a delivered deck: ten notes parts for ten slides, the right note on slide
+three, a valid package that QuickLook renders.
 
-## v1.38: The deck is illustrated (5 Sep 2026)
+And a defect of my own from v1.33, found on the way: the deck's no-key
+fallback slides had never been given notes, so a scripted deck failed the
+assertion that every slide carries them and paused for a decision it did
+not need. The house now writes notes for its own slides, nine for nine.
+
+## v1.37: The frame lets the delivery work (2026-09-05)
+
+Every desk's delivery now runs, and every one was verified on its raw page.
+"Open" does not land on the raw page. It lands in the house's artifact view,
+which framed the delivery with a sandbox that allowed scripts and nothing
+else. In that frame the page has no origin of its own, so storage throws:
+the app could not keep its data, the site could not keep an entry, the
+brief could not record a decision. Dialogs were blocked, so delete and
+reset did nothing. Downloads were blocked, so the analysis CSV was dead.
+Fullscreen was not permitted, so the deck's F key did nothing.
+
+The raw page is served from this same origin with no sandbox at all, one
+click away under Full screen, so the frame's restrictions protected nothing
+and broke everything they held. The frame now grants what the runtimes
+need: its own origin, forms, downloads, dialogs, and fullscreen. The
+side-by-side compare view gets the same.
+
+Proved inside the artifact view itself, reaching into the frame: storage
+works, fullscreen is enabled, an item added in the frame is kept, and
+delete asks and proceeds. A test reads the built bundle and refuses a frame
+that drops any of these.
+
+## v1.38: The deck is illustrated (2026-09-05)
 
 Asked for directly: the deck's quality was not good, and it needed relevant
 images. It had none. Every slide was text on a coloured card.
@@ -1787,290 +1842,253 @@ Proved with a mock image provider returning real pictures: seven images
 generated, seven loaded in the page at 1536 by 1024, seven picture parts in
 the PowerPoint, rendered and looked at.
 
-## v1.37: The frame lets the delivery work (5 Sep 2026)
+## v1.39: The deck plays as a narrated film (2026-09-05)
 
-Every desk's delivery now runs, and every one was verified on its raw page.
-"Open" does not land on the raw page. It lands in the house's artifact view,
-which framed the delivery with a sandbox that allowed scripts and nothing
-else. In that frame the page has no origin of its own, so storage throws:
-the app could not keep its data, the site could not keep an entry, the
-brief could not record a decision. Dialogs were blocked, so delete and
-reset did nothing. Downloads were blocked, so the analysis CSV was dead.
-Fullscreen was not permitted, so the deck's F key did nothing.
+Asked for directly: video of real quality, with a spoken narrative,
+cinematic. The Media page had a local motion toy and no narration at all.
 
-The raw page is served from this same origin with no sandbox at all, one
-click away under Full screen, so the frame's restrictions protected nothing
-and broke everything they held. The frame now grants what the runtimes
-need: its own origin, forms, downloads, dialogs, and fullscreen. The
-side-by-side compare view gets the same.
+The deck contract now ends with a step of its own, "Narrate: speak the
+presenter notes on your key, for the film". Every slide's notes are spoken
+by OpenAI's speech model or Gemini's on the owner's key, three at a time
+with a ninety-second cap, kept in the media store as WAV clips with their
+length and voice, named on the tape and recorded in the provenance. The
+voice can be set on the house; the default is a neutral one.
 
-Proved inside the artifact view itself, reaching into the frame: storage
-works, fullscreen is enabled, an item added in the frame is kept, and
-delete asks and proceeds. A test reads the built bundle and refuses a frame
-that drops any of these.
+The deck itself now plays as a film. P, or the Film button, opens a stage:
+each slide's picture in slow motion under its headline and support line,
+which rise in as the narration for that slide plays, timed so a slide
+holds until its narration ends, a vignette and crossfades between slides,
+full screen, Esc to stop. Export records the stage and the narration
+together in the browser, with no server and no upload, and saves a real
+video file with the audio in it. When no speech key was held, the browser's
+own voice reads the notes so the film still plays, and the page says plainly
+that an exported file made that way carries no narration.
 
-## v1.36: Word keeps the prose, PowerPoint keeps the notes (5 Sep 2026)
+The film keeps time on a timer when the browser withholds animation frames,
+so a background tab does not stall it. A new gate assertion, VAL-FILM,
+refuses a deck that cannot play as a film or export one.
 
-The five-desk pass gave every delivery a runtime, and the Word and
-PowerPoint exports are built from the same page, so this is the check that
-the pass owed them.
+Proved with a mock speech provider returning real audio: nine clips spoken
+and served, decoded at 2.5 seconds each; the film opened, advanced on time,
+stopped on Esc; an export recorded and saved a 2.5 MB video with narration.
 
-The Word export took every paragraph and cell on the page, which now
-included the brief's decision section and the analysis's table note. A Word
-document that says "Recorded on this device, sent nowhere" makes no sense,
-so the page's working parts now stay on the page: the evidence bar, the
-decision form and what it recorded, chart readouts, table notes, app hints
-and form errors. The prose and the tables come through as before. Proved
-on a delivered brief: the chrome is gone and the sections are intact.
+## v1.40: The landing page has a hero (2026-09-05)
 
-The PowerPoint export ignored the presenter notes, when PowerPoint has a
-notes pane for exactly that. Every slide now ships with its note in that
-pane: a notes part per slide, a notes master, the relationships and content
-types PowerPoint expects, and nothing printed on the slide face. Proved on
-a delivered deck: ten notes parts for ten slides, the right note on slide
-three, a valid package that QuickLook renders.
+The deck got its pictures; the landing page still shipped a placeholder
+box where its hero image should be, labelled "Product still: replace with
+real capture". Same defect, same fix.
 
-And a defect of my own from v1.33, found on the way: the deck's no-key
-fallback slides had never been given notes, so a scripted deck failed the
-assertion that every slide carries them and paused for a decision it did
-not need. The house now writes notes for its own slides, nine for nine.
+The site contract now carries the illustrate step too: one hero image,
+drawn on the owner's image key from the brand, the headline and the line
+under it, as a product photograph in a tall composition for the hero slot.
+The page shows it in place of the box, with alt text; the PowerPoint and
+Word exports are unaffected. When no image key is held the honest
+placeholder stays, exactly as before. Proved in the every-desk test: one
+hero on the record, shown with alt text, the placeholder gone.
 
-## v1.35: The brief does the reader's job (5 Sep 2026)
+## v1.41: Choose the voice, and hear it first (2026-09-05)
 
-Fifth desk, and the last. A decision brief exists so somebody can decide,
-and the delivered page let them read it and nothing more. Now it lets them
-do the reader's job on it.
+The film speaks in a voice nobody could choose. Settings now has a
+narration voice: seventeen names across OpenAI and Google, saved on the
+house and used by every film from then on, the owner's to set and not a
+guest's. Hear it speaks one line in that voice on your key, before a deck
+spends on nine of them; without a speech key it says so instead of
+pretending. The tape names the voice a deck was spoken in.
 
-An evidence bar above the claims shows only the claims graded strongly
-enough to act on, A only or B and above, and says how many are shown; the
-rest are dimmed, not removed, because hiding evidence is not the house's
-call. Every source in the references now says which claims lean on it, and
-following a link in either direction lights its target. And the brief ends
-with the decision it was written for: agree, disagree, or need more, with a
-reason of at least a sentence, because the reason is the record. It is kept
-on the device under the mission's serial, shown with its date, changeable,
-and printed with the brief; nothing is sent anywhere, and the page says so.
+The Media page's Video tab no longer calls the local motion toy the honest
+option and hosted video "not wired yet". It says where films come from:
+run a deck, press P, export.
 
-A new gate assertion, VAL-BRIEF-WORKS, refuses a brief the reader cannot
-work with. Proved on a delivered brief: filter counts and dimming, links in
-both directions, the three refusals, the recorded decision, reload, edit.
+Proved in the Settings page: voice chosen and saved, in force, preview
+served as audio in that voice, played; and in the deck test: a set voice
+reaches every clip and the tape.
 
-With this, all five desks deliver things that work rather than depict: the
-app, the site, the deck, the analysis and the brief, each with a runtime of
-its own and a gate assertion that holds it there.
+## v1.42: The ticket names the other bill (2026-09-05)
 
-## v1.34: The charts can be read (5 Sep 2026)
+A deck now spends on the owner's key at three steps, authoring, images and
+speech, and a landing page at two. The contract priced the house credits
+for every step and said nothing before stamping about what the key would
+be asked for. Now an open ticket says it: "On your key, not house credits:
+1 authoring call to the lead; 7 images at 1536 by 1024 on OpenAI; 9
+narration clips on OpenAI in the voice onyx." Or, without keys, that the
+house will draw and the browser will speak, and if Media Generation is off
+that nothing will be made. It is counted against the keys held now, when the
+ticket is read, so it is never stale, and it disappears once the ticket is
+stamped, because then the record is the truth and not a forecast.
 
-Fourth desk held to the standard. An analysis shipped two charts you could
-look at and nothing you could do with them: no way to read a value without
-guessing from the axis, no keyboard access, no table, no way to take the
-numbers with you.
+A defect found on the way: the run page takes its mission from the live
+stream's snapshot, and the line saying what this kind of work has cost here
+before, added in v1.24, came only from the mission endpoint. It had never
+reached the page. Both lines are now merged in once the record is on
+screen, and both were seen on an open ticket in the browser.
 
-Now every point and every bar can be pointed at or tabbed to, and a line
-under the chart says what it is: the period and its value, the change on the
-period before, whether it is the peak or the trough; the segment, its value,
-its share of the total, and whether it is the one furthest from the mean.
-A button draws the mean across the trend and says what it is. Beneath the
-charts the whole series is tabled, sortable by any column with the sort
-announced, peak and trough marked. The data leaves as a CSV made on the
-page, so a shared copy of the document still carries its numbers, and the
-page prints cleanly.
+## v1.43: The film crosses, and leaves as MP4 (2026-09-05)
 
-A new gate assertion, VAL-READABLE-CHARTS, refuses a chart nobody can read.
-Proved by driving a delivered analysis: hover, keyboard focus, outlier
-readout, mean toggle, twelve rows, both sort directions, the CSV's contents.
+Two things a film is judged on before anyone listens to it: how one shot
+becomes the next, and what file it leaves as.
 
-## v1.33: The deck presents (5 Sep 2026)
+Slides now crossfade: the last frame of one shot dissolves under the first
+moments of the next, and a shot's end darkens gently rather than cutting to
+black between every slide. The export records at ten megabits with 192
+kilobit audio, and chooses the best container the browser can record: MP4
+where the browser offers it, WebM otherwise, named accordingly. The
+confirmation says which.
 
-The app works, the site's action works; the deck was next. It already
-advanced by arrow keys, space and click, which is a scroll of slides, not a
-presentation. Now it is one.
+Proved on a delivered deck: the film ran through a crossfade with no
+errors, and an export saved 6.4 MB as MP4 with the narration in it.
 
-The model writes presenter notes for every slide, spoken not written, and
-the house writes them for the three slides it composes itself. N opens a
-presenter panel: this slide's notes, the next slide's title, and a clock
-that starts the first time the panel opens. F is fullscreen. Esc shows every
-slide at once and any of them is one click away. Every slide has an address
-(#4) so a link can open the deck on a slide, and the phone's Back button
-walks the deck backwards. Home, End, PageUp, PageDown and the digit keys do
-what a presenter expects; a swipe turns the page on a phone; a thin bar
-along the top shows how far along the room is. Print the page and you get a
-handout, one slide per page with its notes beneath. The hint line names all
-of it and fades once you have started.
+## v1.44: The deck file narrates in PowerPoint (2026-09-05)
 
-A new gate assertion, VAL-PRESENTABLE, refuses a deck without notes on
-every slide, a presenter panel, fullscreen and slide addresses.
+The PowerPoint export carried the pictures and the presenter notes; the
+spoken narration stayed on the web page. PowerPoint has a place for it:
+audio on the slide, behind a speaker, played from the icon or automatically
+once the presenter sets it to.
 
-Proved by driving a delivered deck: address, arrows, Home, End, digit,
-notes, next, overview, jump, swipe, click, print stylesheet.
+Each slide's spoken clip now travels inside the package as slide audio, in
+the structure PowerPoint itself writes for inserted audio: the clip as a
+media part, related to the slide both ways PowerPoint expects, named as
+media on the slide, with a speaker icon drawn in code as its poster frame
+in the slide's corner, and declared in the content types. A deck spoken on
+the owner's key is a deck that speaks in PowerPoint.
 
-## v1.32: The landing page's action works (5 Sep 2026)
+Proved on a delivered deck: nine clips as slide audio, the speaker present,
+every relationship in place, a valid package rendered by QuickLook with the
+speaker in the corner of the slide. Playback inside PowerPoint itself was
+not machine-checked here; the package follows the structure PowerPoint
+writes and the common libraries produce.
 
-A landing page has one job, to get a visitor to act, and every call to
-action on a delivered page was a dead link: two pointed at anchors and the
-closing one pointed at nothing at all. The same defect the app had, held to
-the same standard.
+## v1.45: The app has an icon (2026-09-05)
 
-The closing action is now a working form. It validates in its own words: an
-address is needed, that does not look like an address, that address is
-already on the list. On success the form gives way to a confirmation
-addressed by name, focus moves to it so a screen reader hears it, and a line
-under it counts who is on the list. Entries are kept on the device under the
-mission's serial until the house connects the page to a mailbox or a sheet,
-and the confirmation says exactly that: nothing has been sent anywhere. The
-header and hero buttons scroll to the form and put the cursor in the email
-field. A new gate assertion, VAL-ACTION-WORKS, refuses a page whose closing
-action is a dead link, so this cannot quietly regress.
+The last desk without a picture. An app added to a home screen had no icon
+at all, and nothing on its own screens said what it was.
 
-Proved by driving a delivered page in the browser: header button, empty
-address, bad address, success, duplicate, reload.
+The app contract now carries the illustrate step: one icon, drawn on the
+owner's image key from the app's name and what its first screen is for, as
+a flat centred symbol with no text, square, at 1024. It is the home-screen
+icon and the tab icon, it sits beside the app's name at the top of every
+screen, and it heads the settings sheet, which says who drew it. Without an
+image key the house draws its own from the app's initial on the accent
+colour, and says so. The open ticket's key plan counts it.
 
-## v1.31: The app works, and the result comes first (5 Sep 2026)
+Proved on a delivered app: the home-screen link points at the generated
+icon, it loads at 1024 by 1024 beside the name, and the settings sheet
+carries it with the line naming the model.
 
-Three things asked for in one message, all three shipped.
+## v1.46: The house says what your keys can do (2026-09-05)
 
-**The mobile desk builds a working app, not a picture of one.** The
-delivery used to be four screens with static cards and a button that did
-nothing. It is now a real app running inside the phone frame: every screen
-is a live list with search that filters as you type; tapping an item opens
-it, with mark done, reopen, edit and delete; the primary button opens a
-sheet that adds one, validated in the sheet's own words (a title is needed,
-no duplicates); the dots at the top open settings with counts per screen, a
-dark theme, and a reset. Every change is kept on the device under the
-mission's serial and survives a reload, and each screen and item has its own
-address so the phone's Back button does what it should. On a narrow screen
-the bezel goes away, it runs full height, and it can be added to the home
-screen. The page says plainly that it is a web app, not a native build. The
-model now names what one item on each screen is called, so the button reads
-"Book a trip" rather than "Take the action". Proved by driving a delivered
-app in the browser: navigate, search, open, add, edit, mark done, delete,
-theme, reload.
+Decks, pages and apps now draw and speak on the owner's key, and a house
+with Media Generation off, or with no image or speech key held, quietly
+gets the house's own drawings and the browser's voice instead. Nothing on
+the site said so except the tape of a run already stamped.
 
-**The tape is folded away.** The run page led with the tape, every move on
-the record, and the delivery was a card somewhere down inside it. The tape is
-the record, not the result, so it is now hidden unless the reader asks for
-it, and the choice is remembered. In its place the page shows what the
-reader came for: the delivery with Open and Full screen, any decision that is
-waiting, and one line on what is happening while the run is live. A ticket
-not yet stamped still shows its plan.
+The house check now has a media row. Green when Media Generation is on and
+a key that can draw and speak is held, and it says what that buys: decks
+illustrated and narrated, pages a hero, apps an icon. Not green when the
+tool is off, or on with no such key, and it says exactly what the house
+will do instead and where to load a key. The keys page, on loading an
+OpenAI or Google key, says that decks, pages and apps are now illustrated
+and narrated on it while Media Generation is on, and each provider's hint
+names the image and speech models a key there brings.
 
-**Opening is one click at the top.** "Open the delivery" now sits in the
-header, right after the status, the moment there is anything to open. No
-scrolling, no hunting.
+Proved in the deck test: the media row green with the key held, naming what
+it enables; not green without one, naming the fallback.
 
-## v1.30: A key belongs to the owner (5 Sep 2026)
+## v1.47: The media store is counted and kept clean (2026-09-05)
 
-Keys have always lived in memory only: never written to disk, never in an
-export or a backup, gone on a restart, and an old key file from an earlier
-build is deleted at boot. That is the important half, and it was already
-true. The other half is who can see a key while the house holds it.
+Every illustrated deck writes seven pictures and nine clips into the
+house's media store, around ten megabytes, and a landing page and an app
+add to it. The export and the backups already carry the store, so nothing
+is lost; but nothing reported its size and nothing removed a file that no
+mission or media record pointed at any more.
 
-A guest's workspace payload carried the masked form of every key, four
-characters at each end, along with the endpoint it calls and the hour it
-arrived. That is still the owner's credential, and it is now the owner's
-alone. A guest sees that the house holds a key, which is what tells them
-their work will run live, and nothing more about it. Testing a saved key is a
-call on the owner's account, so it is the owner's too, and the owner's OAuth
-client ids are no longer handed to anyone else.
+The house check now has a media-store row: how many files, how many
+megabytes, and how many orphans, a file pointed at by nothing. Green when
+there are none. Repair removes the orphans and says how much it freed, and
+keeps every file a mission or the media index still points at.
 
-A test now sets a key, reads the house as owner and as guest, downloads an
-export, and walks every file the house wrote, and proves the key appears in
-none of them beyond the owner's own mask.
+Proved in the deck test: sixteen files and no orphans after a narrated,
+illustrated deck; a planted orphan counted; repair removed it and kept the
+slide picture.
 
-## v1.29: The dissent is somebody real (5 Sep 2026)
+## v1.48: A shared deck keeps its pictures through a shut door (2026-09-05)
 
-A decision brief has always carried a recorded dissent, and it was the
-weakest thing in the document. On a live run it was whatever the lead model
-invented about its own draft, which is not disagreement. On a scripted one it
-was a fixed paragraph attributed by name to a model that never read the page.
+A shared page is public by its link. Its pictures and narration were served
+by the media route, which sits behind the house's door, so on a house with
+an access code a recipient would open a shared deck and find every picture
+missing and the film mute. Predicted from the route order, then proved.
 
-Advisers were already doing the real work: a live adviser reads the lead's
-draft, returns a verdict, and its critique goes on the tape. That objection
-is now the recorded dissent. It is attributed to the model that made it, it
-is printed as written, and the brief says underneath whether the draft was
-revised in answer to it or stands as it was. A lead that invents a dissent
-about itself no longer reaches the page while a real one is available.
+A media file is now public exactly while some artifact whose mission points
+at it is shared, and by its unguessable id: the recipient with no code gets
+the picture and the narration; revoke the share and the door shuts on them
+again; a file no share uses stays behind the door as before.
 
-Alongside it, the record of visitors now has a floor. Every browser that
-accepts the house rules leaves a record, and a public address means that
-number only goes up. Signed names and the house's own are kept for good;
-anonymous acceptances are kept to the most recent five hundred.
+Proved on a house with its door shut: unshared media refused; a shared deck
+served with its picture embedded; the picture and the clip served to a
+stranger; refused again after the share was revoked.
 
-## v1.28: The claim shows the line it rests on (5 Sep 2026)
+## v1.49: The audit bundle keeps its promise (2026-09-05)
 
-Under every cited claim the delivery used to say the source "uses" three of
-the claim's words. That is a report about the source, and a reader had no way
-to check it without leaving the page and reading the whole article.
+The audit bundle calls itself one self-contained file: contract, tape,
+decisions, validation, sources, settlement, and the delivery. An
+illustrated, narrated deck broke that quietly: its page asked the house for
+every picture and clip by address, and a bundle opened on another machine,
+or after the house was gone, showed a deck with holes in it and a film
+with no voice.
 
-Now the check keeps the sentence it found. It scores every line in the
-retrieved source by how many of the claim's own words it carries, takes the
-best one, and the delivery quotes it directly under the claim. The reader
-sees what the source actually says and can judge the claim against it in
-place. When no single line carries the claim, the delivery says exactly that
-instead of quoting something that does not support it, and a claim whose
-source does not speak to it is still flagged as before.
+Every picture and clip the delivery asks the house for now travels inside
+the bundle as data, and the film runtime prefers an inlined clip when one
+is present. Nothing in the bundle is fetched from the house.
 
-## v1.27: The house rules are accepted by a person (5 Sep 2026)
+Proved on a narrated, illustrated deck: no picture or clip in the bundle is
+fetched from the house; seven pictures and nine clips inside it.
 
-Consent was recorded against the building. The first visitor to accept the
-Terms, the Privacy and GDPR Policy and the AI Disclaimer opened the door for
-every stranger who came after, and none of them was ever shown the documents
-or asked. A document that says "you agree" cannot be agreed to on your behalf
-by whoever happened to arrive first.
+## v1.50: An amendment keeps what did not change (2026-09-05)
 
-Now every browser is given an identity of its own the moment it opens the
-page, before it asks for anything, and the gate reads that person's own
-acceptance. A second visitor sees the three documents, accepts them or does
-not, and inherits nothing either way. The house still keeps the acceptance
-that opened it, because that one was really made, and the house check still
-reads it. A client at the API with no browser identity still answers to the
-house record, which is the acceptance somebody did make.
+Amending a deck wrote a new version and bought everything again: seven
+pictures and nine clips on the owner's key, even when most slides were
+word for word what they were. The same words buy the same picture.
 
-One thing changed alongside it: the house is claimed by the first person to
-sign a name, not by the first to be handed a cookie. Accepting the rules now
-leaves a record of its own, and a record with no name on it is nobody.
+An amended version now keeps the parent's picture for every slide whose
+headline and support line did not change, and the parent's clip for every
+slide whose notes did not change, and the tape names which were kept and
+that nothing was billed for them. A landing page keeps its hero and an app
+its icon on the same rule. Only what changed is drawn or spoken again. The
+kept files are the same files, so the media store counts them as used and
+repair leaves them alone.
 
-## v1.26: One gate, at the door (5 Sep 2026)
+Proved by amending a narrated, illustrated deck with unchanged words: no
+picture drawn again, nothing spoken again, seven pictures and nine clips
+kept from the parent by name, the new version showing them.
 
-Every write in this building was gated route by route, which means it was
-only as good as the last route somebody remembered to gate. A sweep found
-twelve that nobody had: a stranger with no session, no sign-in and no access
-code could delete this house's models, its projects, its chats and its
-registered servers, and could run housekeeping over its open tickets. Proved
-against a running house, not read off the source.
+## v1.51: The desks describe what they deliver (2026-09-06)
 
-The fix is a single default-deny check above every write to the API. Four
-paths stay open by name, and only these four: reading the door, accepting the
-house rules, signing in, and leaving. Nobody should be trapped inside a house
-they cannot change. Everything else now answers to the access code and to the
-guest policy before it reaches the route at all, and a route that wants to be
-looser has to say so on that list where it can be seen.
+The desk cards, the ticket's deliverable line and the ledger were written
+before the desks could draw, speak or film. A deck was "narrative-first";
+an app was a "tappable phone prototype". Neither is what you get now.
 
-Behaviour is unchanged for a house with no access code and guests working
-freely, which is the default. What changed is that setting a code now means
-what it says.
+The catalogue says what each desk delivers today: briefs whose claims show
+the source line and whose readers record the decision; decks with a picture
+on every argument, notes spoken in your voice, a film to export and a
+PowerPoint that carries all of it; pages with a generated hero and a
+sign-up that works; working apps with an icon drawn on your key; analyses
+with charts you can read by pointing and the data as CSV. The deliverable
+on a deck ticket reads "Slide deck and film"; on an app ticket, "Working
+app". The ledger, which had no label for apps at all, names every kind.
 
-## v1.25: The composer says when the ask is thin (5 Sep 2026)
+## v1.52: The release notes are all of them again (2026-09-06)
 
-A goal of four vague words buys a plan and a price about as specific as the
-ask, and you only find that out after the contract is written. Now the
-composer says so while you type. Pick a desk, type a thin goal, and a quiet
-grey line appears under the box naming why it reads thin and the one question
-worth answering. It is debounced, it never blocks, it has no buttons, and it
-disappears the moment the goal has something to hold on to. The house still
-accepts a thin goal if you send it, exactly as before. It just no longer
-stays silent about the price of vagueness.
+A look at the live site found the release page stopped at v1.24. Twenty-
+seven releases were missing, all mine, for two reasons of mine. The page
+parses README headings and accepts a date only as 2026-09-05; every note
+since v1.25 wrote it as 5 Sep 2026, so none of them parsed. And the README
+lists releases oldest first, while each new note had been inserted above
+v1.24, so they were filed out of order as well.
 
-## v1.24: A thin ask makes a thin contract, and the house says which (2026-09-05)
+The parser now reads both date forms and gives the page ISO dates, and no
+longer mistakes a parenthesis in a title for a date, which had hidden three
+older releases for longer still. The headings are normalised, the sections
+are back in order, and this note is appended where the next one belongs. A
+test now reads the page and refuses a newest release that is not the
+running version, an order that is not newest first all the way down, or a
+release without a title, a body and a date in one form.
 
-"Help me with marketing" got the same plan, the same price and the same
-confident ticket as a real question. Both were honest about cost and
-dishonest about worth. A goal with too few words that mean anything is
-now questioned before it is priced: the house says why it is thin, asks
-the three things that would make it mean something on that desk, and
-records the note on the ticket.
-
-It never refuses. You can answer, or stamp it as it stands, or void it
-and ask again with more. The questions are deterministic, need no model,
-and a specific goal carries no note at all, because a false question is
-an insult.
