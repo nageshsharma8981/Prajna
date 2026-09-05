@@ -118,6 +118,12 @@ export const ASSERTIONS = {
       surface: (h) => has(h, /References[:,] cited sources only/) },
     { id: 'VAL-DISSENT-RECORDED', title: 'Recorded dissent appears in the brief, not erased', owner: 'council',
       scrutiny: (h) => has(h, /Recorded dissent/), surface: (h) => has(h, /class="dissent"/) },
+    // A brief exists so somebody can decide. The reader must be able to look
+    // at only the evidence strong enough to act on, follow a source back to
+    // every claim leaning on it, and record the decision with its reason.
+    { id: 'VAL-BRIEF-WORKS', title: 'The reader can filter claims by grade, follow sources back to claims, and record a decision with its reason', owner: 'compose',
+      scrutiny: (h) => has(h, /class="filter" role="group"/) && count(h, /class="claim-row" id="claim-\d+" data-grade="[ABC]"/g) >= 3 && has(h, /class="cited-by"/) && has(h, /<form class="decision" novalidate>/),
+      surface: (h) => has(h, /addEventListener\('submit'/) && has(h, /localStorage\.setItem/) && has(h, /class="decided" hidden/) },
     { id: 'VAL-VERDICT-FIRST', title: 'The verdict is stated before the evidence', owner: 'compose',
       scrutiny: (h) => h.indexOf('The verdict') > 0 && h.indexOf('The verdict') < h.indexOf('What the evidence supports'), surface: (h) => has(h, /class="verdict"/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',

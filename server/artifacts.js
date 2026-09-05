@@ -121,6 +121,52 @@ const PROV_CSS = `
 
 /* ---------------------------------- BRIEF --------------------------------- */
 
+// The brief's own runtime. A decision brief exists so somebody can decide;
+// the page lets them do the reader's job on it: look at only the evidence
+// strong enough to act on, follow a claim to its source and the source back
+// to every claim that leans on it, and record the decision with the reason,
+// kept on this device under the mission's serial and printed with the brief.
+function briefRuntime() {
+  const KEY = 'prajna-brief-' + document.documentElement.dataset.serial;
+  const $ = (q, el) => (el || document).querySelector(q);
+  const $$ = (q, el) => Array.from((el || document).querySelectorAll(q));
+  const claims = $$('.claim-row');
+  const counter = $('.filter-count');
+  const filter = (min) => {
+    const rank = { A: 3, B: 2, C: 1 };
+    let shown = 0;
+    claims.forEach((c) => { const on = rank[c.dataset.grade] >= rank[min]; c.classList.toggle('dim', !on); c.setAttribute('aria-hidden', on ? 'false' : 'true'); if (on) shown++; });
+    $$('.filter button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.min === min ? 'true' : 'false'));
+    counter.textContent = shown === claims.length ? 'All ' + claims.length + ' claims shown.' : shown + ' of ' + claims.length + ' claims shown; ' + (claims.length - shown) + ' below the bar dimmed, not removed.';
+  };
+  $$('.filter button').forEach((b) => b.addEventListener('click', () => filter(b.dataset.min)));
+  filter('C');
+  // A claim lights its source; a source lights every claim that leans on it.
+  const flash = (el) => { if (!el) return; el.classList.add('lit'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => el.classList.remove('lit'), 1600); };
+  $$('a.refmark, a.claim-link').forEach((a) => a.addEventListener('click', (e) => { const to = document.getElementById(a.getAttribute('href').slice(1)); if (!to) return; e.preventDefault(); history.replaceState(null, '', a.getAttribute('href')); flash(to); }));
+  // The decision.
+  const form = $('form.decision'), made = $('.decided');
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } };
+  const show = () => {
+    const d = load();
+    if (d && d.choice) {
+      form.hidden = true; made.hidden = false;
+      $('.d-line', made).textContent = 'You decided: ' + d.choice + ', on ' + new Date(d.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) + '.';
+      $('.d-why', made).textContent = d.why;
+    } else { form.hidden = false; made.hidden = true; }
+  };
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const choice = (form.querySelector('input[name=choice]:checked') || {}).value; const why = form.querySelector('[name=why]').value.trim(); const err = $('.err', form);
+    if (!choice) { err.textContent = 'Pick one.'; return; }
+    if (why.length < 12) { err.textContent = 'Say why, in at least a sentence. The reason is the record.'; form.querySelector('[name=why]').focus(); return; }
+    try { localStorage.setItem(KEY, JSON.stringify({ choice, why, at: Date.now() })); } catch (x) { err.textContent = 'This browser will not keep the decision. It was not saved.'; return; }
+    err.textContent = ''; show(); made.focus();
+  });
+  $('.d-edit', made).addEventListener('click', () => { const d = load() || {}; form.hidden = false; made.hidden = true; const r = form.querySelector('input[value="' + d.choice + '"]'); if (r) r.checked = true; form.querySelector('[name=why]').value = d.why || ''; form.querySelector('[name=why]').focus(); });
+  show();
+}
+
 export function briefArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
@@ -159,12 +205,14 @@ export function briefArtifact(mission) {
     if (row.quote?.line) return `<span class="cite-check">rests on ${esc(row.title)}, which says: <q>${esc(row.quote.line)}</q></span>`;
     return `<span class="cite-check">rests on ${esc(row.title)}, which uses ${row.shared.slice(0, 4).map((w) => `<em>${esc(w)}</em>`).join(', ')}, though no single line of it carries the claim</span>`;
   };
-  const claimsHtml = CLAIMS.map((c) => `<p><strong class="claim" data-ref="${c.ref}" data-snippet="${esc(c.snippet)}">${esc(c.text)}</strong><span class="grade g${c.grade}">${c.grade}</span><a class="refmark" href="#${c.ref}">[${c.ref.replace('src-', '')}]</a> ${esc(c.detail)}${support(c.text)}</p>`).join('\n');
+  const claimsHtml = `<div class="filter" role="group" aria-label="Evidence bar"><span>Show claims graded</span><button type="button" data-min="C" aria-pressed="true">All</button><button type="button" data-min="B" aria-pressed="false">B and above</button><button type="button" data-min="A" aria-pressed="false">A only</button><span class="filter-count" aria-live="polite"></span></div>\n`
+    + CLAIMS.map((c, i) => `<p class="claim-row" id="claim-${i + 1}" data-grade="${c.grade}"><strong class="claim" data-ref="${c.ref}" data-snippet="${esc(c.snippet)}">${esc(c.text)}</strong><span class="grade g${c.grade}">${c.grade}</span><a class="refmark" href="#${c.ref}">[${c.ref.replace('src-', '')}]</a> ${esc(c.detail)}${support(c.text)}</p>`).join('\n');
   const referencesHtml = citedRefs.map((r) => {
     const s = SOURCES[r];
-    return `<tr id="${r}"><td>[${r.replace('src-', '')}]</td><td>${s.url ? `<a href="${esc(s.url)}" rel="noreferrer">${esc(s.title)}</a>` : esc(s.title)}</td><td>${esc(s.kind)}</td><td>${esc(s.retrieved)}</td></tr>`;
+    const leaning = CLAIMS.map((c, i) => (c.ref === r ? i + 1 : null)).filter(Boolean);
+    return `<tr id="${r}"><td>[${r.replace('src-', '')}]</td><td>${s.url ? `<a href="${esc(s.url)}" rel="noreferrer">${esc(s.title)}</a>` : esc(s.title)}</td><td>${esc(s.kind)}</td><td>${esc(s.retrieved)}</td><td class="cited-by">${leaning.map((n) => `<a class="claim-link" href="#claim-${n}">claim ${n}</a>`).join(', ')}</td></tr>`;
   }).join('\n');
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+  const html = `<!doctype html><html lang="en" data-serial="${esc(mission.serial)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t}, Decision Brief</title>
 <style>
@@ -187,6 +235,19 @@ h2{font:700 1.05rem/1.3 Verdana,sans-serif;letter-spacing:.02em;margin:2.6rem 0 
 .cite-check em{font-style:normal;border-bottom:1px solid #c9c2ab}
 .cite-check q{color:#4c4a44;font-style:italic}
 .cite-check.gone{color:#a2402f}
+.filter{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font:600 .72rem/1 Verdana,sans-serif;letter-spacing:.06em;color:#6b6857;margin:0 0 1rem}
+.filter button{font:inherit;background:#fff;border:1px solid var(--rule);border-radius:999px;padding:.45rem .8rem;cursor:pointer;color:var(--ink);min-height:32px}.filter button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.filter-count{margin-left:auto;font-weight:400;letter-spacing:0}
+.claim-row{transition:opacity .25s}.claim-row.dim{opacity:.32}
+.lit{background:#fff3cf;box-shadow:0 0 0 6px #fff3cf;transition:background .3s}
+.cited-by a{color:var(--accent);font-size:.85rem;text-decoration:none;border-bottom:1px solid #d9c9a6}
+.decision fieldset{border:1px solid var(--rule);padding:.8rem 1rem;margin:0 0 .8rem}.decision legend{font:700 .72rem/1 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6b6857;padding:0 .4rem}
+.decision label{display:block;padding:.3rem 0;cursor:pointer}.decision input[type=radio]{margin-right:.5rem;transform:scale(1.2)}
+.decision .why{font:700 .72rem/1 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#6b6857}.decision textarea{display:block;width:100%;margin-top:.4rem;font:inherit;padding:.7rem .9rem;border:1px solid var(--rule);border-radius:6px;background:#fff;color:var(--ink)}
+.decision .err{color:#a2402f;font-size:.9rem;min-height:1.3em;margin:.4rem 0}
+.d-save,.d-edit{font:700 .78rem/1 Verdana,sans-serif;letter-spacing:.08em;background:var(--ink);color:var(--paper);border:none;border-radius:6px;padding:.75rem 1.1rem;cursor:pointer;min-height:44px}.d-edit{background:none;color:var(--accent);border:1px solid var(--rule);margin-top:.6rem}
+.decided{border:1px solid var(--ink);padding:1rem 1.2rem;background:#fff}.decided b{display:block;margin-bottom:.3rem}.decided p{margin:0;color:#4c4a44}
+@media print{.filter,.d-save,.d-edit,.decision .err{display:none}.claim-row.dim{opacity:1}.decision{border:1px solid #999;padding:.6rem}.decision[hidden]{display:none}.decided{border:1px solid #000}}
 table{width:100%;border-collapse:collapse;font-size:.9rem;margin:1rem 0}
 th{font:700 .72rem/1.3 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:#777;border-bottom:2px solid var(--ink);padding:.5rem .6rem .4rem 0}
 td{border-bottom:1px solid var(--rule);padding:.55rem .6rem .55rem 0;vertical-align:top}
@@ -237,16 +298,32 @@ ${esc(D.text)}<br><small>${D.answered ? 'The draft was revised in answer to this
 ${A ? esc(str(A.dissent?.text, 'The lead model recorded no dissent. That absence is itself on the record.')) : "One panel member argued the staged path underweights speed: in this member's read, the window closes faster than the median estimate, and the pilot's chief risk is being too small to generate the very signals it gates on. The panel holds its recommendation but records the dissent; if early pilot data is ambiguous, revisit sizing rather than waiting the full two months."}</div>`;
 })()}
 
+<h2>4b · Your decision</h2>
+<p class="docline" style="border:0;margin:0 0 .6rem">Recorded on this device under ${esc(mission.serial)}, printed with the brief, sent nowhere.</p>
+<form class="decision" novalidate>
+  <fieldset><legend>On the verdict above</legend>
+    <label><input type="radio" name="choice" value="Agree"> Agree, proceed as recommended</label>
+    <label><input type="radio" name="choice" value="Disagree"> Disagree, do not proceed</label>
+    <label><input type="radio" name="choice" value="Need more"> Need more before deciding</label>
+  </fieldset>
+  <label class="why">Because<textarea name="why" rows="3" maxlength="600" placeholder="The reason is the record. One sentence at least."></textarea></label>
+  <p class="err" role="alert" aria-live="assertive"></p>
+  <button type="submit" class="d-save">Record the decision</button>
+</form>
+<div class="decided" hidden tabindex="-1" role="status"><b class="d-line"></b><p class="d-why"></p><button type="button" class="d-edit">Change it</button></div>
+
 <h2>5 · References: cited sources only</h2>
 <p>This table is generated exclusively from refs cited by claims above; an uncited source cannot appear here, and an unreferenced claim fails the build. ${A ? (R.length ? 'Linked entries were retrieved by the house at the sweep step and cited by the lead model; unlinked entries are source classes the model named without a retrieved document.' : 'Source classes were stated by the lead model; no document was fetched, treat each as a pointer to verify, not a verified citation.') : 'All entries are illustrative samples in this demonstration run.'}</p>
-<table><thead><tr><th>Ref</th><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>
+<table><thead><tr><th>Ref</th><th>Source</th><th>Class</th><th>Retrieved</th><th>Leaned on by</th></tr></thead><tbody>
 ${referencesHtml}
 </tbody></table>
 ${!A && R.length ? `<h2>6 · Retrieved reading: not cited</h2>
 <p>The house retrieved these real sources at the sweep step. The claims above are house-scripted samples and were not derived from them, so they are listed here for the reader, not cited as evidence.</p>
 <table><thead><tr><th>Source</th><th>Class</th><th>Retrieved</th></tr></thead><tbody>${R.map((r) => `<tr><td><a href="${esc(r.url)}" rel="noreferrer">${esc(r.title)}</a></td><td>${esc(r.kind)}</td><td>${esc(r.retrieved)}</td></tr>`).join('')}</tbody></table>` : ''}
 ${provenance(mission)}
-</div></body></html>`;
+</div>
+<script>(${briefRuntime.toString()})();</script>
+</body></html>`;
   return { title: `${subject}, Decision Brief`, kind: 'brief', html };
 }
 

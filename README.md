@@ -1519,6 +1519,30 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.35: The brief does the reader's job (5 Sep 2026)
+
+Fifth desk, and the last. A decision brief exists so somebody can decide,
+and the delivered page let them read it and nothing more. Now it lets them
+do the reader's job on it.
+
+An evidence bar above the claims shows only the claims graded strongly
+enough to act on, A only or B and above, and says how many are shown; the
+rest are dimmed, not removed, because hiding evidence is not the house's
+call. Every source in the references now says which claims lean on it, and
+following a link in either direction lights its target. And the brief ends
+with the decision it was written for: agree, disagree, or need more, with a
+reason of at least a sentence, because the reason is the record. It is kept
+on the device under the mission's serial, shown with its date, changeable,
+and printed with the brief; nothing is sent anywhere, and the page says so.
+
+A new gate assertion, VAL-BRIEF-WORKS, refuses a brief the reader cannot
+work with. Proved on a delivered brief: filter counts and dimming, links in
+both directions, the three refusals, the recorded decision, reload, edit.
+
+With this, all five desks deliver things that work rather than depict: the
+app, the site, the deck, the analysis and the brief, each with a runtime of
+its own and a gate assertion that holds it there.
+
 ## v1.34: The charts can be read (5 Sep 2026)
 
 Fourth desk held to the standard. An analysis shipped two charts you could
