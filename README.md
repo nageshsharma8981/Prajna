@@ -2092,3 +2092,16 @@ test now reads the page and refuses a newest release that is not the
 running version, an order that is not newest first all the way down, or a
 release without a title, a body and a date in one form.
 
+## v1.53: Who accepted the rules is the owner's record (2026-09-06)
+
+Found by looking at the live site as a stranger. A new visitor who accepted
+the house rules was then shown the consent log: the names, addresses and
+browsers of everyone who had accepted before them. That record exists so
+the owner can answer for the house; it is not for the next person through
+the door.
+
+The consent log now travels only to the owner. Everyone else gets the count
+of people on the workspace and nothing about any of them. Proved with two
+visitors: the owner sees who accepted and from where, the guest sees an
+empty record and the same count.
+

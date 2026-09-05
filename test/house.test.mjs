@@ -1652,6 +1652,12 @@ test('the house rules are accepted by a person, not by the building', async () =
     // first to be handed a cookie.
     assert.equal((await call('/api/me', first, { name: 'Ada' })).j.owner, true);
     assert.equal((await call('/api/me', second, { name: 'Sam' })).j.owner, false);
+    // Who accepted, from where, on what: the owner's record, nobody else's.
+    const adaSees = (await call('/api/bootstrap', first, null, 'GET')).j;
+    const samSees = (await call('/api/bootstrap', second, null, 'GET')).j;
+    assert.ok(adaSees.consentLog.length >= 2 && adaSees.consentLog.every((e) => e.name && e.ip), 'the owner sees who accepted, with their address');
+    assert.deepEqual(samSees.consentLog, [], 'a guest sees nobody else\'s name or address');
+    assert.equal(samSees.people, adaSees.people, 'though the count is common knowledge');
   } finally { child7.kill(); fs.rmSync(DIR7, { recursive: true, force: true }); }
 });
 

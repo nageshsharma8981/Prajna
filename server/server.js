@@ -929,7 +929,9 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       guests: guestMode(),
       owner: { name: (ws().visitors || {})[ws().ownerId]?.name || ownerName() || null, mine: isOwner(req) },
       people: Object.keys(ws().visitors || {}).length,
-      consentLog: (ws().consentLog || []).slice(0, 12),
+      // Who accepted the house rules, with their address and browser, is the
+      // owner's record. Everyone else gets the count and nothing about anyone.
+      consentLog: isOwner(req) ? (ws().consentLog || []).slice(0, 12) : [],
       openHouse: !ACCESS_CODE,
       evidenceSweep: ws().lastEvidenceSweep || null,
       limitUsage: limitUsage(),
