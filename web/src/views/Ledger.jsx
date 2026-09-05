@@ -2,7 +2,7 @@
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
 
-const KIND_LABEL = { brief: 'Decision brief', deck: 'Slide deck', site: 'Landing page', analysis: 'Analysis' };
+const KIND_LABEL = { brief: 'Decision brief', deck: 'Slide deck and film', site: 'Landing page', mobile: 'Working app', analysis: 'Analysis' };
 
 export default function Ledger() {
   const s = useStore();

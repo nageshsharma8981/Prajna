@@ -21,7 +21,7 @@ export const DESKS = [
   {
     id: 'brief', code: 'RES', name: 'Research desk', deliverable: 'Decision brief',
     tint: 'amber',
-    blurb: 'Evidence-graded research briefs with sources you can audit.',
+    blurb: 'Evidence-graded briefs: every claim shows the source line it rests on, the reader filters by grade and records the decision.',
     placeholder: 'What decision do you need evidence for?',
     samples: [
       'Should we enter the EU home-battery market in 2027?',
@@ -30,9 +30,9 @@ export const DESKS = [
     ],
   },
   {
-    id: 'deck', code: 'DCK', name: 'Deck desk', deliverable: 'Slide deck',
+    id: 'deck', code: 'DCK', name: 'Deck desk', deliverable: 'Slide deck and film',
     tint: 'rose',
-    blurb: 'Narrative-first decks, argument before ornament.',
+    blurb: 'Nine-beat decks with a picture on every argument, notes spoken in your voice, a film you can export, and a PowerPoint that carries all of it.',
     placeholder: 'What story must the room believe?',
     samples: [
       'Series A pitch for a carbon-accounting startup',
@@ -43,7 +43,7 @@ export const DESKS = [
   {
     id: 'site', code: 'STE', name: 'Site desk', deliverable: 'Landing page',
     tint: 'blue',
-    blurb: 'Shippable landing pages with the argument built in.',
+    blurb: 'Shippable landing pages with a generated hero and a sign-up that works, the argument built in.',
     placeholder: 'What are we launching, and to whom?',
     samples: [
       'Landing page for a specialty coffee subscription',
@@ -52,9 +52,9 @@ export const DESKS = [
     ],
   },
   {
-    id: 'mobile', code: 'MOB', name: 'Mobile desk', deliverable: 'Mobile app prototype',
+    id: 'mobile', code: 'MOB', name: 'Mobile desk', deliverable: 'Working app',
     tint: 'rose',
-    blurb: 'Tappable phone prototypes, screens, flows, and a tab bar that works.',
+    blurb: 'Working apps, not pictures of them: live lists, search, add and edit, an icon drawn on your key, installable to a home screen.',
     placeholder: 'Describe the mobile app you want to create…',
     samples: [
       'Build a mobile app for a restaurant',
@@ -66,7 +66,7 @@ export const DESKS = [
   {
     id: 'analysis', code: 'ANL', name: 'Analysis desk', deliverable: 'Metrics dashboard',
     tint: 'green',
-    blurb: 'Numbers interrogated, not decorated, with the caveats attached.',
+    blurb: 'Numbers interrogated, not decorated: charts you can read by pointing, a sortable table, the data as CSV, caveats attached.',
     placeholder: 'What do the numbers need to answer?',
     samples: [
       'Cohort retention for our Q2 signups: where is the leak?',

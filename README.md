@@ -1519,6 +1519,21 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.51: The desks describe what they deliver (6 Sep 2026)
+
+The desk cards, the ticket's deliverable line and the ledger were written
+before the desks could draw, speak or film. A deck was "narrative-first";
+an app was a "tappable phone prototype". Neither is what you get now.
+
+The catalogue says what each desk delivers today: briefs whose claims show
+the source line and whose readers record the decision; decks with a picture
+on every argument, notes spoken in your voice, a film to export and a
+PowerPoint that carries all of it; pages with a generated hero and a
+sign-up that works; working apps with an icon drawn on your key; analyses
+with charts you can read by pointing and the data as CSV. The deliverable
+on a deck ticket reads "Slide deck and film"; on an app ticket, "Working
+app". The ledger, which had no label for apps at all, names every kind.
+
 ## v1.50: An amendment keeps what did not change (5 Sep 2026)
 
 Amending a deck wrote a new version and bought everything again: seven
