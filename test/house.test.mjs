@@ -1129,6 +1129,12 @@ test('every desk delivers with a live model, not just the research desk', async 
       assert.equal(m.authored?.live, true, `${id} was written by the model: ${JSON.stringify(m.authored).slice(0, 160)}`);
       const html = await (await fetch(`${B5}/api/artifacts/${m.artifactId}/html`)).text();
       assert.match(html, /Live run: the substance of this deliverable was written by Desk Model/, `${id} provenance says live`);
+      if (deskId === 'mobile') {
+        // The app has an icon drawn on the key, for the home screen and the page.
+        assert.equal((m.visuals || []).length, 1, 'one app icon on the record');
+        assert.ok(/<link rel="apple-touch-icon" href="\/api\/media\/[a-f0-9]{16}">/.test(html), 'the home-screen icon is the generated one');
+        assert.ok(/class="brand"><img class="app-icon" src="\/api\/media\/[a-f0-9]{16}"/.test(html), 'and it is shown on the page');
+      }
       if (deskId === 'site') {
         // The hero is a picture drawn on the key, not a placeholder box.
         assert.equal((m.visuals || []).length, 1, 'one hero image on the record');

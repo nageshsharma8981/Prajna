@@ -965,9 +965,9 @@ function mobileRuntime() {
   function openSettings() {
     const sh = $('.sheet');
     const counts = DATA.screens.map((sc) => '<li><span>' + esc(sc.tab) + '</span><b>' + state.items[sc.id].filter((x) => !x.done).length + ' open · ' + state.items[sc.id].filter((x) => x.done).length + ' done</b></li>').join('');
-    sh.innerHTML = '<div class="sheet-body"><h3>Settings</h3><ul class="counts">' + counts + '</ul>'
+    sh.innerHTML = '<div class="sheet-body"><h3><img class="app-icon big" src="' + esc(DATA.icon) + '" alt="">' + esc(DATA.name) + '</h3><ul class="counts">' + counts + '</ul>'
       + '<label class="switch"><span>Dark theme</span><input type="checkbox" data-pref-theme' + (state.prefs.theme === 'dark' ? ' checked' : '') + '></label>'
-      + '<p class="meta">Data lives on this device only. Nothing here is sent anywhere.</p>'
+      + '<p class="meta">Data lives on this device only. Nothing here is sent anywhere.' + (DATA.iconMade ? ' The icon was drawn by ' + esc(DATA.iconMade) + ' on your key.' : ' The icon is the house\'s own, drawn from the name.') + '</p>'
       + '<div class="row"><button type="button" class="cta danger" data-reset>Reset all data</button><button type="button" class="cta" data-close>Done</button></div></div>';
     sh.classList.add('on'); $('.scrim').classList.add('on');
     const close = () => { sh.classList.remove('on'); $('.scrim').classList.remove('on'); };
@@ -1009,11 +1009,16 @@ export function mobileArtifact(mission) {
   ]).map((sc) => ({ ...sc, plural: plural(sc.noun), cta: sc.cta && !/^(do the one thing|take the action)$/i.test(sc.cta) ? sc.cta : `Add ${sc.noun}` }));
   const name = A ? str(A.short, short) : short;
   const data = { serial: mission.serial, name, screens };
+  const iv = Array.isArray(mission.visuals) ? mission.visuals.find((x) => x.slide === 0) : null;
+  const houseIcon = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1d5c3a"/><text x="32" y="43" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif" font-size="34" font-weight="700" fill="#f7f6f1">${esc(name.trim()[0] || 'A').toUpperCase()}</text></svg>`)}`;
+  const icon = iv ? `/api/media/${esc(iv.id)}` : houseIcon;
+  data.icon = icon; data.iconMade = iv ? iv.model : null;
   const manifest = encodeURIComponent(JSON.stringify({ name, short_name: name.slice(0, 12), display: 'standalone', start_url: './', background_color: '#f7f6f1', theme_color: '#1d5c3a' }));
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="${esc(name)}">
 <link rel="manifest" href="data:application/manifest+json,${manifest}">
+<link rel="icon" href="${icon}"><link rel="apple-touch-icon" href="${icon}">
 <title>${esc(name)}, working app</title>
 <style>
 :root{--ink:#131a17;--paper:#f7f6f1;--card:#fff;--line:#e3e6e1;--acc:#1d5c3a;--muted:#6b756f;--danger:#a2402f}
@@ -1025,6 +1030,7 @@ h1{font-size:1.05rem;margin:0;color:#3e4842;font-weight:600}
 .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#000;border-radius:20px}
 .status{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.2rem 0 1.4rem;font-size:.8rem;font-weight:600}
 .gear{background:none;border:none;color:var(--muted);font:700 1.1rem inherit;min-height:44px;min-width:44px;border-radius:12px;cursor:pointer}.gear:hover{color:var(--acc)}
+.brand{display:flex;align-items:center;gap:.45rem;font-weight:700}.app-icon{width:22px;height:22px;border-radius:6px;object-fit:cover;display:inline-block}.app-icon.big{width:32px;height:32px;border-radius:8px;vertical-align:-8px;margin-right:.5rem}
 .screen{display:none;flex:1;padding:1rem 1.3rem 1.4rem;overflow:auto;-webkit-overflow-scrolling:touch}
 .screen.on{display:block}
 .screen h2{font-size:1.7rem;letter-spacing:-.02em;margin:1rem 0 .3rem}
@@ -1059,7 +1065,7 @@ ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}
 <h1>${esc(name)}, working app</h1>
 <div class="phone"><div class="glass"><div class="notch"></div>
-<div class="status"><span>9:41</span><button class="gear" aria-label="Settings" title="Settings">⋯</button></div>
+<div class="status"><span class="brand"><img class="app-icon" src="${icon}" alt="" width="22" height="22">${esc(name)}</span><button class="gear" aria-label="Settings" title="Settings">⋯</button></div>
 ${screens.map((s, i) => `<section class="screen${i === 0 ? ' on' : ''}" data-screen="${s.id}" aria-label="${esc(s.title)}"></section>`).join('')}
 <nav class="tabs" aria-label="Sections">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
 <div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"></div><div class="toast" role="status" aria-live="polite"></div>

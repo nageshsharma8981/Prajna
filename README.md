@@ -1519,6 +1519,23 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.45: The app has an icon (5 Sep 2026)
+
+The last desk without a picture. An app added to a home screen had no icon
+at all, and nothing on its own screens said what it was.
+
+The app contract now carries the illustrate step: one icon, drawn on the
+owner's image key from the app's name and what its first screen is for, as
+a flat centred symbol with no text, square, at 1024. It is the home-screen
+icon and the tab icon, it sits beside the app's name at the top of every
+screen, and it heads the settings sheet, which says who drew it. Without an
+image key the house draws its own from the app's initial on the accent
+colour, and says so. The open ticket's key plan counts it.
+
+Proved on a delivered app: the home-screen link points at the generated
+icon, it loads at 1024 by 1024 beside the name, and the settings sheet
+carries it with the line naming the model.
+
 ## v1.44: The deck file narrates in PowerPoint (5 Sep 2026)
 
 The PowerPoint export carried the pictures and the presenter notes; the

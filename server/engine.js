@@ -122,6 +122,7 @@ const PLANS = {
     { id: 's3', title: 'Screen inventory & navigation', tool: 'storyboard', cost: 8, access: 'read', dependsOn: ['s1'] },
     { id: 's4', title: 'Build the tappable prototype, 4 screens, tab bar', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Access audit: touch targets, contrast', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
+    { id: 's6', title: 'Illustrate: an app icon on your image key', tool: 'illustrate', cost: 3, access: 'write', dependsOn: ['s4'] },
   ],
   analysis: (s) => [
     { id: 's1', title: `Define the question, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
@@ -197,11 +198,11 @@ export function keyPlanFor(m) {
   const bench = [m.lead, ...(m.advisers || [])].map((id) => modelById(id)).filter(Boolean);
   const live = bench.filter((x) => store.keyFor(x.provider));
   const mediaOn = !!ws().tools?.media;
-  const images = m.desk === 'deck' ? 7 : m.desk === 'site' ? 1 : 0;
+  const images = m.desk === 'deck' ? 7 : m.desk === 'site' || m.desk === 'mobile' ? 1 : 0;
   const speech = m.desk === 'deck' ? 9 : 0;
   return {
     authoring: live.length ? { calls: 1 + Math.max(0, live.length - 1), models: live.map((x) => x.name) } : null,
-    images: images ? { count: images, size: m.desk === 'site' ? '1024×1536' : '1536×1024', on: held.image && mediaOn ? PROVIDER_LABEL[held.image] : null } : null,
+    images: images ? { count: images, size: m.desk === 'site' ? '1024×1536' : m.desk === 'mobile' ? '1024×1024' : '1536×1024', on: held.image && mediaOn ? PROVIDER_LABEL[held.image] : null } : null,
     speech: speech ? { clips: speech, on: held.speech && mediaOn ? PROVIDER_LABEL[held.speech] : null, voice: ws().voice || null } : null,
     mediaOff: (images || speech) ? !mediaOn : false,
   };
@@ -727,7 +728,9 @@ async function applyEvent(m, ev, notify, runner) {
       // hero, drawn from the brand, the headline and the line under it.
       const wanted = m.desk === 'site'
         ? [{ i: 0, sl: { k: 'hero', h: `${String(m.authored?.content?.brand || '').trim()} ${String(m.authored?.content?.headline || subjectOf(m.goal)).trim()}`.trim(), s: String(m.authored?.content?.sub || m.goal).trim() } }]
-        : deckSlides(m).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
+        : m.desk === 'mobile'
+          ? [{ i: 0, sl: { k: 'icon', h: `an app icon for “${String(m.authored?.content?.short || subjectOf(m.goal)).trim()}”`, s: String(m.authored?.content?.screens?.[0]?.body || m.goal).trim() } }]
+          : deckSlides(m).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
       if (!k) {
         pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `no image key in memory (OpenAI or Google), so the house draws its own ${wanted.length} visuals; load a key under Your keys and re-run for generated images` }, notify);
         return 'ok';
@@ -737,7 +740,9 @@ async function applyEvent(m, ev, notify, runner) {
         return 'ok';
       }
       const mediaDir = path.join(DATA_DIR, 'media'); fs.mkdirSync(mediaDir, { recursive: true });
-      const style = m.desk === 'site'
+      const style = m.desk === 'mobile'
+        ? 'Flat app icon, one bold centred symbol, two or three solid colours, no text, no letters, no numbers, no border, filling the square edge to edge'
+        : m.desk === 'site'
         ? 'Product photograph for a landing page hero, natural light, clean background, the product or its setting in use, no text, no logos, no watermarks, tall 4:5 composition'
         : 'Cinematic editorial photograph, natural light, shallow depth of field, no text, no logos, no watermarks, muted warm palette, wide 3:2 composition with space on the left for a headline';
       let made = 0; const failed = [];
@@ -749,7 +754,7 @@ async function applyEvent(m, ev, notify, runner) {
         while (queue.length) {
           const job = queue.shift(); const started = Date.now();
           const prompt = `${style}. Subject: ${String(job.sl.h).replace(/<[^>]+>/g, '')}. Context: ${String(job.sl.s).replace(/<[^>]+>/g, '').slice(0, 300)}`;
-          try { results.push({ ...job, prompt, started, out: await capped(generateImage({ provider: prov, key: k.key, baseUrl: k.baseUrl, prompt, size: m.desk === 'site' ? '1024x1536' : '1536x1024' }), 90000) }); }
+          try { results.push({ ...job, prompt, started, out: await capped(generateImage({ provider: prov, key: k.key, baseUrl: k.baseUrl, prompt, size: m.desk === 'site' ? '1024x1536' : m.desk === 'mobile' ? '1024x1024' : '1536x1024' }), 90000) }); }
           catch (e) { results.push({ ...job, prompt, started, error: e }); }
         }
       }));
