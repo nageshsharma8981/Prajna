@@ -144,6 +144,11 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /<nav>/) && has(h, /class="hero"/) && has(h, /id="how"/) && has(h, /id="join"/), surface: (h) => has(h, /href="#join"/) && has(h, /href="#how"/) },
     { id: 'VAL-RESPONSIVE', title: 'The page reflows below 800px', owner: 'build',
       scrutiny: (h) => has(h, /@media\(max-width:800px\)/), surface: (h) => has(h, /grid-template-columns:1fr;/) },
+    // A landing page has one job, to get a visitor to act. A dead link where
+    // the action should be is a picture of a page, not a page.
+    { id: 'VAL-ACTION-WORKS', title: 'The closing call to action is a working form that validates and confirms', owner: 'build',
+      scrutiny: (h) => has(h, /<form class="join" novalidate/) && has(h, /name="email"/) && has(h, /class="err" role="alert"/) && has(h, /class="joined" hidden/),
+      surface: (h) => has(h, /addEventListener\('submit'/) && has(h, /localStorage\.setItem/) && !has(h, /<a class="btn" href="#">/) },
     CARRIED('build'),
     { id: 'VAL-PROOF-REAL', title: 'The proof section shows real proof, not a placeholder', owner: 'copy-cutter',
       scrutiny: (h) => !has(h, /This slot awaits your real case study/) && !has(h, /replace with real capture/i),

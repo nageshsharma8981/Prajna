@@ -1519,6 +1519,27 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.32: The landing page's action works (5 Sep 2026)
+
+A landing page has one job, to get a visitor to act, and every call to
+action on a delivered page was a dead link: two pointed at anchors and the
+closing one pointed at nothing at all. The same defect the app had, held to
+the same standard.
+
+The closing action is now a working form. It validates in its own words: an
+address is needed, that does not look like an address, that address is
+already on the list. On success the form gives way to a confirmation
+addressed by name, focus moves to it so a screen reader hears it, and a line
+under it counts who is on the list. Entries are kept on the device under the
+mission's serial until the house connects the page to a mailbox or a sheet,
+and the confirmation says exactly that: nothing has been sent anywhere. The
+header and hero buttons scroll to the form and put the cursor in the email
+field. A new gate assertion, VAL-ACTION-WORKS, refuses a page whose closing
+action is a dead link, so this cannot quietly regress.
+
+Proved by driving a delivered page in the browser: header button, empty
+address, bad address, success, duplicate, reload.
+
 ## v1.31: The app works, and the result comes first (5 Sep 2026)
 
 Three things asked for in one message, all three shipped.

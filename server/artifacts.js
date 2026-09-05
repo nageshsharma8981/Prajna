@@ -322,17 +322,51 @@ deck.addEventListener('click',()=>go(1));
 
 /* ----------------------------------- SITE --------------------------------- */
 
+// The landing page's own runtime, serialised into the artifact the same way
+// the app's is. The page has one job, to get a visitor to act, so the action
+// has to work: the form validates in its own words, keeps what it captures
+// on this device under the mission's serial until a connector gives it
+// somewhere to go, confirms plainly, and says exactly where the entry went.
+function siteRuntime() {
+  const KEY = 'prajna-site-' + document.documentElement.dataset.serial;
+  const $ = (q, el) => (el || document).querySelector(q);
+  const form = $('form.join');
+  const email = $('[name=email]', form), name = $('[name=name]', form), err = $('.err', form), ok = $('.joined');
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+  const count = () => { const n = load().length; $('.count').textContent = n ? (n === 1 ? 'One person on the list, kept on this device.' : n + ' people on the list, kept on this device.') : ''; };
+  document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => {
+    const id = a.getAttribute('href').slice(1); const to = id && document.getElementById(id);
+    if (!to) return; e.preventDefault(); to.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (id === 'join') setTimeout(() => email.focus({ preventScroll: true }), 450);
+    history.replaceState(null, '', '#' + id);
+  }));
+  form.addEventListener('submit', (e) => {
+    e.preventDefault(); err.textContent = '';
+    const v = email.value.trim(), n = name.value.trim();
+    if (!v) { err.textContent = 'An email address is needed.'; email.focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { err.textContent = 'That does not look like an email address.'; email.focus(); return; }
+    const list = load();
+    if (list.some((x) => x.email.toLowerCase() === v.toLowerCase())) { err.textContent = 'That address is already on the list.'; email.focus(); return; }
+    list.push({ email: v, name: n, at: Date.now() });
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (x) { err.textContent = 'This browser will not keep the entry. It was not saved.'; return; }
+    form.hidden = true; ok.hidden = false; ok.querySelector('b').textContent = n ? 'Thanks, ' + n + '.' : 'Thanks.'; ok.focus(); count();
+  });
+  $('.again').addEventListener('click', () => { form.hidden = false; ok.hidden = true; form.reset(); email.focus(); });
+  count();
+}
+
 export function siteArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
   const A = authored(mission);
   const proofPatched = (mission.patches || []).includes('VAL-PROOF-REAL');
   const why = A ? A.why.slice(0, 3).map((w) => ({ k: esc(str(w.k, 'Why')), h: esc(str(w.h)), p: esc(str(w.p)) })) : null;
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+  const html = `<!doctype html><html lang="en" data-serial="${esc(mission.serial)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t}</title>
 <style>
 :root{--ink:#101c16;--ground:#eef1ea;--acc:#1d5c3a;--acc2:#dbe8d2}
+html{scroll-behavior:smooth}
 *{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:17px/1.6 'Avenir Next','Segoe UI',system-ui,sans-serif}
 nav{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 5vw;max-width:72rem;margin:0 auto}
 .logo{font-weight:800;letter-spacing:.04em}
@@ -355,6 +389,16 @@ repeating-linear-gradient(-35deg,transparent 0 26px,rgba(255,255,255,.09) 26px 2
 .final{background:var(--acc2);margin-top:4vh;padding:9vh 5vw;text-align:center}
 .final h2{font-size:clamp(1.8rem,3.6vw,2.8rem);letter-spacing:-.02em;margin:0 0 1.6rem}
 footer{padding:2rem 5vw;font-size:.85rem;color:#6c7a70;max-width:72rem;margin:0 auto}
+.join{display:grid;grid-template-columns:1fr 1.4fr auto;gap:.8rem;align-items:end;max-width:44rem;margin:0 auto;text-align:left}
+.join label{display:flex;flex-direction:column;gap:.3rem;font-size:.8rem;font-weight:600;color:#3d4a41}
+.join input{font:inherit;padding:.8rem 1rem;border:1px solid #b9c7ba;border-radius:.7rem;background:#fff;color:var(--ink);min-height:44px}
+.join input:focus{outline:2px solid var(--acc);outline-offset:1px}
+.join .btn{border:none;font:inherit;cursor:pointer;min-height:44px}
+.join .err{grid-column:1/-1;margin:0;min-height:1.4em;color:#a2402f;font-size:.9rem}
+.joined{max-width:44rem;margin:0 auto;font-size:1rem;color:#3d4a41}.joined b{color:var(--ink)}
+.again{background:none;border:none;color:var(--acc);font:inherit;font-weight:700;cursor:pointer;text-decoration:underline;padding:.4rem;min-height:44px}
+.count{font-size:.85rem;color:#6c7a70;margin:1rem 0 0}
+@media(max-width:800px){.join{grid-template-columns:1fr}}
 @media(max-width:800px){.hero{grid-template-columns:1fr;padding-top:5vh}.why{grid-template-columns:1fr;gap:2rem}}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}
@@ -378,9 +422,17 @@ ${why ? `  <div><h3><em>${why[0].k}</em>, ${why[0].h}</h3><p>${why[0].p}</p></di
 ${mission.dissent ? `<aside class="carried-dissent" style="max-width:72rem;margin:0 auto;padding:1.2rem 5vw;font-size:.92rem;color:#3d4a41;border-top:1px solid #c9d3c7"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</aside>` : ''}
 <section class="final" id="join">
   <h2>${A ? esc(str(A.closing?.h, 'Be first through the door.')) : 'Be first through the door.'}</h2>
-  <a class="btn" href="#">${A ? esc(str(A.closing?.cta, 'Join the waitlist')) : 'Join the waitlist'}</a>
+  <form class="join" novalidate aria-label="Join">
+    <label><span>Your name</span><input name="name" type="text" maxlength="80" autocomplete="name" placeholder="Optional"></label>
+    <label><span>Email</span><input name="email" type="email" maxlength="160" autocomplete="email" required placeholder="you@example.com"></label>
+    <button class="btn" type="submit">${A ? esc(str(A.closing?.cta, 'Join the waitlist')) : 'Join the waitlist'}</button>
+    <p class="err" role="alert" aria-live="assertive"></p>
+  </form>
+  <div class="joined" hidden tabindex="-1" role="status"><b>Thanks.</b> You are on the list. The entry is kept on this device until the house connects this page to a mailbox or a sheet; nothing has been sent anywhere. <button type="button" class="again">Add another</button></div>
+  <p class="count" aria-live="polite"></p>
 </section>
 <footer>${provenance(mission)}</footer>
+<script>(${siteRuntime.toString()})();</script>
 </body></html>`;
   return { title: `${subject}, Landing page`, kind: 'site', html };
 }
