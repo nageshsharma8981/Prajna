@@ -419,7 +419,7 @@ function deckFilm() {
     el: s, title: (s.querySelector('h1,h2') || {}).textContent || '', sub: (s.querySelector('.sub') || {}).textContent || '',
     label: (s.querySelector('.run') || {}).textContent || '', notes: (s.querySelector('.notes') || {}).textContent || '',
     img: s.querySelector('img.visual') ? s.querySelector('img.visual').getAttribute('src') : null,
-    audio: s.dataset.narration ? '/api/media/' + s.dataset.narration : null,
+    audio: s.dataset.narrationSrc || (s.dataset.narration ? '/api/media/' + s.dataset.narration : null),
     kind: s.classList.contains('title') ? 'title' : s.classList.contains('big') ? 'big' : s.classList.contains('end') ? 'end' : 'claim',
   }));
   const acc = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#b0472f';

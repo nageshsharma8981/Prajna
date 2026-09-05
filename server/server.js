@@ -1224,12 +1224,24 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // Audit bundle: the whole record of a mission in one file, for handover.
+  // A self-contained copy of a delivery: every picture and clip the page
+  // asks the house for is carried inside it, so the file still shows and
+  // speaks on a machine that has never seen this house.
+  const inlineMedia = (html) => String(html || '').replace(/(src|href)="\/api\/media\/([a-f0-9]{16})(?:\.[a-z0-9]{2,5})?"/g, (whole, attr, id) => {
+    const rec = ws().media.find((x) => x.id === id);
+    if (!rec) return whole;
+    try { return `${attr}="data:${rec.mime};base64,${fs.readFileSync(path.join(MEDIA_DIR, `${rec.id}.${rec.ext}`)).toString('base64')}"`; } catch { return whole; }
+  }).replace(/ data-narration="([a-f0-9]{16})"/g, (whole, id) => {
+    const rec = ws().media.find((x) => x.id === id);
+    if (!rec) return whole;
+    try { return `${whole} data-narration-src="data:${rec.mime};base64,${fs.readFileSync(path.join(MEDIA_DIR, `${rec.id}.${rec.ext}`)).toString('base64')}"`; } catch { return whole; }
+  });
   const bundleMatch = p.match(/^\/api\/missions\/([\w]+)\/bundle$/);
   if (bundleMatch) {
     const m = store.missionFull(bundleMatch[1]);
     if (!m) return json(res, 404, { error: 'Mission not found.' });
     const a = m.artifactId ? store.artifact(m.artifactId) : null;
-    const html = m.artifactId ? store.artifactHtml(m.artifactId) : null;
+    const html = m.artifactId ? inlineMedia(store.artifactHtml(m.artifactId)) : null;
     if (url.searchParams.get('format') === 'json') return json(res, 200, { schema: 'prajna.bundle.v1', exportedAt: Date.now(), mission: pub(m), artifact: a || null, artifactHtml: html });
     const name = `${m.serial}-audit-bundle.html`;
     const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' };

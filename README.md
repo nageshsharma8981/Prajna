@@ -1519,6 +1519,22 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.49: The audit bundle keeps its promise (5 Sep 2026)
+
+The audit bundle calls itself one self-contained file: contract, tape,
+decisions, validation, sources, settlement, and the delivery. An
+illustrated, narrated deck broke that quietly: its page asked the house for
+every picture and clip by address, and a bundle opened on another machine,
+or after the house was gone, showed a deck with holes in it and a film
+with no voice.
+
+Every picture and clip the delivery asks the house for now travels inside
+the bundle as data, and the film runtime prefers an inlined clip when one
+is present. Nothing in the bundle is fetched from the house.
+
+Proved on a narrated, illustrated deck: no picture or clip in the bundle is
+fetched from the house; seven pictures and nine clips inside it.
+
 ## v1.48: A shared deck keeps its pictures through a shut door (5 Sep 2026)
 
 A shared page is public by its link. Its pictures and narration were served

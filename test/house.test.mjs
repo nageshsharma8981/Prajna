@@ -1914,6 +1914,12 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok((repaired.actions || []).some((x) => x.id === 'media-store' && /1 orphan media file\(s\) removed/.test(x.detail)), `repair names what it removed: ${JSON.stringify(repaired.actions)}`);
     assert.ok(!fs.existsSync(path.join(lit.DIR, 'media', 'deadbeefdeadbeef.png')), 'the orphan is gone');
     assert.ok(fs.existsSync(path.join(lit.DIR, 'media', m1.visuals[0].file)), 'and a file a mission points at is kept');
+    // The audit bundle is one self-contained file: its pictures and clips
+    // travel inside it, and it asks the house for nothing.
+    const bundle = await (await fetch(`${lit.B}/api/missions/${m1.id}/bundle?download=1`, { headers: hdr(lit.cookie) })).text();
+    assert.ok(!/(?:src|href)=(?:"|&quot;)\/api\/media\//.test(bundle), 'no picture or clip in the bundle is fetched from the house');
+    assert.ok((bundle.match(/data:image\/png;base64,/g) || []).length >= 7, 'seven pictures travel inside it');
+    assert.ok((bundle.match(/data-narration-src=&quot;data:audio\/wav;base64,/g) || []).length >= 9, 'and nine clips, where the film will find them');
     // And the PowerPoint carries the same pictures.
     const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
     const names = pptx.toString('latin1');
