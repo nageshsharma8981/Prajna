@@ -1427,8 +1427,11 @@ test('a reader can see what each claim rests on, in the delivery itself', async 
     assert.ok(good.citations?.length, 'the check is kept on the record');
     assert.ok(good.citations.every((c) => c.shared?.length), JSON.stringify(good.citations));
     const goodHtml = await (await fetch(`${B8}/api/artifacts/${good.artifactId}/html`)).text();
-    assert.match(goodHtml, /rests on Kerala ferry subsidy, which uses/);
-    assert.match(goodHtml, /<em>passenger<\/em>|<em>subsidy<\/em>|<em>coastal<\/em>/);
+    assert.match(goodHtml, /rests on Kerala ferry subsidy, which says/);
+    // Not a report about the source: the source's own line, on the page, so
+    // the reader can judge it without going anywhere.
+    assert.ok(goodHtml.includes('<q>The Kerala ferry subsidy programme lowered fares on coastal routes and raised passenger numbers across the district.</q>'), 'the supporting sentence is quoted where the claim is');
+    assert.ok(good.citations.every((c) => c.quote?.line), 'and the record keeps the line the check found');
     assert.ok(!goodHtml.includes('does not mention'), 'a supported claim is not flagged');
 
     honest = false;

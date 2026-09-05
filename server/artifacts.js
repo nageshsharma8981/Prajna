@@ -153,9 +153,11 @@ export function briefArtifact(mission) {
   const support = (text) => {
     const row = cites.find((x) => String(x.text).slice(0, 40) === String(text).slice(0, 40));
     if (!row || !row.judged) return '';
-    return row.shared?.length
-      ? `<span class="cite-check">rests on ${esc(row.title)}, which uses ${row.shared.slice(0, 4).map((w) => `<em>${esc(w)}</em>`).join(', ')}</span>`
-      : `<span class="cite-check gone">the source named here does not mention ${esc((row.missing || []).slice(0, 3).join(', '))}; accepted on the record</span>`;
+    if (!row.shared?.length) return `<span class="cite-check gone">the source named here does not mention ${esc((row.missing || []).slice(0, 3).join(', '))}; accepted on the record</span>`;
+    // Show the line, not a report about the line. A reader can judge whether
+    // the source really says this without leaving the page.
+    if (row.quote?.line) return `<span class="cite-check">rests on ${esc(row.title)}, which says: <q>${esc(row.quote.line)}</q></span>`;
+    return `<span class="cite-check">rests on ${esc(row.title)}, which uses ${row.shared.slice(0, 4).map((w) => `<em>${esc(w)}</em>`).join(', ')}, though no single line of it carries the claim</span>`;
   };
   const claimsHtml = CLAIMS.map((c) => `<p><strong class="claim" data-ref="${c.ref}" data-snippet="${esc(c.snippet)}">${esc(c.text)}</strong><span class="grade g${c.grade}">${c.grade}</span><a class="refmark" href="#${c.ref}">[${c.ref.replace('src-', '')}]</a> ${esc(c.detail)}${support(c.text)}</p>`).join('\n');
   const referencesHtml = citedRefs.map((r) => {
@@ -183,6 +185,7 @@ h2{font:700 1.05rem/1.3 Verdana,sans-serif;letter-spacing:.02em;margin:2.6rem 0 
 .claim{cursor:help}
 .cite-check{display:block;font:400 .72rem/1.5 Verdana,sans-serif;color:#6b6857;margin:.2em 0 0}
 .cite-check em{font-style:normal;border-bottom:1px solid #c9c2ab}
+.cite-check q{color:#4c4a44;font-style:italic}
 .cite-check.gone{color:#a2402f}
 table{width:100%;border-collapse:collapse;font-size:.9rem;margin:1rem 0}
 th{font:700 .72rem/1.3 Verdana,sans-serif;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:#777;border-bottom:2px solid var(--ink);padding:.5rem .6rem .4rem 0}

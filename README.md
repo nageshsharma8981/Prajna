@@ -1519,6 +1519,20 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.28: The claim shows the line it rests on (5 Sep 2026)
+
+Under every cited claim the delivery used to say the source "uses" three of
+the claim's words. That is a report about the source, and a reader had no way
+to check it without leaving the page and reading the whole article.
+
+Now the check keeps the sentence it found. It scores every line in the
+retrieved source by how many of the claim's own words it carries, takes the
+best one, and the delivery quotes it directly under the claim. The reader
+sees what the source actually says and can judge the claim against it in
+place. When no single line carries the claim, the delivery says exactly that
+instead of quoting something that does not support it, and a claim whose
+source does not speak to it is still flagged as before.
+
 ## v1.27: The house rules are accepted by a person (5 Sep 2026)
 
 Consent was recorded against the building. The first visitor to accept the

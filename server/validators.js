@@ -52,6 +52,22 @@ const CITE_STOP = new Set(['about', 'above', 'across', 'after', 'against', 'almo
 export function distinctive(text, limit = 8) {
   return [...new Set(String(text).toLowerCase().match(/[a-z][a-z-]{5,}/g) || [])].filter((w) => !CITE_STOP.has(w)).slice(0, limit);
 }
+// The sentence in a source that carries the most of a claim's own words.
+// Null when nothing in the source is worth quoting, which is honest: the
+// claim then rests on the source's title alone and the line says so.
+function bestLine(text, terms) {
+  const flat = String(text).replace(/\s+/g, ' ').trim();
+  if (!flat) return null;
+  const sentences = flat.split(/(?<=[.!?])\s+(?=[A-Z(])/).filter((x) => x.length >= 40 && x.length <= 400);
+  let best = null; let bestHits = 0;
+  for (const sen of sentences) {
+    const low = sen.toLowerCase();
+    const hits = terms.filter((t) => low.includes(t)).length;
+    if (hits > bestHits) { bestHits = hits; best = sen; }
+  }
+  if (!best || bestHits === 0) return null;
+  return { line: best.length > 240 ? `${best.slice(0, 237).trim()}…` : best.trim(), hits: bestHits };
+}
 function unsupportedCitations(mission) {
   const A = mission?.authored;
   if (!A || !(A.live || A.composed) || !A.content) return { ok: true, detail: 'scripted substance is house-labelled sample; citations not checked' };
@@ -67,7 +83,11 @@ function unsupportedCitations(mission) {
     const terms = distinctive(c.text);
     if (!terms.length) { found.push({ text: c.text, src: Number(c.src), title: src.title, judged: false }); continue; }
     const shared = terms.filter((t) => hay.includes(t));
-    found.push({ text: c.text, src: Number(c.src), title: src.title, judged: true, shared, missing: shared.length ? [] : terms.slice(0, 4) });
+    // "Shares wording with the source" is a claim about the source, and a
+    // reader has no way to check it without leaving the page. So the check
+    // also keeps the line it found: the one sentence in the source that
+    // carries the most of the claim's own words, quoted where the claim is.
+    found.push({ text: c.text, src: Number(c.src), title: src.title, judged: true, shared, missing: shared.length ? [] : terms.slice(0, 4), quote: shared.length ? bestLine(`${src.extract || ''} ${src.text || ''}`, shared) : null });
     if (!shared.length) bad.push(`“${String(c.text).slice(0, 70)}…” cites [${c.src}] ${src.title}, which does not mention ${terms.slice(0, 3).join(', ')}`);
   }
   // What the check saw, kept on the mission so the delivery can show it.
