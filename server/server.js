@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { store, houseRevision } from './store.js';
 import { MODELS, DESKS, SKILLS, CONNECTORS, modelById, allModels, bindCustomModels } from './catalog.js';
 import { PROVIDERS, testKey, maskKey, synthesizeSpeech } from './providers.js';
-import { liveSeat, editPlan, PLAN_TOOLS } from './engine.js';
+import { liveSeat, editPlan, PLAN_TOOLS, keyPlanFor } from './engine.js';
 import { OAUTH_PROVIDERS, providerForConnector, startUrl, finishCallback, redirectUri } from './oauth.js';
 import { ws, flushWs, publicWs, createChat, getChat, addMessage, deleteChat, renameChat, DECK_TEMPLATES, PLUGINS, TOOLS, CONNECTOR_CATALOG, PLANS as PLAN_TIERS, chatFor } from './workspace.js';
 import { callModel, streamModel, generateImage } from './providers.js';
@@ -1104,7 +1104,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     // What this kind of work has actually cost here, counted at read time so
     // it is never stale: most useful on a ticket nobody has stamped yet.
     const h = costHistory({ desk: m.desk, depth: m.depth, variant: m.variant, exclude: m.id });
-    return json(res, 200, { ...pub(m), history: { ...h, line: historyLine(h, m.contract?.estimate) } });
+    // And what it will ask of the owner's key, for a ticket not yet stamped.
+    return json(res, 200, { ...pub(m), history: { ...h, line: historyLine(h, m.contract?.estimate) }, ...(m.status === 'OPEN' ? { keyPlan: keyPlanFor(m) } : {}) });
   }
 
   // ---- Community showcase: a delivered artifact, submitted with its provenance, becomes public ----

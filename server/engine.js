@@ -189,6 +189,24 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   return bits.join(' ');
 }
 
+// What a ticket will ask of the owner's key, said before it is stamped:
+// house credits are on the contract already; this is the other bill.
+// Computed when asked, against the keys held now, so it is never stale.
+export function keyPlanFor(m) {
+  const held = { image: ['openai', 'google'].find((id) => store.keyFor(id)) || null, speech: ['openai', 'google'].find((id) => store.keyFor(id)) || null };
+  const bench = [m.lead, ...(m.advisers || [])].map((id) => modelById(id)).filter(Boolean);
+  const live = bench.filter((x) => store.keyFor(x.provider));
+  const mediaOn = !!ws().tools?.media;
+  const images = m.desk === 'deck' ? 7 : m.desk === 'site' ? 1 : 0;
+  const speech = m.desk === 'deck' ? 9 : 0;
+  return {
+    authoring: live.length ? { calls: 1 + Math.max(0, live.length - 1), models: live.map((x) => x.name) } : null,
+    images: images ? { count: images, size: m.desk === 'site' ? '1024×1536' : '1536×1024', on: held.image && mediaOn ? PROVIDER_LABEL[held.image] : null } : null,
+    speech: speech ? { clips: speech, on: held.speech && mediaOn ? PROVIDER_LABEL[held.speech] : null, voice: ws().voice || null } : null,
+    mediaOff: (images || speech) ? !mediaOn : false,
+  };
+}
+
 export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages, by }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);

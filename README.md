@@ -1519,6 +1519,25 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.42: The ticket names the other bill (5 Sep 2026)
+
+A deck now spends on the owner's key at three steps, authoring, images and
+speech, and a landing page at two. The contract priced the house credits
+for every step and said nothing before stamping about what the key would
+be asked for. Now an open ticket says it: "On your key, not house credits:
+1 authoring call to the lead; 7 images at 1536 by 1024 on OpenAI; 9
+narration clips on OpenAI in the voice onyx." Or, without keys, that the
+house will draw and the browser will speak, and if Media Generation is off
+that nothing will be made. It is counted against the keys held now, when the
+ticket is read, so it is never stale, and it disappears once the ticket is
+stamped, because then the record is the truth and not a forecast.
+
+A defect found on the way: the run page takes its mission from the live
+stream's snapshot, and the line saying what this kind of work has cost here
+before, added in v1.24, came only from the mission endpoint. It had never
+reached the page. Both lines are now merged in once the record is on
+screen, and both were seen on an open ticket in the browser.
+
 ## v1.41: Choose the voice, and hear it first (5 Sep 2026)
 
 The film speaks in a voice nobody could choose. Settings now has a

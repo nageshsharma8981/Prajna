@@ -184,6 +184,10 @@ export default function Run({ id }) {
         if (ev.type === 'author.writing') { setWriting(ev.done ? null : ev); return; }
         if (ev.type === 'snapshot') {
           setMission(ev.mission);
+          // The stream's snapshot is the record; what a ticket has cost here
+          // before and what it will ask of the key come from the mission
+          // endpoint, so they are merged in once the record is on screen.
+          fetch(`/api/missions/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j) setMission((m) => (m ? { ...m, history: j.history || m.history, keyPlan: j.keyPlan } : m)); }).catch(() => { /* the record stands without them */ });
           setEvents(ev.mission.events || []);
           const lastCost = [...(ev.mission.events || [])].reverse().find((x) => x.type === 'cost' && x.estimateSoFar != null);
           if (lastCost) setBurn({ total: lastCost.total, estimateSoFar: lastCost.estimateSoFar, variance: lastCost.variance ?? 0 });
@@ -764,6 +768,16 @@ export default function Run({ id }) {
                   </span>
                 )}
                 {mission.history?.line && <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>{mission.history.line}</span>}
+                {mission.keyPlan && (() => {
+                  // The other bill: what this ticket will ask of the owner's
+                  // key, said before it is stamped, against the keys held now.
+                  const k = mission.keyPlan; const parts = [];
+                  if (k.authoring) parts.push(`${k.authoring.calls} authoring call${k.authoring.calls === 1 ? '' : 's'} to ${k.authoring.models.join(' and ')}`);
+                  if (k.images) parts.push(k.images.on ? `${k.images.count} image${k.images.count === 1 ? '' : 's'} at ${k.images.size} on ${k.images.on}` : `no image key held, so the house draws its ${k.images.count === 1 ? 'own hero' : 'own visuals'}`);
+                  if (k.speech) parts.push(k.speech.on ? `${k.speech.clips} narration clips on ${k.speech.on}${k.speech.voice ? ` in the voice ${k.speech.voice}` : ''}` : 'no speech key held, so the film reads with the browser voice');
+                  if (!parts.length) return null;
+                  return <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>On your key, not house credits: {parts.join('; ')}.{k.mediaOff ? ' Media Generation is off under Tools, so no images or narration will be made.' : ''} Counted against the keys held now.</span>;
+                })()}
                 {mission.contract?.ceilingFrom?.from === 'history' && (
                   <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>The ceiling is {mission.contract.ceiling} rather than the {mission.contract.ceilingFrom.table} the step table gives, because {mission.contract.ceilingFrom.n} of this kind settled as high as {mission.contract.ceilingFrom.high}. Reserving honestly costs nothing: what a run does not use is released.</span>
                 )}

@@ -1850,7 +1850,12 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal(heard.status, 200, 'the voice can be heard on the key');
     assert.match(heard.headers.get('content-type') || '', /^audio\/wav/); assert.equal(heard.headers.get('x-voice'), 'onyx');
     const leadLit = await (await fetch(`${lit.B}/api/models`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
+    // Before anything is stamped, the ticket says what the key will pay for.
+    const open1 = await (await fetch(`${lit.B}/api/missions`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ goal: 'Key plan: a deck for a Kochi ferry pass', deskId: 'deck', depth: 'fast', lead: leadLit.id, advisers: [] }) })).json();
+    const kp = (await (await fetch(`${lit.B}/api/missions/${open1.id}`, { headers: hdr(lit.cookie) })).json()).keyPlan;
+    assert.deepEqual({ images: kp.images.count, on: kp.images.on, clips: kp.speech.clips, spoken: kp.speech.on, voice: kp.speech.voice, authoring: kp.authoring.calls, off: kp.mediaOff }, { images: 7, on: 'OpenAI', clips: 9, spoken: 'OpenAI', voice: 'onyx', authoring: 1, off: false }, 'the open ticket names the other bill');
     const m1 = await run(lit.B, lit.cookie, leadLit.id);
+    assert.equal((await (await fetch(`${lit.B}/api/missions/${m1.id}`, { headers: hdr(lit.cookie) })).json()).keyPlan, undefined, 'a stamped ticket carries the record, not a forecast');
     assert.equal(m1.status, 'FILLED');
     assert.ok(m1.contract.plan.some((p) => p.tool === 'illustrate'), 'the contract carries the illustrate step');
     assert.equal(images, 7, 'seven images asked for: the title and six arguments');
@@ -1895,6 +1900,9 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal((await fetch(`${lit.B}/api/voice`, { method: 'PUT', headers: hdr(guestJar), body: JSON.stringify({ voice: 'nova' }) })).status, 403, 'a guest cannot set the voice');
     // Without a key: the house draws, and says so.
     const leadDark = await (await fetch(`${dark.B}/api/models`, { method: 'POST', headers: hdr(dark.cookie), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
+    const open2 = await (await fetch(`${dark.B}/api/missions`, { method: 'POST', headers: hdr(dark.cookie), body: JSON.stringify({ goal: 'Key plan: a deck without a key', deskId: 'deck', depth: 'fast', lead: leadDark.id, advisers: [] }) })).json();
+    const kp2 = (await (await fetch(`${dark.B}/api/missions/${open2.id}`, { headers: hdr(dark.cookie) })).json()).keyPlan;
+    assert.deepEqual({ on: kp2.images.on, spoken: kp2.speech.on, authoring: kp2.authoring }, { on: null, spoken: null, authoring: null }, 'without keys the ticket says the house will draw and the browser will speak');
     const m2 = await run(dark.B, dark.cookie, leadDark.id);
     assert.equal(m2.status, 'FILLED');
     assert.equal((m2.visuals || []).length, 0);
