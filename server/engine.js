@@ -682,7 +682,20 @@ async function applyEvent(m, ev, notify, runner) {
       m.narration = [];
       const prov = ['openai', 'google'].find((id) => store.keyFor(id));
       const k = prov ? store.keyFor(prov) : null;
-      const slides = deckSlides(m).map((sl, i) => ({ i, text: String(sl.notes || '').replace(/<[^>]+>/g, '').trim() })).filter((x) => x.text);
+      let slides = deckSlides(m).map((sl, i) => ({ i, text: String(sl.notes || '').replace(/<[^>]+>/g, '').trim() })).filter((x) => x.text);
+      // Unchanged notes keep the parent's clip.
+      const parentN = m.lineage?.parentId ? store.missionFull(m.lineage.parentId) : null;
+      if (parentN && Array.isArray(parentN.narration) && parentN.narration.length) {
+        const pn = new Map(deckSlides(parentN).map((sl, i) => [i, String(sl.notes || '').replace(/<[^>]+>/g, '').trim()]));
+        const kept = [];
+        slides = slides.filter(({ i, text }) => {
+          const pc = parentN.narration.find((n) => n.slide === i);
+          if (!pc || pn.get(i) !== text) return true;
+          m.narration.push({ ...pc, reused: parentN.serial }); kept.push(i + 1); return false;
+        });
+        if (kept.length) pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: false, detail: `${kept.length} clip(s) kept from ${parentN.serial}, notes on slides ${kept.join(', ')} unchanged; nothing billed for them` }, notify);
+        if (!slides.length) { pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: false, detail: `every slide kept its clip from ${parentN.serial}; nothing was spoken` }, notify); return 'ok'; }
+      }
       if (!k) {
         pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: false, detail: `no speech key in memory (OpenAI or Google), so the film will read the notes with the browser's own voice; a video exported that way carries no narration. Load a key under Your keys and re-run for a spoken track` }, notify);
         return 'ok';
@@ -726,11 +739,27 @@ async function applyEvent(m, ev, notify, runner) {
       const k = prov ? store.keyFor(prov) : null;
       // A deck wants the title and every argument; a landing page wants one
       // hero, drawn from the brand, the headline and the line under it.
-      const wanted = m.desk === 'site'
-        ? [{ i: 0, sl: { k: 'hero', h: `${String(m.authored?.content?.brand || '').trim()} ${String(m.authored?.content?.headline || subjectOf(m.goal)).trim()}`.trim(), s: String(m.authored?.content?.sub || m.goal).trim() } }]
-        : m.desk === 'mobile'
-          ? [{ i: 0, sl: { k: 'icon', h: `an app icon for “${String(m.authored?.content?.short || subjectOf(m.goal)).trim()}”`, s: String(m.authored?.content?.screens?.[0]?.body || m.goal).trim() } }]
-          : deckSlides(m).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
+      const wantedFor = (x) => (x.desk === 'site'
+        ? [{ i: 0, sl: { k: 'hero', h: `${String(x.authored?.content?.brand || '').trim()} ${String(x.authored?.content?.headline || subjectOf(x.goal)).trim()}`.trim(), s: String(x.authored?.content?.sub || x.goal).trim() } }]
+        : x.desk === 'mobile'
+          ? [{ i: 0, sl: { k: 'icon', h: `an app icon for “${String(x.authored?.content?.short || subjectOf(x.goal)).trim()}”`, s: String(x.authored?.content?.screens?.[0]?.body || x.goal).trim() } }]
+          : deckSlides(x).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim'));
+      let wanted = wantedFor(m);
+      // An amended version keeps the parent's picture for every slide whose
+      // words did not change: the same words would buy the same picture, and
+      // the tape says which were kept rather than bought again.
+      const parent = m.lineage?.parentId ? store.missionFull(m.lineage.parentId) : null;
+      if (parent && Array.isArray(parent.visuals) && parent.visuals.length) {
+        const pw = new Map(wantedFor(parent).map((w) => [w.i, w.sl]));
+        const kept = [];
+        wanted = wanted.filter(({ sl, i }) => {
+          const pv = parent.visuals.find((v) => v.slide === i); const ps = pw.get(i);
+          if (!pv || !ps || String(ps.h) !== String(sl.h) || String(ps.s) !== String(sl.s)) return true;
+          m.visuals.push({ ...pv, reused: parent.serial }); kept.push(i + 1); return false;
+        });
+        if (kept.length) pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `${kept.length} picture(s) kept from ${parent.serial}, slides ${kept.join(', ')} unchanged; nothing billed for them` }, notify);
+        if (!wanted.length) { pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `every slide kept its picture from ${parent.serial}; nothing was drawn` }, notify); return 'ok'; }
+      }
       if (!k) {
         pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `no image key in memory (OpenAI or Google), so the house draws its own ${wanted.length} visuals; load a key under Your keys and re-run for generated images` }, notify);
         return 'ok';

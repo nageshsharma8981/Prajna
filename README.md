@@ -1519,6 +1519,24 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.50: An amendment keeps what did not change (5 Sep 2026)
+
+Amending a deck wrote a new version and bought everything again: seven
+pictures and nine clips on the owner's key, even when most slides were
+word for word what they were. The same words buy the same picture.
+
+An amended version now keeps the parent's picture for every slide whose
+headline and support line did not change, and the parent's clip for every
+slide whose notes did not change, and the tape names which were kept and
+that nothing was billed for them. A landing page keeps its hero and an app
+its icon on the same rule. Only what changed is drawn or spoken again. The
+kept files are the same files, so the media store counts them as used and
+repair leaves them alone.
+
+Proved by amending a narrated, illustrated deck with unchanged words: no
+picture drawn again, nothing spoken again, seven pictures and nine clips
+kept from the parent by name, the new version showing them.
+
 ## v1.49: The audit bundle keeps its promise (5 Sep 2026)
 
 The audit bundle calls itself one self-contained file: contract, tape,

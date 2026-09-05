@@ -1957,6 +1957,21 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal((html2.match(/class="visual house"/g) || []).length, 7, 'seven house drawings');
     assert.equal((html2.match(/<img class="visual"/g) || []).length, 0);
     assert.ok(((m2.events || []).filter((e) => e.type === 'gate').pop() || { sealed: [] }).sealed.includes('VAL-ILLUSTRATED'), 'and the gate is satisfied by them');
+    // An amended version with the same words keeps every picture and clip:
+    // nothing is drawn or spoken again, and the tape says what was kept.
+    const imagesBefore = images, spokenBefore = spoken;
+    const forked = await (await fetch(`${lit.B}/api/missions/${m1.id}/fork`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json();
+    assert.ok(forked.id && forked.lineage?.parentId === m1.id, 'the amendment points at its parent');
+    await fetch(`${lit.B}/api/missions/${forked.id}/launch`, { method: 'POST', headers: hdr(lit.cookie) });
+    let m4; { const t0 = Date.now(); while (Date.now() - t0 < 120000) { m4 = await (await fetch(`${lit.B}/api/missions/${forked.id}`, { headers: hdr(lit.cookie) })).json(); if (m4.status === 'FILLED' || m4.status === 'KILLED') break; if (m4.status.startsWith('PAUSED')) { const at = (m4.attention || []).find((x) => !x.decision); if (at) { const pick = ['raise-ceiling', 'accept-risk', 'approve', 'continue'].find((o) => at.options.includes(o)) || at.options[0]; await fetch(`${lit.B}/api/missions/${forked.id}/attention/${at.id}`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ decision: pick, justification: `amend test, ${pick}` }) }); } } await new Promise((r) => setTimeout(r, 300)); } }
+    assert.equal(m4.status, 'FILLED');
+    assert.equal(images, imagesBefore, 'no picture was drawn again'); assert.equal(spoken, spokenBefore, 'nothing was spoken again');
+    assert.equal((m4.visuals || []).length, 7); assert.ok(m4.visuals.every((v) => v.reused === m1.serial), 'every picture kept from the parent');
+    assert.equal((m4.narration || []).length, 9); assert.ok(m4.narration.every((n) => n.reused === m1.serial), 'every clip kept from the parent');
+    assert.ok((m4.events || []).some((e) => e.type === 'log' && /every slide kept its picture from/.test(e.detail)), 'the tape says the pictures were kept');
+    assert.ok((m4.events || []).some((e) => e.type === 'log' && /every slide kept its clip from/.test(e.detail)), 'and the clips');
+    const html4 = await (await fetch(`${lit.B}/api/artifacts/${m4.artifactId}/html`)).text();
+    assert.equal((html4.match(/<img class="visual"/g) || []).length, 7, 'and the new version shows them');
     // The shut house: the owner enters with the code, runs a deck, shares it.
     { const t1 = Date.now(); while (Date.now() - t1 < 15000) { try { if ((await fetch(`${BS}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); } }
     const jar2 = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
