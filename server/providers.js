@@ -29,6 +29,50 @@ export async function braveSearch({ key, baseUrl, q, count = 5 }) {
   return (j.web?.results || []).map((x) => ({ title: x.title, url: x.url, description: String(x.description || '').replace(/<[^>]+>/g, ''), age: x.age || x.page_age || null }));
 }
 
+// Spoken narration on the user's own key. OpenAI-compatible hosts return a
+// WAV directly; Gemini's speech models return raw 24 kHz 16-bit mono PCM,
+// which is wrapped in a WAV header here so every clip leaves as the same
+// kind of file. Returns bytes + mime, never a URL.
+function wavFromPcm(pcm, rate = 24000, channels = 1, bits = 16) {
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8); h.write('fmt ', 12);
+  h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(channels, 22); h.writeUInt32LE(rate, 24);
+  h.writeUInt32LE(rate * channels * (bits / 8), 28); h.writeUInt16LE(channels * (bits / 8), 32); h.writeUInt16LE(bits, 34);
+  h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([h, pcm]);
+}
+export async function synthesizeSpeech({ provider, key, baseUrl, modelId, text, voice }) {
+  if (!key) throw new Error('No key on file for that provider.');
+  const input = String(text || '').trim().slice(0, 4000);
+  if (!input) throw new Error('Nothing to say.');
+  if (provider === 'openai') {
+    const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const model = modelId || 'gpt-4o-mini-tts';
+    const r = await withTimeout(fetch(`${base}/audio/speech`, {
+      method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ model, voice: voice || 'alloy', input, response_format: 'wav' }),
+    }), 90000, 'Speech');
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const bytes = Buffer.from(await r.arrayBuffer());
+    if (bytes.length < 64) throw new Error('The provider returned no audio.');
+    return { bytes, mime: 'audio/wav', model, voice: voice || 'alloy' };
+  }
+  if (provider === 'google') {
+    const model = modelId || 'gemini-2.5-flash-preview-tts';
+    const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: input }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice || 'Kore' } } } } }),
+    }), 90000, 'Gemini speech');
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const j = await r.json();
+    const part = (j.candidates?.[0]?.content?.parts || []).find((x) => x.inlineData);
+    if (!part) throw new Error('Gemini returned no audio part.');
+    const rate = Number((String(part.inlineData.mimeType || '').match(/rate=(\d+)/) || [])[1]) || 24000;
+    return { bytes: wavFromPcm(Buffer.from(part.inlineData.data, 'base64'), rate), mime: 'audio/wav', model, voice: voice || 'Kore' };
+  }
+  throw new Error(`${PROVIDERS[provider]?.label || provider} does not speak.`);
+}
+
 // Hosted image generation on the user's own key. OpenAI-compatible hosts
 // (gpt-image-1 by default) and Gemini image models. Returns bytes + mime.
 export async function generateImage({ provider, key, baseUrl, modelId, prompt, size = '1024x1024' }) {

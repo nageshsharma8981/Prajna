@@ -14,7 +14,7 @@ import { deskById, modelById, SKILLS } from './catalog.js';
 import { GENERATORS, subjectOf, deckSlides } from './artifacts.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { callModel, generateImage } from './providers.js';
+import { callModel, generateImage, synthesizeSpeech } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
@@ -106,6 +106,7 @@ const PLANS = {
     { id: 's4', title: 'Draft slides: one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Deck Doctor pass: kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
     { id: 's6', title: 'Illustrate: one image per slide on your image key', tool: 'illustrate', cost: 6, access: 'write', dependsOn: ['s5'] },
+    { id: 's7', title: 'Narrate: speak the presenter notes on your key, for the film', tool: 'narrate', cost: 4, access: 'write', dependsOn: ['s6'] },
   ],
   site: (s) => [
     { id: 's1', title: `Position the offer, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
@@ -656,6 +657,48 @@ async function applyEvent(m, ev, notify, runner) {
   // dated sources. Recorded whether or not anyone cites them.
   if (ev.type === 'step.status' && ev.status === 'LIVE') {
     const step = m.contract.plan.find((p) => p.id === ev.stepId);
+    if (step && step.tool === 'narrate' && !m.narration) {
+      pushEvent(m, record, notify);
+      m.narration = [];
+      const prov = ['openai', 'google'].find((id) => store.keyFor(id));
+      const k = prov ? store.keyFor(prov) : null;
+      const slides = deckSlides(m).map((sl, i) => ({ i, text: String(sl.notes || '').replace(/<[^>]+>/g, '').trim() })).filter((x) => x.text);
+      if (!k) {
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: false, detail: `no speech key in memory (OpenAI or Google), so the film will read the notes with the browser's own voice; a video exported that way carries no narration. Load a key under Your keys and re-run for a spoken track` }, notify);
+        return 'ok';
+      }
+      if (!ws().tools?.media) {
+        pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: false, detail: 'Media Generation is switched off under Tools, so the film will read the notes with the browser\'s own voice' }, notify);
+        return 'ok';
+      }
+      const mediaDir = path.join(DATA_DIR, 'media'); fs.mkdirSync(mediaDir, { recursive: true });
+      const voice = String(ws().voice || '').trim() || null;
+      const capped = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`no audio within ${ms / 1000}s`)), ms))]);
+      const queue = slides.slice(); const results = [];
+      await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async () => {
+        while (queue.length) {
+          const job = queue.shift(); const started = Date.now();
+          try { results.push({ ...job, started, out: await capped(synthesizeSpeech({ provider: prov, key: k.key, baseUrl: k.baseUrl, text: job.text, voice }), 90000) }); }
+          catch (e) { results.push({ ...job, started, error: e }); }
+        }
+      }));
+      results.sort((x, y) => x.i - y.i);
+      let made = 0; const failed = [];
+      for (const { i, text, started, out, error } of results) {
+        if (error) { failed.push(`slide ${i + 1} (${String(error.message || error).slice(0, 80)})`); continue; }
+        const id = crypto.randomBytes(8).toString('hex');
+        fs.writeFileSync(path.join(mediaDir, `${id}.wav`), out.bytes);
+        const seconds = Math.max(0, Math.round(((out.bytes.length - 44) / (24000 * 2)) * 10) / 10);
+        const rec = { id, ext: 'wav', mime: out.mime, prompt: text.slice(0, 200), provider: prov, model: out.model, bytes: out.bytes.length, ms: Date.now() - started, createdAt: Date.now(), missionId: m.id, slide: i, kind: 'narration' };
+        ws().media.unshift(rec); ws().media = ws().media.slice(0, 400); flushWs();
+        m.narration.push({ slide: i, id, file: `${id}.wav`, chars: text.length, seconds, model: out.model, voice: out.voice, ms: rec.ms });
+        if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1;
+        const at = (m.keyUse.models[out.model] = m.keyUse.models[out.model] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1;
+        made += 1;
+      }
+      pushEvent(m, { type: 'log', stepId: step.id, label: 'narrate', live: made > 0, detail: `${made} of ${slides.length} slides spoken by ${results.find((r) => r.out)?.out.model || PROVIDER_LABEL[prov] || prov}${results.find((r) => r.out) ? ` in the voice “${results.find((r) => r.out).out.voice}”` : ''}, ${m.narration.reduce((a, n) => a + n.seconds, 0).toFixed(0)}s of narration · billed to your key${failed.length ? `; ${failed.length} not spoken: ${failed.join(', ')}` : ''}` }, notify);
+      return 'ok';
+    }
     if (step && step.tool === 'illustrate' && !m.visuals) {
       pushEvent(m, record, notify);
       m.visuals = [];

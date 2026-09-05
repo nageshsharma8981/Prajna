@@ -1519,6 +1519,36 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.39: The deck plays as a narrated film (5 Sep 2026)
+
+Asked for directly: video of real quality, with a spoken narrative,
+cinematic. The Media page had a local motion toy and no narration at all.
+
+The deck contract now ends with a step of its own, "Narrate: speak the
+presenter notes on your key, for the film". Every slide's notes are spoken
+by OpenAI's speech model or Gemini's on the owner's key, three at a time
+with a ninety-second cap, kept in the media store as WAV clips with their
+length and voice, named on the tape and recorded in the provenance. The
+voice can be set on the house; the default is a neutral one.
+
+The deck itself now plays as a film. P, or the Film button, opens a stage:
+each slide's picture in slow motion under its headline and support line,
+which rise in as the narration for that slide plays, timed so a slide
+holds until its narration ends, a vignette and crossfades between slides,
+full screen, Esc to stop. Export records the stage and the narration
+together in the browser, with no server and no upload, and saves a real
+video file with the audio in it. When no speech key was held, the browser's
+own voice reads the notes so the film still plays, and the page says plainly
+that an exported file made that way carries no narration.
+
+The film keeps time on a timer when the browser withholds animation frames,
+so a background tab does not stall it. A new gate assertion, VAL-FILM,
+refuses a deck that cannot play as a film or export one.
+
+Proved with a mock speech provider returning real audio: nine clips spoken
+and served, decoded at 2.5 seconds each; the film opened, advanced on time,
+stopped on Esc; an export recorded and saved a 2.5 MB video with narration.
+
 ## v1.38: The deck is illustrated (5 Sep 2026)
 
 Asked for directly: the deck's quality was not good, and it needed relevant

@@ -149,6 +149,10 @@ export const ASSERTIONS = {
     { id: 'VAL-ILLUSTRATED', title: 'The title and every argument slide carry a visual, with alt text when it is a generated image', owner: 'compose',
       scrutiny: (h) => count(h, /class="slide (?:title |)has-visual/g) >= 7,
       surface: (h) => { const imgs = [...h.matchAll(/<img class="visual" ([^>]*)>/g)]; return imgs.every((m) => /alt="[^"]{8,}"/.test(m[1])) && (imgs.length > 0 || count(h, /class="visual house"/g) >= 7); } },
+    // A deck that can be played as a film, and leave as a video file.
+    { id: 'VAL-FILM', title: 'The deck plays as a narrated film and exports a video file with its audio', owner: 'compose',
+      scrutiny: (h) => has(h, /class="btn-film"/) && has(h, /class="film" hidden/) && has(h, /<canvas>/),
+      surface: (h) => has(h, /captureStream\(/) && has(h, /new MediaRecorder\(/) && has(h, /createMediaStreamDestination\(/) && has(h, /speechSynthesis/) },
     { id: 'VAL-PRESENTABLE', title: 'Every slide carries presenter notes, and the deck has a presenter panel, fullscreen and a slide address', owner: 'compose',
       scrutiny: (h) => count(h, /<aside class="notes" hidden>/g) === count(h, /<section class="slide/g) && has(h, /class="presenter" hidden/) && has(h, /requestFullscreen/),
       surface: (h) => has(h, /id="slide-1"/) && has(h, /hashchange/) && has(h, /@media print/) },

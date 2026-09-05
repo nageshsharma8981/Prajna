@@ -1085,6 +1085,8 @@ test('every desk delivers with a live model, not just the research desk', async 
   const model = http.createServer((req, res) => {
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => {
+      // The deck also asks this key for narration; a fifth of a second of silence is a clip.
+      if (/audio\/speech/.test(req.url)) { const pcm = Buffer.alloc(9600); const h = Buffer.alloc(44); h.write('RIFF', 0); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8); h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(24000, 24); h.writeUInt32LE(48000, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40); res.writeHead(200, { 'content-type': 'audio/wav' }); return res.end(Buffer.concat([h, pcm])); }
       // The deck also asks this key for pictures; a one-pixel PNG is a picture.
       if (/images\/generations/.test(req.url)) { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ data: [{ b64_json: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' }] })); }
       const prompt = JSON.parse(body).messages[0].content;
@@ -1785,10 +1787,12 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
   const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   const beats = ['The problem', 'The shift', 'The mechanism', 'The proof', 'The economics', 'The ask'];
   const draft = { sub: 'Six beats.', one: 'One sentence.', close: 'The close.', slides: beats.map((n, i) => ({ n, h: `Headline ${i + 1} about the ferry`, s: `Support ${i + 1}.`, notes: `Note ${i + 1}.` })) };
-  let images = 0; const prompts = [];
+  let images = 0, spoken = 0; const prompts = [], spokenText = [];
+  const WAV = (() => { const pcm = Buffer.alloc(24000 * 2 * 0.2); const h = Buffer.alloc(44); h.write('RIFF', 0); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8); h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(24000, 24); h.writeUInt32LE(48000, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40); return Buffer.concat([h, pcm]); })();
   const model = http.createServer((req, res) => {
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => {
+      if (/audio\/speech/.test(req.url)) { spoken += 1; const b = JSON.parse(body); spokenText.push(b.input); assert.equal(b.response_format, 'wav'); res.writeHead(200, { 'content-type': 'audio/wav' }); return res.end(WAV); }
       res.writeHead(200, { 'content-type': 'application/json' });
       if (/images\/generations/.test(req.url)) { images += 1; prompts.push(JSON.parse(body).prompt); return res.end(JSON.stringify({ data: [{ b64_json: PNG.toString('base64') }] })); }
       const p = JSON.parse(body).messages[0].content;
@@ -1849,6 +1853,17 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok(fs.existsSync(path.join(lit.DIR, 'media', m1.visuals[0].file)), 'and keeps it on disk');
     const gate = (m1.events || []).filter((e) => e.type === 'gate').pop();
     assert.ok(gate && gate.sealed.includes('VAL-ILLUSTRATED'), 'the gate sealed the illustration');
+    // The notes were spoken, one clip per slide, kept and served as audio.
+    assert.ok(m1.contract.plan.some((p) => p.tool === 'narrate'), 'the contract carries the narrate step');
+    assert.equal(spoken, 9, 'nine slides spoken');
+    assert.equal((m1.narration || []).length, 9, 'nine clips on the record');
+    assert.ok(spokenText.some((t) => /Note 3\./.test(t)), 'each clip is that slide\'s own note');
+    assert.ok(m1.narration.every((n) => n.seconds > 0 && n.voice), 'each with its length and voice');
+    const clip = await fetch(`${lit.B}/api/media/${m1.narration[0].id}`, { headers: { cookie: lit.cookie } });
+    assert.equal(clip.status, 200); assert.match(clip.headers.get('content-type') || '', /^audio\/wav/, 'served as audio');
+    assert.equal((html.match(/ data-narration="[a-f0-9]{16}"/g) || []).length, 9, 'every slide names its clip');
+    for (const bit of ['class="btn-film"', 'new MediaRecorder(', 'captureStream(']) assert.ok(html.includes(bit), `the film runtime is on the page: ${bit}`);
+    assert.ok(gate.sealed.includes('VAL-FILM'), 'the gate sealed the film');
     // And the PowerPoint carries the same pictures.
     const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
     const names = pptx.toString('latin1');
@@ -1862,6 +1877,8 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal(m2.status, 'FILLED');
     assert.equal((m2.visuals || []).length, 0);
     assert.ok((m2.events || []).some((e) => e.type === 'log' && /no image key in memory/.test(e.detail)), 'the tape says why');
+    assert.ok((m2.events || []).some((e) => e.type === 'log' && /browser's own voice/.test(e.detail)), 'and that the film will use the browser voice');
+    assert.equal((m2.narration || []).length, 0);
     const html2 = await (await fetch(`${dark.B}/api/artifacts/${m2.artifactId}/html`)).text();
     assert.equal((html2.match(/class="visual house"/g) || []).length, 7, 'seven house drawings');
     assert.equal((html2.match(/<img class="visual"/g) || []).length, 0);

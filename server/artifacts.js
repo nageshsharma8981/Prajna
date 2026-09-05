@@ -28,6 +28,7 @@ function provenanceObject(mission) {
     attachments: (mission.sources || []).filter((s) => s.engine === 'attachment').map((s) => ({ name: s.title, extract: (s.extract || '').slice(0, 4000) })),
     deliveries: (mission.deliveries || []).map((d) => ({ connector: d.connector, ok: d.ok, id: d.id || null, url: d.url || null, where: d.where || null, link: d.link || null, linkOk: d.linkOk ?? null, linkRevokedAt: d.linkRevokedAt || null, error: d.error || null })),
     dissent: mission.dissent || null,
+    narration: Array.isArray(mission.narration) && mission.narration.length ? { count: mission.narration.length, model: mission.narration[0].model, voice: mission.narration[0].voice, seconds: Math.round(mission.narration.reduce((a, n) => a + (n.seconds || 0), 0)) } : null,
     visuals: Array.isArray(mission.visuals) && mission.visuals.length ? { count: mission.visuals.length, model: mission.visuals[0].model, files: mission.visuals.map((v) => v.file) } : null,
     critiques: (mission.critiques || []).map((c) => ({ model: c.model, verdict: c.verdict || 'unavailable', issues: c.issues || [], error: c.error || null })),
     writtenBy: mission.writtenBy || null,
@@ -407,6 +408,93 @@ function deckRuntime() {
 
 // The nine slides a deck lays out, from the model's six beats or the
 // house's own. Shared with the engine, which illustrates the same list.
+// The film. The same nine slides, played as a sequence: each picture in
+// slow motion under its headline, the narration timed to it, full screen,
+// and exportable as a real video file with the audio in it, made in the
+// browser with no server and no upload. The narration is the house's spoken
+// track when one was recorded on a key, and the browser's own voice when
+// not, in which case the exported file carries no narration and says so.
+function deckFilm() {
+  const slides = Array.from(document.querySelectorAll('#deck .slide')).map((s) => ({
+    el: s, title: (s.querySelector('h1,h2') || {}).textContent || '', sub: (s.querySelector('.sub') || {}).textContent || '',
+    label: (s.querySelector('.run') || {}).textContent || '', notes: (s.querySelector('.notes') || {}).textContent || '',
+    img: s.querySelector('img.visual') ? s.querySelector('img.visual').getAttribute('src') : null,
+    audio: s.dataset.narration ? '/api/media/' + s.dataset.narration : null,
+    kind: s.classList.contains('title') ? 'title' : s.classList.contains('big') ? 'big' : s.classList.contains('end') ? 'end' : 'claim',
+  }));
+  const acc = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#b0472f';
+  const stage = document.querySelector('.film'); const canvas = stage.querySelector('canvas'); const ctx = canvas.getContext('2d');
+  const status = stage.querySelector('.film-status'); const W = 1920, H = 1080; canvas.width = W; canvas.height = H;
+  let playing = false, recorder = null, chunks = [], ac = null, dest = null, stopFlag = false;
+  // A frame on the next animation frame, or on a timer if the browser is
+  // withholding frames (a background tab): the film keeps time either way.
+  const tick = (fn) => { let done = false; const go = () => { if (done) return; done = true; fn(); }; requestAnimationFrame(go); setTimeout(go, 50); };
+  const spoken = slides.some((s) => s.audio);
+  const loadImg = (src) => new Promise((res) => { if (!src) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  const wrap = (text, maxW, font) => { ctx.font = font; const words = String(text).split(/\s+/); const lines = []; let line = ''; for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; } if (line) lines.push(line); return lines; };
+  const draw = (s, im, t, fadeIn, fadeOut) => {
+    ctx.fillStyle = '#0a0a08'; ctx.fillRect(0, 0, W, H);
+    if (im) {
+      const k = 1.04 + 0.08 * t; const w = W * k, h = H * k; const dx = (W - w) * (0.3 + 0.4 * t), dy = (H - h) * 0.5;
+      ctx.drawImage(im, dx, dy, w, h);
+      const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(10,10,8,0.85)'); g.addColorStop(0.5, 'rgba(10,10,8,0.55)'); g.addColorStop(1, 'rgba(10,10,8,0.1)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    } else if (s.kind === 'big') { ctx.fillStyle = acc; ctx.fillRect(0, 0, W, H); }
+    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 0.95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    const rise = Math.min(1, t * 4); const y0 = H * 0.42 + (1 - rise) * 30;
+    ctx.globalAlpha = rise; ctx.fillStyle = '#fbf7ee'; ctx.textBaseline = 'alphabetic';
+    const big = s.kind === 'title' ? 'bold 96px Helvetica Neue, Helvetica, Arial, sans-serif' : 'bold 78px Helvetica Neue, Helvetica, Arial, sans-serif';
+    const lines = wrap(s.title, W * 0.55, big); let y = y0;
+    for (const l of lines) { ctx.font = big; ctx.fillText(l, 150, y); y += s.kind === 'title' ? 104 : 86; }
+    ctx.globalAlpha = Math.min(1, Math.max(0, t * 4 - 0.6)); ctx.fillStyle = '#e6ddcc'; const small = '36px Helvetica Neue, Helvetica, Arial, sans-serif';
+    for (const l of wrap(s.sub, W * 0.5, small)) { ctx.font = small; ctx.fillText(l, 150, y + 24); y += 48; }
+    if (s.label) { ctx.globalAlpha = 0.9; ctx.font = 'bold 22px Helvetica Neue, Helvetica, Arial, sans-serif'; ctx.fillStyle = acc; ctx.fillText(s.label.toUpperCase(), 150, H - 90); }
+    ctx.globalAlpha = 1;
+    const fade = Math.min(fadeIn, fadeOut); if (fade < 1) { ctx.fillStyle = 'rgba(10,10,8,' + (1 - fade) + ')'; ctx.fillRect(0, 0, W, H); }
+  };
+  const speak = (s) => new Promise((res) => {
+    if (s.audio) {
+      const a = new Audio(s.audio); a.crossOrigin = 'anonymous';
+      if (dest && ac) { try { ac.createMediaElementSource(a).connect(dest); } catch (e) { /* once per element */ } }
+      a.onended = () => res(); a.onerror = () => res(); a.play().catch(() => res());
+      return;
+    }
+    if (window.speechSynthesis && s.notes) { const u = new SpeechSynthesisUtterance(s.notes); u.rate = 0.95; u.onend = () => res(); u.onerror = () => res(); speechSynthesis.speak(u); return; }
+    res();
+  });
+  const run = async (exporting) => {
+    playing = true; stopFlag = false; stage.hidden = false; document.body.classList.add('filming');
+    if (exporting) {
+      ac = new (window.AudioContext || window.webkitAudioContext)(); dest = ac.createMediaStreamDestination();
+      const stream = canvas.captureStream(30); if (spoken) dest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
+      chunks = []; recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' });
+      recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); }; recorder.start(500);
+    }
+    const imgs = await Promise.all(slides.map((s) => loadImg(s.img)));
+    for (let i = 0; i < slides.length && !stopFlag; i++) {
+      const s = slides[i]; const im = imgs[i]; const t0 = performance.now(); let done = false;
+      status.textContent = (i + 1) + ' / ' + slides.length + (exporting ? ' · recording' : '');
+      const said = speak(s).then(() => { done = true; });
+      const minMs = s.kind === 'title' || s.kind === 'end' ? 5000 : 6500; let tEnd = null;
+      await new Promise((res) => { const frame = () => { const el = performance.now() - t0; if (done && tEnd == null) tEnd = Math.max(el, minMs) + 900; const total = tEnd == null ? Math.max(minMs, el + 1) : tEnd; const t = Math.min(1, el / Math.max(total, 8000)); draw(s, im, t, Math.min(1, el / 700), tEnd == null ? 1 : Math.min(1, (tEnd - el) / 700)); if (stopFlag || (tEnd != null && el >= tEnd)) return res(); tick(frame); }; tick(frame); });
+      await said;
+    }
+    ctx.fillStyle = '#0a0a08'; ctx.fillRect(0, 0, W, H);
+    if (exporting && recorder) {
+      await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
+      const blob = new Blob(chunks, { type: 'video/webm' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = document.documentElement.dataset.serial + '-film.webm'; a.click();
+      status.textContent = 'Saved ' + Math.round(blob.size / 1024) + ' KB' + (spoken ? ' with narration.' : '. The browser voice cannot be recorded, so this file has no narration; load a speech key and re-run the deck for a spoken track.');
+      try { ac.close(); } catch (e) { /* fine */ }
+    } else status.textContent = stopFlag ? 'Stopped.' : 'The end.';
+    playing = false; if (!exporting) setTimeout(() => { if (!playing) { stage.hidden = true; document.body.classList.remove('filming'); } }, 1500);
+  };
+  const stop = () => { stopFlag = true; try { speechSynthesis.cancel(); } catch (e) { /* fine */ } };
+  document.querySelector('.btn-film').addEventListener('click', (e) => { e.stopPropagation(); if (!playing) run(false); });
+  stage.querySelector('.film-export').addEventListener('click', (e) => { e.stopPropagation(); if (!playing) run(true); });
+  stage.querySelector('.film-close').addEventListener('click', (e) => { e.stopPropagation(); stop(); stage.hidden = true; document.body.classList.remove('filming'); });
+  addEventListener('keydown', (e) => { if (e.key === 'p' || e.key === 'P') { if (!playing) run(false); } else if (e.key === 'Escape' && !stage.hidden) { stop(); stage.hidden = true; document.body.classList.remove('filming'); } });
+  stage.querySelector('.film-note').textContent = spoken ? 'Narrated by the house on your key. Export saves a video file with the narration in it.' : 'No speech key was held when this deck ran, so the browser reads the notes aloud; an exported file has no narration.';
+}
+
 export function deckSlides(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
@@ -454,13 +542,15 @@ export function deckArtifact(mission) {
     if (sl.k === 'title' || sl.k === 'claim') return { html: houseVisual(sl, i, acc, ink), attr: '', cls: ' has-visual house-visual' };
     return { html: '', attr: '', cls: '' };
   };
+  const narration = Array.isArray(mission.narration) ? mission.narration : [];
+  const narrOf = (i) => { const n = narration.find((x) => x.slide === i); return n ? ` data-narration="${esc(n.id)}"` : ''; };
   const notesOf = (sl) => sl.notes ? `<aside class="notes" hidden>${sl.notes}</aside>` : '';
   const slideHtml = slides.map((sl, i) => {
     const V = visualOf(sl, i);
-    if (sl.k === 'title') return `<section class="slide title${V.cls}" id="slide-1"${V.attr}>${V.html}<div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
-    if (sl.k === 'big') return `<section class="slide big" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
-    if (sl.k === 'end') return `<section class="slide end" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
-    return `<section class="slide${V.cls}" id="slide-${i + 1}"${V.attr}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'title') return `<section class="slide title${V.cls}" id="slide-1"${V.attr}${narrOf(0)}>${V.html}<div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'big') return `<section class="slide big" id="slide-${i + 1}"${narrOf(i)}><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'end') return `<section class="slide end" id="slide-${i + 1}"${narrOf(i)}><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    return `<section class="slide${V.cls}" id="slide-${i + 1}"${V.attr}${narrOf(i)}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
   }).join('\n');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -492,6 +582,12 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .chrome{position:fixed;top:1.2vh;right:3vw;z-index:5;display:flex;gap:.4rem}
 .chrome button{background:rgba(0,0,0,.55);color:#f4f1e8;border:none;font:600 .7rem/1 inherit;letter-spacing:.1em;text-transform:uppercase;padding:.55rem .8rem;border-radius:4px;cursor:pointer;min-height:32px}.chrome button:hover{background:var(--acc)}
 [hidden]{display:none!important}
+.film{position:fixed;inset:0;z-index:8;background:#0a0a08;display:flex;flex-direction:column}
+.film canvas{flex:1;width:100%;height:auto;object-fit:contain;min-height:0}
+.film-bar{display:flex;align-items:center;gap:1rem;padding:.6rem 3vw;background:#111;color:#ddd;font-size:.8rem;border-top:2px solid var(--acc)}
+.film-status{font:700 .8rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--acc);min-width:6rem}.film-note{flex:1;color:#999}
+.film-bar button{background:rgba(255,255,255,.1);color:#f4f1e8;border:none;font:600 .7rem/1 inherit;letter-spacing:.1em;text-transform:uppercase;padding:.55rem .8rem;border-radius:4px;cursor:pointer;min-height:32px}.film-bar button:hover{background:var(--acc)}
+body.filming .chrome,body.filming .hint,body.filming .progress{display:none}
 .presenter{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#111;color:#eee;padding:1rem 3vw 1.2rem;display:grid;grid-template-columns:1fr auto;gap:.4rem 2rem;border-top:3px solid var(--acc);max-height:38vh;overflow:auto;font-size:.95rem}
 .presenter .p-now{grid-column:1;font-weight:700;color:#fff;margin:0}.presenter .p-clock{grid-column:2;grid-row:1/3;font:700 2rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--acc);align-self:start}
 .presenter .p-notes{grid-column:1;margin:0;color:#ddd;max-width:70ch;line-height:1.5}.presenter .p-next{grid-column:1;margin:0;font-size:.8rem;color:#999}
@@ -505,13 +601,14 @@ ${PROV_CSS}
 .prov-tab{position:fixed;bottom:0;right:3vw;z-index:4;background:var(--ink);color:var(--paper);border:none;font:700 .68rem/1 'Helvetica Neue',sans-serif;letter-spacing:.14em;text-transform:uppercase;padding:.45rem .9rem;cursor:pointer;border-radius:4px 4px 0 0}
 </style></head><body>${partialBanner(mission)}
 <div class="progress" aria-hidden="true"><i></i></div>
-<div class="chrome"><button type="button" class="btn-grid" title="All slides (Esc)">Slides</button><button type="button" class="btn-notes" title="Presenter notes and clock (N)">Notes</button><button type="button" class="btn-full" title="Fullscreen (F)">Full</button></div>
+<div class="chrome"><button type="button" class="btn-grid" title="All slides (Esc)">Slides</button><button type="button" class="btn-notes" title="Presenter notes and clock (N)">Notes</button><button type="button" class="btn-film" title="Play as a narrated film (P)">Film</button><button type="button" class="btn-full" title="Fullscreen (F)">Full</button></div>
+<div class="film" hidden role="dialog" aria-label="Film"><canvas></canvas><div class="film-bar"><span class="film-status"></span><span class="film-note"></span><button type="button" class="film-export">Export video</button><button type="button" class="film-close">Close</button></div></div>
 <div class="deck" id="deck">${slideHtml}</div>
 <div class="presenter" hidden role="region" aria-label="Presenter"><p class="p-now"></p><p class="p-clock">00:00</p><p class="p-notes"></p><p class="p-next"></p></div>
 <div class="overview" hidden role="dialog" aria-label="All slides"></div>
 <button class="prov-tab" onclick="document.querySelector('.prov').style.transform=document.querySelector('.prov').style.transform?'':'none';event.stopPropagation()">Provenance</button>
-<p class="hint">← → or click to advance · N notes · F fullscreen · Esc all slides · print for a handout with notes</p>
-<script>(${deckRuntime.toString()})();</script>${provenance(mission)}</body></html>`;
+<p class="hint">← → or click to advance · N notes · P film · F fullscreen · Esc all slides · print for a handout with notes</p>
+<script>(${deckRuntime.toString()})();(${deckFilm.toString()})();</script>${provenance(mission)}</body></html>`;
   return { title: `${subject}, Deck`, kind: 'deck', html };
 }
 
