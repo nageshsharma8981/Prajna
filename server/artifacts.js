@@ -254,6 +254,79 @@ ${provenance(mission)}
 
 import { DECK_TEMPLATES } from './workspace.js';
 
+// The deck's own runtime. A deck is presented, not scrolled: every slide has
+// an address, the keys a presenter reaches for all work, F is fullscreen,
+// N opens the presenter panel with this slide's notes, the next slide and a
+// clock, Esc shows every slide at once, a swipe turns the page on a phone,
+// and a thin bar shows how far along the room is.
+function deckRuntime() {
+  const deck = document.getElementById('deck');
+  const slides = Array.from(deck.querySelectorAll('.slide'));
+  const n = slides.length;
+  const bar = document.querySelector('.progress i');
+  const panel = document.querySelector('.presenter');
+  const grid = document.querySelector('.overview');
+  const hint = document.querySelector('.hint');
+  let i = 0, started = null, tick = null;
+  const at = () => Math.max(0, Math.min(n - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+  const show = (k, push) => {
+    i = Math.max(0, Math.min(n - 1, k));
+    deck.scrollTo({ left: i * deck.clientWidth, behavior: 'smooth' });
+    if (push !== false && location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+    bar.style.transform = 'scaleX(' + ((i + 1) / n) + ')';
+    slides.forEach((s, j) => s.setAttribute('aria-hidden', j === i ? 'false' : 'true'));
+    if (!panel.hidden) fillPanel();
+  };
+  const go = (d) => show(i + d);
+  const clock = () => { const s = Math.floor((Date.now() - started) / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+  const fillPanel = () => {
+    const cur = slides[i], next = slides[i + 1];
+    panel.querySelector('.p-now').textContent = (i + 1) + ' / ' + n + ' · ' + (cur.querySelector('h1,h2') || {}).textContent;
+    panel.querySelector('.p-notes').textContent = (cur.querySelector('.notes') || {}).textContent || 'No notes for this slide.';
+    panel.querySelector('.p-next').textContent = next ? 'Next: ' + (next.querySelector('h1,h2') || {}).textContent : 'This is the last slide.';
+    panel.querySelector('.p-clock').textContent = clock();
+  };
+  const togglePanel = () => {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) { if (!started) started = Date.now(); fillPanel(); clearInterval(tick); tick = setInterval(() => { panel.querySelector('.p-clock').textContent = clock(); }, 1000); }
+    else clearInterval(tick);
+  };
+  const toggleGrid = () => {
+    grid.hidden = !grid.hidden;
+    if (!grid.hidden) {
+      grid.innerHTML = '';
+      slides.forEach((s, j) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'thumb' + (j === i ? ' on' : '');
+        b.innerHTML = '<span class="t-n">' + (j + 1) + '</span><span class="t-h"></span>'; b.querySelector('.t-h').textContent = (s.querySelector('h1,h2') || {}).textContent || '';
+        b.addEventListener('click', (e) => { e.stopPropagation(); grid.hidden = true; show(j); }); grid.appendChild(b);
+      });
+      (grid.querySelector('.on') || grid.firstChild).focus();
+    }
+  };
+  const fullscreen = () => { const el = document.documentElement; if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen(); };
+  addEventListener('keydown', (e) => {
+    const t = e.target; if (t && typeof t.closest === 'function' && t.closest('input,textarea')) return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'Enter') { e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Home') show(0); else if (e.key === 'End') show(n - 1);
+    else if (e.key === 'f' || e.key === 'F') fullscreen();
+    else if (e.key === 'n' || e.key === 'N') togglePanel();
+    else if (e.key === 'Escape') toggleGrid();
+    else if (/^[1-9]$/.test(e.key) && Number(e.key) <= n) show(Number(e.key) - 1);
+  });
+  deck.addEventListener('click', (e) => { if (e.target.closest('a,button')) return; go(1); });
+  let tx = null;
+  deck.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  deck.addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); });
+  addEventListener('hashchange', () => { if (at() !== i) show(at(), false); });
+  addEventListener('resize', () => deck.scrollTo({ left: i * deck.clientWidth }));
+  document.querySelector('.btn-notes').addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
+  document.querySelector('.btn-full').addEventListener('click', (e) => { e.stopPropagation(); fullscreen(); });
+  document.querySelector('.btn-grid').addEventListener('click', (e) => { e.stopPropagation(); toggleGrid(); });
+  setTimeout(() => hint.classList.add('fade'), 4000);
+  show(at(), false);
+}
+
 export function deckArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
@@ -261,11 +334,11 @@ export function deckArtifact(mission) {
   const paper = tpl ? tpl.paper : '#f4f1e8', ink = tpl ? tpl.ink : '#14140f', acc = tpl ? tpl.acc : '#b0472f', font = tpl ? tpl.font : "'Helvetica Neue',Helvetica,Arial,sans-serif";
   const A = authored(mission);
   const slides = A ? [
-    { k: 'title', h: t, s: esc(str(A.sub, 'The argument in nine slides.')) },
-    ...A.slides.slice(0, 2).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)) })),
-    { k: 'big', h: 'One sentence.', s: esc(str(A.one, t)) },
-    ...A.slides.slice(2, 6).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)) })),
-    { k: 'end', h: 'The close', s: esc(str(A.close, 'End on the claim.')) },
+    { k: 'title', h: t, s: esc(str(A.sub, 'The argument in nine slides.')), notes: 'Say the title and the one line, then stop. Let the room read it. Do not narrate the agenda.' },
+    ...A.slides.slice(0, 2).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)), notes: esc(str(x.notes)) })),
+    { k: 'big', h: 'One sentence.', s: esc(str(A.one, t)), notes: 'Read the sentence aloud exactly as written, once. This is the line the room should be able to repeat back at the end.' },
+    ...A.slides.slice(2, 6).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)), notes: esc(str(x.notes)) })),
+    { k: 'end', h: 'The close', s: esc(str(A.close, 'End on the claim.')), notes: 'End on the claim, not on thank you. Leave this slide up while you take questions.' },
   ] : [
     { k: 'title', h: t, s: 'The argument in nine slides, one idea per slide, evidence beneath assertion.' },
     { k: 'claim', n: 'The problem', h: 'The status quo has a cost, and it compounds.', s: 'Name the pain precisely: who bleeds, how much, how often. A problem the room already feels needs one slide, not three.' },
@@ -277,11 +350,12 @@ export function deckArtifact(mission) {
     { k: 'claim', n: 'The ask', h: 'What you want, what it buys, what it proves.', s: 'A specific amount, a specific runway, and the two milestones that de-risk the next round.' },
     { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.' },
   ];
+  const notesOf = (sl) => sl.notes ? `<aside class="notes" hidden>${sl.notes}</aside>` : '';
   const slideHtml = slides.map((sl, i) => {
-    if (sl.k === 'title') return `<section class="slide title"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p></section>`;
-    if (sl.k === 'big') return `<section class="slide big"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
-    if (sl.k === 'end') return `<section class="slide end"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p></section>`;
-    return `<section class="slide"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p></section>`;
+    if (sl.k === 'title') return `<section class="slide title" id="slide-1"><div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'big') return `<section class="slide big" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'end') return `<section class="slide end" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    return `<section class="slide" id="slide-${i + 1}"><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
   }).join('\n');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -302,21 +376,30 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .end{background:var(--ink)}.end h2{color:var(--paper)}.end .sub{color:#a5a294}
 .deck-dissent{margin:2rem 0 0;max-width:60ch;font-size:.9rem;color:#d7c9a5;border-left:3px solid var(--acc);padding-left:.9rem}.deck-dissent b{color:var(--paper)}
 .pg{position:absolute;bottom:2.2vh;right:3vw;font-size:.75rem;letter-spacing:.1em;color:#98948a;margin:0}
-.hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2}
+.hint{position:fixed;bottom:2.2vh;left:50%;transform:translateX(-50%);font-size:.75rem;letter-spacing:.08em;color:#98948a;z-index:2;transition:opacity .6s}.hint.fade{opacity:0}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;background:rgba(0,0,0,.15);z-index:5}.progress i{display:block;height:100%;background:var(--acc);transform-origin:left;transform:scaleX(0);transition:transform .3s}
+.chrome{position:fixed;top:1.2vh;right:3vw;z-index:5;display:flex;gap:.4rem}
+.chrome button{background:rgba(0,0,0,.55);color:#f4f1e8;border:none;font:600 .7rem/1 inherit;letter-spacing:.1em;text-transform:uppercase;padding:.55rem .8rem;border-radius:4px;cursor:pointer;min-height:32px}.chrome button:hover{background:var(--acc)}
+.presenter{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#111;color:#eee;padding:1rem 3vw 1.2rem;display:grid;grid-template-columns:1fr auto;gap:.4rem 2rem;border-top:3px solid var(--acc);max-height:38vh;overflow:auto;font-size:.95rem}
+.presenter .p-now{grid-column:1;font-weight:700;color:#fff;margin:0}.presenter .p-clock{grid-column:2;grid-row:1/3;font:700 2rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--acc);align-self:start}
+.presenter .p-notes{grid-column:1;margin:0;color:#ddd;max-width:70ch;line-height:1.5}.presenter .p-next{grid-column:1;margin:0;font-size:.8rem;color:#999}
+.overview{position:fixed;inset:0;z-index:7;background:rgba(0,0,0,.92);padding:6vh 6vw;display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;overflow:auto;align-content:start}
+.thumb{background:var(--paper);color:var(--ink);border:3px solid transparent;border-radius:6px;padding:1rem;text-align:left;cursor:pointer;min-height:8rem;display:flex;flex-direction:column;gap:.4rem;font:inherit}.thumb.on,.thumb:focus{border-color:var(--acc);outline:none}
+.thumb .t-n{font-size:.7rem;letter-spacing:.14em;color:var(--acc);font-weight:700}.thumb .t-h{font-weight:700;line-height:1.2}
+@media print{body{overflow:visible;background:#fff}.deck{display:block;height:auto;overflow:visible}.slide{min-width:0;width:100%;height:auto;min-height:60vh;page-break-after:always;border:1px solid #ccc;margin:0 0 1rem}.slide .notes{display:block!important;margin:2rem 0 0;padding-top:1rem;border-top:1px dashed #999;font-size:.9rem;color:#333}.hint,.chrome,.progress,.presenter,.overview,.prov,.prov-tab{display:none!important}}
 ${PROV_CSS}
 .prov{position:fixed;inset:auto 0 0 0;transform:translateY(100%);background:var(--paper);padding:1rem 3vw;margin:0;transition:transform .25s ease;z-index:3}
 .prov:focus-within,.prov:hover{transform:none}
 .prov-tab{position:fixed;bottom:0;right:3vw;z-index:4;background:var(--ink);color:var(--paper);border:none;font:700 .68rem/1 'Helvetica Neue',sans-serif;letter-spacing:.14em;text-transform:uppercase;padding:.45rem .9rem;cursor:pointer;border-radius:4px 4px 0 0}
 </style></head><body>${partialBanner(mission)}
+<div class="progress" aria-hidden="true"><i></i></div>
+<div class="chrome"><button type="button" class="btn-grid" title="All slides (Esc)">Slides</button><button type="button" class="btn-notes" title="Presenter notes and clock (N)">Notes</button><button type="button" class="btn-full" title="Fullscreen (F)">Full</button></div>
 <div class="deck" id="deck">${slideHtml}</div>
+<div class="presenter" hidden role="region" aria-label="Presenter"><p class="p-now"></p><p class="p-clock">00:00</p><p class="p-notes"></p><p class="p-next"></p></div>
+<div class="overview" hidden role="dialog" aria-label="All slides"></div>
 <button class="prov-tab" onclick="document.querySelector('.prov').style.transform=document.querySelector('.prov').style.transform?'':'none';event.stopPropagation()">Provenance</button>
-<p class="hint">← → arrow keys · click to advance</p>
-<script>
-const deck=document.getElementById('deck');let i=0;const n=${slides.length};
-function go(d){i=Math.max(0,Math.min(n-1,i+d));deck.scrollTo({left:i*deck.clientWidth,behavior:'smooth'})}
-addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1)});
-deck.addEventListener('click',()=>go(1));
-</script>${provenance(mission)}</body></html>`;
+<p class="hint">← → or click to advance · N notes · F fullscreen · Esc all slides · print for a handout with notes</p>
+<script>(${deckRuntime.toString()})();</script>${provenance(mission)}</body></html>`;
   return { title: `${subject}, Deck`, kind: 'deck', html };
 }
 

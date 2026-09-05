@@ -135,6 +135,11 @@ export const ASSERTIONS = {
       surface: (h) => { const p = provenance(h); if (!p?.dissent) return { ok: true, detail: 'no dissent was recorded' }; const probe = String(p.dissent.text || '').slice(0, 30); return has(body(h), probe.replace(/&/g, '&amp;').replace(/</g, '&lt;')) ? { ok: true, detail: 'dissent text present' } : { ok: false, detail: 'dissent text not present' }; } },
     { id: 'VAL-KEYBOARD-NAV', title: 'Arrow keys and click advance the deck', owner: 'compose',
       scrutiny: (h) => has(h, /ArrowRight/) && has(h, /ArrowLeft/), surface: (h) => has(h, /addEventListener\('click'/) },
+    // A deck is presented, not scrolled. Notes on every slide, a presenter
+    // panel, fullscreen, an address per slide, and a handout when printed.
+    { id: 'VAL-PRESENTABLE', title: 'Every slide carries presenter notes, and the deck has a presenter panel, fullscreen and a slide address', owner: 'compose',
+      scrutiny: (h) => count(h, /<aside class="notes" hidden>/g) === count(h, /<section class="slide/g) && has(h, /class="presenter" hidden/) && has(h, /requestFullscreen/),
+      surface: (h) => has(h, /id="slide-1"/) && has(h, /hashchange/) && has(h, /@media print/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
     HONESTY,

@@ -1519,6 +1519,30 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.33: The deck presents (5 Sep 2026)
+
+The app works, the site's action works; the deck was next. It already
+advanced by arrow keys, space and click, which is a scroll of slides, not a
+presentation. Now it is one.
+
+The model writes presenter notes for every slide, spoken not written, and
+the house writes them for the three slides it composes itself. N opens a
+presenter panel: this slide's notes, the next slide's title, and a clock
+that starts the first time the panel opens. F is fullscreen. Esc shows every
+slide at once and any of them is one click away. Every slide has an address
+(#4) so a link can open the deck on a slide, and the phone's Back button
+walks the deck backwards. Home, End, PageUp, PageDown and the digit keys do
+what a presenter expects; a swipe turns the page on a phone; a thin bar
+along the top shows how far along the room is. Print the page and you get a
+handout, one slide per page with its notes beneath. The hint line names all
+of it and fades once you have started.
+
+A new gate assertion, VAL-PRESENTABLE, refuses a deck without notes on
+every slide, a presenter panel, fullscreen and slide addresses.
+
+Proved by driving a delivered deck: address, arrows, Home, End, digit,
+notes, next, overview, jump, swipe, click, print stylesheet.
+
 ## v1.32: The landing page's action works (5 Sep 2026)
 
 A landing page has one job, to get a visitor to act, and every call to
