@@ -1519,6 +1519,22 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.48: A shared deck keeps its pictures through a shut door (5 Sep 2026)
+
+A shared page is public by its link. Its pictures and narration were served
+by the media route, which sits behind the house's door, so on a house with
+an access code a recipient would open a shared deck and find every picture
+missing and the film mute. Predicted from the route order, then proved.
+
+A media file is now public exactly while some artifact whose mission points
+at it is shared, and by its unguessable id: the recipient with no code gets
+the picture and the narration; revoke the share and the door shuts on them
+again; a file no share uses stays behind the door as before.
+
+Proved on a house with its door shut: unshared media refused; a shared deck
+served with its picture embedded; the picture and the clip served to a
+stranger; refused again after the share was revoked.
+
 ## v1.47: The media store is counted and kept clean (5 Sep 2026)
 
 Every illustrated deck writes seven pictures and nine clips into the

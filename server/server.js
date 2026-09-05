@@ -879,6 +879,24 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   if (p === '/api/housecheck/repair' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); if (ownerGate(req, res)) return; return json(res, 200, await houseRepair()); }
   if (p === '/api/housecheck' && req.method === 'POST') { if (!authed(req)) return json(res, 401, { locked: true }); return json(res, 200, await houseCheck()); }
 
+  // A shared page is public by its link, and its pictures and narration
+  // must be too, or the recipient sees a deck with holes in it. A media file
+  // is public exactly while some artifact whose mission points at it is
+  // shared, and by its unguessable id; revoke the share and it is private again.
+  const publicMedia = req.method === 'GET' && p.match(/^\/api\/media\/([a-f0-9]{16})(?:\.[a-z0-9]{2,5})?$/);
+  if (publicMedia && !authed(req)) {
+    const id = publicMedia[1];
+    const sharedMissions = new Set(store.artifacts().filter((a) => a.shareToken && a.missionId).map((a) => a.missionId));
+    const open = store.missions().some((m) => sharedMissions.has(m.id) && ((m.visuals || []).some((v) => v.id === id) || (m.narration || []).some((n) => n.id === id)));
+    const rec = open ? ws().media.find((m) => m.id === id) : null;
+    if (rec) {
+      try {
+        const bytes = fs.readFileSync(path.join(MEDIA_DIR, `${rec.id}.${rec.ext}`));
+        res.writeHead(200, { 'content-type': rec.mime, 'cache-control': 'public, max-age=3600', 'content-length': bytes.length });
+        return res.end(bytes);
+      } catch { return json(res, 404, { error: 'The file is gone from the data directory.' }); }
+    }
+  }
   if (p.startsWith('/api/') && !authed(req)) {
     if (limited(ipOf(req), 'locked', 60, 60000)) return json(res, 429, { locked: true, error: 'Too many requests. Try again in a minute.' });
     if (p === '/api/bootstrap') return json(res, 401, { locked: true, error: 'The house is locked. Enter the access code.' });

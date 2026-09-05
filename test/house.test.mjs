@@ -1840,6 +1840,11 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
   };
   const lit = await house('lit', PORT + 10);
   const dark = await house('dark', PORT + 11);
+  // A third house, with its door shut, to prove a shared deck's pictures and
+  // narration reach a recipient who has no code.
+  const DIRS = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-shut-'));
+  const PS = PORT + 12; const BS = `http://localhost:${PS}`;
+  const shut = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PS), PRAJNA_DATA_DIR: DIRS, PRAJNA_ACCESS_CODE: 'open-sesame' }, stdio: ['ignore', 'pipe', 'pipe'] });
   try {
     const base = `http://127.0.0.1:${model.address().port}/v1`;
     const hdr = (c) => ({ 'content-type': 'application/json', cookie: c });
@@ -1946,5 +1951,33 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal((html2.match(/class="visual house"/g) || []).length, 7, 'seven house drawings');
     assert.equal((html2.match(/<img class="visual"/g) || []).length, 0);
     assert.ok(((m2.events || []).filter((e) => e.type === 'gate').pop() || { sealed: [] }).sealed.includes('VAL-ILLUSTRATED'), 'and the gate is satisfied by them');
-  } finally { lit.child.kill(); dark.child.kill(); model.close(); fs.rmSync(lit.DIR, { recursive: true, force: true }); fs.rmSync(dark.DIR, { recursive: true, force: true }); }
+    // The shut house: the owner enters with the code, runs a deck, shares it.
+    { const t1 = Date.now(); while (Date.now() - t1 < 15000) { try { if ((await fetch(`${BS}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); } }
+    const jar2 = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+    const door = await fetch(`${BS}/api/session`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: 'open-sesame' }) });
+    let owner = jar2(door);
+    const page = await fetch(BS + '/', { headers: { cookie: owner } }); owner = [owner, jar2(page)].filter(Boolean).join('; ');
+    const legalS = await (await fetch(`${BS}/api/legal`)).json();
+    await fetch(`${BS}/api/consent`, { method: 'POST', headers: hdr(owner), body: JSON.stringify({ accept: true, version: legalS.version, name: 'Holder' }) });
+    await fetch(`${BS}/api/me`, { method: 'POST', headers: hdr(owner), body: JSON.stringify({ name: 'Holder' }) });
+    await fetch(`${BS}/api/keys/openai`, { method: 'PUT', headers: hdr(owner), body: JSON.stringify({ key: 'sk-test-key', baseUrl: base }) });
+    const leadS = await (await fetch(`${BS}/api/models`, { method: 'POST', headers: hdr(owner), body: JSON.stringify({ name: 'Deck Model', provider: 'openai', modelId: 'deck-1', baseUrl: base }) })).json();
+    const m3 = await run(BS, owner, leadS.id);
+    assert.equal(m3.status, 'FILLED');
+    const pic = m3.visuals[0].id, spokenId = m3.narration[0].id;
+    // Before the share: a stranger gets nothing.
+    assert.equal((await fetch(`${BS}/api/media/${pic}`)).status, 401, 'unshared media stays behind the door');
+    assert.equal((await fetch(`${BS}/api/artifacts/${m3.artifactId}/share`, { method: 'POST', headers: hdr(owner) })).status, 200);
+    const token = (await (await fetch(`${BS}/api/bootstrap`, { headers: hdr(owner) })).json()).artifacts.find((a) => a.id === m3.artifactId).shareToken;
+    assert.ok(token, 'a share token was issued');
+    const sharedPage = await fetch(`${BS}/s/${token}`);
+    assert.equal(sharedPage.status, 200, 'the shared deck is public by its link');
+    assert.ok((await sharedPage.text()).includes(`/api/media/${pic}`), 'and embeds its picture');
+    const gotPic = await fetch(`${BS}/api/media/${pic}`); const gotClip = await fetch(`${BS}/api/media/${spokenId}`);
+    assert.equal(gotPic.status, 200, 'a recipient with no code gets the picture'); assert.match(gotPic.headers.get('content-type') || '', /^image\//);
+    assert.equal(gotClip.status, 200, 'and the narration'); assert.match(gotClip.headers.get('content-type') || '', /^audio\//);
+    // Revoke the share and the door shuts on them again.
+    assert.equal((await fetch(`${BS}/api/artifacts/${m3.artifactId}/share`, { method: 'DELETE', headers: hdr(owner) })).status, 200);
+    assert.equal((await fetch(`${BS}/api/media/${pic}`)).status, 401, 'revoked: private again');
+  } finally { lit.child.kill(); dark.child.kill(); shut.kill(); model.close(); fs.rmSync(lit.DIR, { recursive: true, force: true }); fs.rmSync(dark.DIR, { recursive: true, force: true }); fs.rmSync(DIRS, { recursive: true, force: true }); }
 });
