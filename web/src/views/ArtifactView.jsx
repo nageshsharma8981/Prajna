@@ -93,7 +93,7 @@ export default function ArtifactView({ id }) {
               <div className="notes-add"><input className="key-input" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addNote(); }} placeholder="e.g. Lead with the pilot, drop the third claim, cite the regulator" aria-label="New note" /><button className="btn-stamp attn-btn" onClick={addNote} disabled={!note.trim()}>Add note</button></div>
             </div>
           )}
-          <iframe className="artifact-frame" sandbox="allow-scripts" src={`/api/artifacts/${id}/html`} title={artifact?.title || 'Artifact document'} />
+          <iframe className="artifact-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups" allow="fullscreen" allowFullScreen src={`/api/artifacts/${id}/html`} title={artifact?.title || 'Artifact document'} />
         </>
       )}
     </div>

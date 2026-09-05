@@ -50,8 +50,8 @@ export default function Compare({ leftId, rightId }) {
         </table>
       </div>
       <div className="compare-frames">
-        <figure><figcaption>v{left.version} · {left.serial}</figcaption><iframe className="artifact-frame" sandbox="allow-scripts" src={`/api/artifacts/${left.id}/html`} title={`Version ${left.version}`} /></figure>
-        <figure><figcaption>v{right.version} · {right.serial}</figcaption><iframe className="artifact-frame" sandbox="allow-scripts" src={`/api/artifacts/${right.id}/html`} title={`Version ${right.version}`} /></figure>
+        <figure><figcaption>v{left.version} · {left.serial}</figcaption><iframe className="artifact-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups" allow="fullscreen" allowFullScreen src={`/api/artifacts/${left.id}/html`} title={`Version ${left.version}`} /></figure>
+        <figure><figcaption>v{right.version} · {right.serial}</figcaption><iframe className="artifact-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups" allow="fullscreen" allowFullScreen src={`/api/artifacts/${right.id}/html`} title={`Version ${right.version}`} /></figure>
       </div>
     </div>
   );

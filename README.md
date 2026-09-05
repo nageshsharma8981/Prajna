@@ -1519,6 +1519,28 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.37: The frame lets the delivery work (5 Sep 2026)
+
+Every desk's delivery now runs, and every one was verified on its raw page.
+"Open" does not land on the raw page. It lands in the house's artifact view,
+which framed the delivery with a sandbox that allowed scripts and nothing
+else. In that frame the page has no origin of its own, so storage throws:
+the app could not keep its data, the site could not keep an entry, the
+brief could not record a decision. Dialogs were blocked, so delete and
+reset did nothing. Downloads were blocked, so the analysis CSV was dead.
+Fullscreen was not permitted, so the deck's F key did nothing.
+
+The raw page is served from this same origin with no sandbox at all, one
+click away under Full screen, so the frame's restrictions protected nothing
+and broke everything they held. The frame now grants what the runtimes
+need: its own origin, forms, downloads, dialogs, and fullscreen. The
+side-by-side compare view gets the same.
+
+Proved inside the artifact view itself, reaching into the frame: storage
+works, fullscreen is enabled, an item added in the frame is kept, and
+delete asks and proceeds. A test reads the built bundle and refuses a frame
+that drops any of these.
+
 ## v1.36: Word keeps the prose, PowerPoint keeps the notes (5 Sep 2026)
 
 The five-desk pass gave every delivery a runtime, and the Word and

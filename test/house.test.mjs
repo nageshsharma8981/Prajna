@@ -1757,3 +1757,20 @@ test('a key belongs to the owner: nobody else sees it, tests it or gets it back'
     assert.ok(seen.length > 0, 'the house did write something, so the check above means something');
   } finally { childA.kill(); fs.rmSync(DIRA, { recursive: true, force: true }); }
 });
+
+test('the artifact view frames a delivery with what its runtime needs', async () => {
+  // Every desk's delivery now runs: the app keeps its data, the brief records
+  // a decision, the analysis downloads its CSV, the deck goes fullscreen and
+  // asks before it deletes. A frame that forbids storage, dialogs, downloads
+  // and fullscreen breaks all of that exactly where Open lands. The raw page
+  // is served from this origin without any sandbox one click away, so the
+  // frame's restrictions bought nothing and cost everything.
+  const dist = path.join(process.cwd(), 'web', 'dist', 'assets');
+  // The build splits views into chunks, so read every one, not just the entry.
+  const bundle = fs.readdirSync(dist).filter((f) => /\.js$/.test(f)).map((f) => fs.readFileSync(path.join(dist, f), 'utf8')).join('\n');
+  assert.ok(bundle.length > 0, 'the built bundle is present');
+  for (const token of ['allow-same-origin', 'allow-forms', 'allow-downloads', 'allow-modals', 'allow-scripts']) assert.ok(bundle.includes(token), `the artifact frame grants ${token}`);
+  assert.ok(/allow:"fullscreen"|allow="fullscreen"/.test(bundle), 'and permits fullscreen');
+  // The frame still points at the house's own page, not somewhere else.
+  assert.ok(/\/api\/artifacts\/[^"'`]*\/html/.test(bundle), 'the frame source is the delivered page');
+});
