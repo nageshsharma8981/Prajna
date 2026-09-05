@@ -1504,3 +1504,17 @@ statement that the source named there does not mention them.
 So a reader can weigh a claim without taking anyone's word for it,
 including the house's, and an accepted risk stays visible in the
 document rather than only in its provenance.
+
+## v1.23: A restart takes your keys, and the house says so (2026-09-05)
+
+Keys live in memory and are never written to disk, which is the promise
+this house makes. The consequence went unsaid: every restart, including
+every deploy, silently drops them, and deliveries quietly stop being
+written by a model and start being composed or house-scripted, labelled
+but easy to miss.
+
+The house check now carries a keys row. It names the providers whose
+keys are held and why they will not survive a restart, and it fails
+when a house that has written on a key holds none, telling you to load
+yours again. The owner sees the same thing on the home page. A search
+key is not a model key and does not silence it.

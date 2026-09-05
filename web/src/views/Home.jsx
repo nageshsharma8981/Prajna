@@ -56,6 +56,9 @@ export default function Home() {
         <Link to="/?mode=chat" className="promo"><span className="promo-ic"><SparkIcon /></span><span>Try the companion,<br />a mind by your side</span><ArrowIcon /></Link>
       </aside>
       <div className="home-center">
+        {s.owner?.mine && s.ranLive && !s.keysHeld && (
+          <p className="house-warn" role="status">This house has written deliveries on your own key before, and holds no key now: keys live in memory only, so a restart clears them. Until you <Link to="/keys">load one again</Link>, every delivery will be composed from its sources or house-scripted, and labelled as such.</p>
+        )}
         {s.houseCheck?.failed?.length > 0 && <p className="house-warn" role="status">The house check found {s.houseCheck.failed.length} problem{s.houseCheck.failed.length === 1 ? '' : 's'}: {s.houseCheck.failed.map((f) => f.id).join(', ')}. <Link to="/account/settings">See the detail under Settings.</Link></p>}
         {showWelcome && (
           <section className="welcome" aria-label="Welcome">

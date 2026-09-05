@@ -1413,3 +1413,69 @@ test('a reader can see what each claim rests on, in the delivery itself', async 
     assert.match(badHtml, /photosynthesis|mangrove|seedlings/);
   } finally { child8.kill(); model.close(); wiki.close(); fs.rmSync(DIR8, { recursive: true, force: true }); }
 });
+
+test('the house says when a restart has taken its keys', async () => {
+  // Its own house: holding and dropping keys is the owner's business, and
+  // dropping one is exactly what a restart does.
+  const DIR9 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-keys-'));
+  const P9 = PORT + 8;
+  const B9 = `http://localhost:${P9}`;
+  const child9 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P9), PRAJNA_DATA_DIR: DIR9 }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const keysRow = async () => (await call('/api/housecheck')).j.rows.find((r) => r.id === 'keys');
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B9}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Keys Test' });
+    // A fresh house that has never run live and holds nothing is not in trouble.
+    let row = await keysRow();
+    assert.ok(row, 'the check has a keys row');
+    assert.equal(row.ok, true);
+    assert.match(row.detail, /composed from sources or house-scripted/);
+    // Holding one is reported, with the reason it will not survive a restart.
+    assert.equal((await call('/api/keys/openai', { key: 'sk-test-key' }, 'PUT')).status, 200);
+    row = await keysRow();
+    assert.equal(row.ok, true);
+    assert.match(row.detail, /provider key\(s\) held in memory: openai/);
+    assert.match(row.detail, /never written to disk, so a restart clears them/);
+    assert.equal((await call('/api/bootstrap', null, 'GET')).j.keysHeld, 1);
+    // A search key is not a model key.
+    assert.equal((await call('/api/keys/brave', { key: 'brave-test-key' }, 'PUT')).status, 200);
+    assert.equal((await call('/api/bootstrap', null, 'GET')).j.keysHeld, 1, 'a search key is not counted as a model key');
+    // Dropping the model key is exactly what a restart does. This house has
+    // not run live, so it is told plainly rather than warned.
+    assert.equal((await call('/api/keys/openai', null, 'DELETE')).status, 200);
+    row = await keysRow();
+    assert.equal(row.ok, true);
+    assert.equal((await call('/api/bootstrap', null, 'GET')).j.ranLive, false);
+    assert.match(row.detail, /no model key is held/);
+
+    // Now the case that matters: a house that has written on a key, and then
+    // lost it the way every restart loses it.
+    const draft = { stand: 'Written on a key.', verdict: 'Proceed narrowly. Stated before the evidence, in two sentences.',
+      claims: [1, 2, 3].map((n) => ({ text: `Claim ${n}.`, grade: 'B', detail: `Support ${n}.`, src: 0, source: { title: `Class ${n}`, kind: 'analysis' } })),
+      refuted: [], moves: [], tripwires: 'Stop if it fails.', dissent: { seat: 'an adviser', text: 'Doubted the pace.' } };
+    const model = http.createServer((req, res) => { let body = ''; req.on('data', (d) => { body += d; }); req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(/CRITIQUE the draft/.test(JSON.parse(body).messages[0].content) ? { verdict: 'pass', issues: [] } : draft) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } })); }); });
+    await new Promise((r) => model.listen(0, '127.0.0.1', r));
+    try {
+      await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${model.address().port}/v1` }, 'PUT');
+      const lead = (await call('/api/models', { name: 'Key Model', provider: 'openai', modelId: 'k-1', baseUrl: `http://127.0.0.1:${model.address().port}/v1` })).j;
+      const w = await call('/api/missions', { goal: 'Keys test: a brief written on a key', deskId: 'brief', depth: 'fast', lead: lead.id, advisers: [] });
+      await call(`/api/missions/${w.j.id}/launch`);
+      let m; const started = Date.now();
+      while (Date.now() - started < 120000) {
+        m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+        if (m.status === 'FILLED' || m.status === 'KILLED') break;
+        if (m.status.startsWith('PAUSED')) { const a2 = (m.attention || []).find((x) => !x.decision); if (a2) { const pick = ['accept-risk', 'raise-ceiling', 'approve', 'patch', 'continue'].find((o) => a2.options.includes(o)) || a2.options[0]; await call(`/api/missions/${w.j.id}/attention/${a2.id}`, { decision: pick, justification: `keys test, ${pick}` }); } }
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      assert.equal(m.authored?.live, true, 'the house wrote on a key');
+      assert.equal((await call('/api/bootstrap', null, 'GET')).j.ranLive, true);
+      assert.equal((await call('/api/keys/openai', null, 'DELETE')).status, 200);
+      row = await keysRow();
+      assert.equal(row.ok, false, 'a house that ran live and now holds nothing is a finding');
+      assert.match(row.detail, /a restart clears keys, so load yours again/);
+    } finally { model.close(); }
+  } finally { child9.kill(); fs.rmSync(DIR9, { recursive: true, force: true }); }
+});

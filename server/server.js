@@ -67,6 +67,13 @@ async function houseCheck() {
   const expected = Math.round(inflight.reduce((a, m) => a + Math.max(0, (m.contract?.ceiling || 0) - (m.spent || 0)), 0) * 10) / 10;
   const reserved = Math.round((store.workspace().reserved || 0) * 10) / 10;
   add('reserve', Math.abs(expected - reserved) < 0.2, `${reserved} cr reserved; ${inflight.length} in-flight ticket(s) still hold ${expected} cr of unspent ceiling`);
+  const keys = Object.keys(store.keys()).filter((prov) => PROVIDERS[prov]?.kind !== 'search');
+  const ranLive = store.missions().some((m) => m.authored?.live);
+  add('keys', keys.length > 0 || !ranLive, keys.length
+    ? `${keys.length} provider key(s) held in memory: ${keys.join(', ')}. They are never written to disk, so a restart clears them.`
+    : ranLive
+      ? 'no model key is held, though this house has written deliveries with one before: a restart clears keys, so load yours again under Your keys or every delivery will be composed or house-scripted'
+      : 'no model key is held; deliveries will be composed from sources or house-scripted, and labelled as such');
   const lh = limitHealth(); add('limits', lh.ok, lh.detail);
   const log = ws().consentLog || [];
   const people = new Set(log.map((e) => `${e.name || ''}@${e.ip || ''}`));
@@ -793,6 +800,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       limits: limits(),
       hooks: hookState(),
       houseBrief: ws().houseBrief || '',
+      keysHeld: Object.keys(store.keys()).filter((prov) => PROVIDERS[prov]?.kind !== 'search').length,
+      ranLive: store.missions().some((m) => m.authored?.live),
       me: meOf(req),
       guests: guestMode(),
       owner: { name: (ws().visitors || {})[ws().ownerId]?.name || ownerName() || null, mine: isOwner(req) },
