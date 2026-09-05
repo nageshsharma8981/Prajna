@@ -1519,6 +1519,20 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.40: The landing page has a hero (5 Sep 2026)
+
+The deck got its pictures; the landing page still shipped a placeholder
+box where its hero image should be, labelled "Product still: replace with
+real capture". Same defect, same fix.
+
+The site contract now carries the illustrate step too: one hero image,
+drawn on the owner's image key from the brand, the headline and the line
+under it, as a product photograph in a tall composition for the hero slot.
+The page shows it in place of the box, with alt text; the PowerPoint and
+Word exports are unaffected. When no image key is held the honest
+placeholder stays, exactly as before. Proved in the every-desk test: one
+hero on the record, shown with alt text, the placeholder gone.
+
 ## v1.39: The deck plays as a narrated film (5 Sep 2026)
 
 Asked for directly: video of real quality, with a spoken narrative,

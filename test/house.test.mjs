@@ -1129,6 +1129,12 @@ test('every desk delivers with a live model, not just the research desk', async 
       assert.equal(m.authored?.live, true, `${id} was written by the model: ${JSON.stringify(m.authored).slice(0, 160)}`);
       const html = await (await fetch(`${B5}/api/artifacts/${m.artifactId}/html`)).text();
       assert.match(html, /Live run: the substance of this deliverable was written by Desk Model/, `${id} provenance says live`);
+      if (deskId === 'site') {
+        // The hero is a picture drawn on the key, not a placeholder box.
+        assert.equal((m.visuals || []).length, 1, 'one hero image on the record');
+        assert.ok(/<div class="vis has-visual"><img class="visual" src="\/api\/media\/[a-f0-9]{16}" alt="[^"]{8,}">/.test(html), 'the hero shows it, with alt text');
+        assert.ok(!/replace with real capture/i.test(html), 'and the placeholder is gone');
+      }
       // The model's own words must actually be in the delivery.
       const marker = { brief: 'Live claim 1 about the coastal ferry programme', deck: 'The whole case in one sentence', site: 'Get across the water faster', mobile: 'What screen 1 is for', analysis: 'A live read of what the numbers would need to show' }[id];
       assert.ok(html.includes(marker), `${id} carries what the model wrote: looked for “${marker}”`);

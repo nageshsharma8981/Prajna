@@ -674,6 +674,7 @@ h1{font-size:clamp(2.4rem,5vw,4rem);line-height:1.05;letter-spacing:-.025em;marg
 radial-gradient(circle at 30% 20%,rgba(255,255,255,.25),transparent 45%),
 repeating-linear-gradient(-35deg,transparent 0 26px,rgba(255,255,255,.09) 26px 28px)}
 .vis span{position:absolute;bottom:1.4rem;left:1.4rem;color:#dbe8d2;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase}
+.vis.has-visual::after{display:none}.vis .visual{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .strip{background:var(--ink);color:#c8d4c9;padding:1rem 5vw;text-align:center;font-size:.9rem;letter-spacing:.06em}
 .why{max-width:72rem;margin:0 auto;padding:6vh 5vw;display:grid;grid-template-columns:repeat(3,1fr);gap:3rem}
 .why h3{font-size:1.15rem;margin:0 0 .5rem}.why h3 em{font-style:normal;color:var(--acc)}
@@ -701,7 +702,13 @@ ${PROV_CSS}
     <p>${A ? esc(str(A.sub)) : 'One promise, kept: the thing this page announces, working, in your hands, without the noise the category insists on.'}</p>
     <div class="actions"><a class="btn" href="#join">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a><a class="ghost" href="#how">${A ? esc(str(A.secondary, 'See how it works')) : 'See how it works'}</a></div>
   </div>
-  <div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending: supplied by the owner' : 'Product still: replace with real capture'}</span></div>
+  ${(() => {
+    // The hero: the picture generated on the owner's key when there is one,
+    // the honest placeholder when there is not.
+    const v = Array.isArray(mission.visuals) ? mission.visuals.find((x) => x.slide === 0) : null;
+    if (v) return `<div class="vis has-visual"><img class="visual" src="/api/media/${esc(v.id)}" alt="${esc(String(v.prompt).replace(/^.*?Subject: /, '').slice(0, 200))}"></div>`;
+    return `<div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending: supplied by the owner' : 'Product still: replace with real capture'}</span></div>`;
+  })()}
 </header>
 <div class="strip">${A ? esc(str(A.strip, 'Built by Prajñā')) : 'Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement'}</div>
 <section class="why" id="how">

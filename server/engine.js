@@ -114,6 +114,7 @@ const PLANS = {
     { id: 's3', title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8, access: 'write', dependsOn: ['s1'] },
     { id: 's4', title: 'Build the page, semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Access audit: contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
+    { id: 's6', title: 'Illustrate: a hero image on your image key', tool: 'illustrate', cost: 4, access: 'write', dependsOn: ['s4'] },
   ],
   mobile: (s) => [
     { id: 's1', title: `Map the app, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
@@ -704,8 +705,11 @@ async function applyEvent(m, ev, notify, runner) {
       m.visuals = [];
       const prov = ['openai', 'google'].find((id) => store.keyFor(id));
       const k = prov ? store.keyFor(prov) : null;
-      const slides = deckSlides(m);
-      const wanted = slides.map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
+      // A deck wants the title and every argument; a landing page wants one
+      // hero, drawn from the brand, the headline and the line under it.
+      const wanted = m.desk === 'site'
+        ? [{ i: 0, sl: { k: 'hero', h: `${String(m.authored?.content?.brand || '').trim()} ${String(m.authored?.content?.headline || subjectOf(m.goal)).trim()}`.trim(), s: String(m.authored?.content?.sub || m.goal).trim() } }]
+        : deckSlides(m).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim');
       if (!k) {
         pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `no image key in memory (OpenAI or Google), so the house draws its own ${wanted.length} visuals; load a key under Your keys and re-run for generated images` }, notify);
         return 'ok';
@@ -715,7 +719,9 @@ async function applyEvent(m, ev, notify, runner) {
         return 'ok';
       }
       const mediaDir = path.join(DATA_DIR, 'media'); fs.mkdirSync(mediaDir, { recursive: true });
-      const style = 'Cinematic editorial photograph, natural light, shallow depth of field, no text, no logos, no watermarks, muted warm palette, wide 3:2 composition with space on the left for a headline';
+      const style = m.desk === 'site'
+        ? 'Product photograph for a landing page hero, natural light, clean background, the product or its setting in use, no text, no logos, no watermarks, tall 4:5 composition'
+        : 'Cinematic editorial photograph, natural light, shallow depth of field, no text, no logos, no watermarks, muted warm palette, wide 3:2 composition with space on the left for a headline';
       let made = 0; const failed = [];
       // Three at a time, ninety seconds each at most: a slow or stalled
       // provider costs the deck a minute and a half, never seven of them.
@@ -725,7 +731,7 @@ async function applyEvent(m, ev, notify, runner) {
         while (queue.length) {
           const job = queue.shift(); const started = Date.now();
           const prompt = `${style}. Subject: ${String(job.sl.h).replace(/<[^>]+>/g, '')}. Context: ${String(job.sl.s).replace(/<[^>]+>/g, '').slice(0, 300)}`;
-          try { results.push({ ...job, prompt, started, out: await capped(generateImage({ provider: prov, key: k.key, baseUrl: k.baseUrl, prompt, size: '1536x1024' }), 90000) }); }
+          try { results.push({ ...job, prompt, started, out: await capped(generateImage({ provider: prov, key: k.key, baseUrl: k.baseUrl, prompt, size: m.desk === 'site' ? '1024x1536' : '1536x1024' }), 90000) }); }
           catch (e) { results.push({ ...job, prompt, started, error: e }); }
         }
       }));
