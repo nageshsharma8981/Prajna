@@ -146,6 +146,10 @@ function Cite({ text, sources }) {
 export default function Run({ id }) {
   const store = useStore();
   const [mission, setMission] = useState(null);
+  // The tape is the record, not the result. It stays folded unless the
+  // reader opens it, and the choice is remembered.
+  const [showTape, setShowTape] = useState(() => { try { return localStorage.getItem('prajna-tape') === 'on'; } catch { return false; } });
+  const toggleTape = () => setShowTape((v) => { const n = !v; try { localStorage.setItem('prajna-tape', n ? 'on' : 'off'); } catch { /* fine */ } return n; });
   const [editing, setEditing] = useState(false);
   const [draftPlan, setDraftPlan] = useState([]);
   const [events, setEvents] = useState([]);
@@ -337,6 +341,9 @@ export default function Run({ id }) {
         <Link to="/" className="btn-quiet" style={{ padding: '0.45rem 0.8rem' }} aria-label="Back to missions"><BackIcon /> Missions</Link>
         <SplitFlap text={mission.serial} size="0.9rem" />
         <StatusFlap status={mission.status} />
+        {mission.artifactId && !mission.voidedBeforeRun && (
+          <Link to={`/artifact/${mission.artifactId}`} className="btn-stamp" style={{ padding: '0.5rem 1rem' }}><OpenIcon /> Open {filled ? 'the delivery' : 'partial delivery'}</Link>
+        )}
         {(live || paused) && !confirmStop && (
           <button className="btn-quiet kill-btn" onClick={() => setConfirmStop(true)}>Stop run</button>
         )}
@@ -509,12 +516,47 @@ export default function Run({ id }) {
           </div>
         </aside>
 
-        <section className="tape" aria-label="Live tape">
-          <div className="board-title">
+        <section className="tape" aria-label="The result">
+          {(() => {
+            // What the reader came for, without the tape: the delivery when
+            // there is one, the decision when one is waiting, and one line
+            // on what is happening while the run is live.
+            const art = mission.artifactId ? (store.artifacts || []).find((a) => a.id === mission.artifactId) : null;
+            const waiting = events.filter((e) => e.type === 'attention.raised' && !decidedIds.has(e.requestId));
+            const lastLog = [...events].reverse().find((e) => e.type === 'log' || e.type === 'step.started' || e.type === 'artifact.build');
+            if (mission.status === 'OPEN') return null;
+            return (
+              <div className="result-panel">
+                {mission.artifactId && !mission.voidedBeforeRun && (
+                  <div className="result-card">
+                    <div className="t">
+                      <span className="brd-sm">{filled ? 'Delivered' : killed ? 'Partial delivery' : 'Delivered so far'}</span>
+                      <b>{art?.title || mission.subject}</b>
+                      <span>{art?.kind === 'mobile' ? 'working app' : art?.kind || mission.deliverable}{mission.partial ? ' · partial' : ''}{mission.spent != null ? ` · ${mission.spent.toFixed(1)} cr settled` : ''}</span>
+                    </div>
+                    <div className="result-actions">
+                      <Link to={`/artifact/${mission.artifactId}`} className="btn-stamp"><OpenIcon /> Open</Link>
+                      <a className="btn-quiet" href={`/api/artifacts/${mission.artifactId}/html`} target="_blank" rel="noreferrer">Full screen</a>
+                    </div>
+                  </div>
+                )}
+                {waiting.length > 0 && !killed && waiting.map((ev) => <AttentionCard key={ev.requestId} missionId={mission.id} ev={ev} decided={false} />)}
+                {live && (
+                  <div className="result-now" role="status" aria-live="polite">
+                    <span className="count" style={{ animation: 'flapflip 1.2s linear infinite' }}>LIVE</span>
+                    <span>{writing ? `${writing.model} is writing, ${writing.chars.toLocaleString()} characters so far` : lastLog ? (lastLog.detail || lastLog.note || stepTitle[lastLog.stepId] || 'Working') : 'Starting'}</span>
+                  </div>
+                )}
+                {!mission.artifactId && (killed || mission.voidedBeforeRun) && <div className="board-empty">Nothing was delivered. {mission.voidedBeforeRun ? 'The ticket was voided before it ran.' : 'The run was stopped before anything shipped.'}</div>}
+                <button className="btn-quiet tape-toggle" onClick={toggleTape} aria-expanded={showTape}>{showTape ? 'Hide the tape' : 'Show the tape, every move on the record'}</button>
+              </div>
+            );
+          })()}
+          {(showTape || mission.status === 'OPEN') && <div className="board-title">
             <span className="brd-sm">The tape: every move on the record</span>
             {live && <span className="count" style={{ animation: 'flapflip 1.2s linear infinite' }}>LIVE</span>}
-          </div>
-          <div className="tape-feed" ref={feedRef} onScroll={onFeedScroll} style={{ maxHeight: '34rem' }}>
+          </div>}
+          <div className="tape-feed" ref={feedRef} onScroll={onFeedScroll} style={{ maxHeight: '34rem' }} hidden={!showTape && mission.status !== 'OPEN'}>
             {visibleEvents.map((ev, i) => {
               if (ev.type === 'run.launched') {
                 return <div key={i} className="tape-step"><span>Ticket stamped: run opened</span><span className="rule" /></div>;

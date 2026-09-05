@@ -794,6 +794,15 @@ a { color: inherit; }
 }
 .quote .dissent b { letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.62rem; }
 
+.result-panel { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1rem; }
+.result-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 10px; padding: 1rem 1.2rem; }
+.result-card .t { flex: 1; min-width: 14rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.result-card .t b { font-size: 1.05rem; font-weight: 700; color: var(--bone); }
+.result-card .t > span:last-child { font-size: 0.8rem; color: var(--bone-dim); }
+.result-actions { display: flex; gap: 0.6rem; align-items: center; }
+.result-actions .btn-stamp { padding: 0.7rem 1.4rem; font-size: 0.8rem; }
+.result-now { display: flex; align-items: center; gap: 0.8rem; font-size: 0.8rem; color: var(--bone-dim); padding: 0.4rem 0.2rem; }
+.tape-toggle { align-self: flex-start; padding: 0.4rem 0.8rem; font-size: 0.72rem; }
 .artifact-card {
   border: 1px solid color-mix(in srgb, var(--green) 45%, var(--line));
   background: color-mix(in srgb, var(--green) 7%, var(--hall));

@@ -1519,6 +1519,39 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.31: The app works, and the result comes first (5 Sep 2026)
+
+Three things asked for in one message, all three shipped.
+
+**The mobile desk builds a working app, not a picture of one.** The
+delivery used to be four screens with static cards and a button that did
+nothing. It is now a real app running inside the phone frame: every screen
+is a live list with search that filters as you type; tapping an item opens
+it, with mark done, reopen, edit and delete; the primary button opens a
+sheet that adds one, validated in the sheet's own words (a title is needed,
+no duplicates); the dots at the top open settings with counts per screen, a
+dark theme, and a reset. Every change is kept on the device under the
+mission's serial and survives a reload, and each screen and item has its own
+address so the phone's Back button does what it should. On a narrow screen
+the bezel goes away, it runs full height, and it can be added to the home
+screen. The page says plainly that it is a web app, not a native build. The
+model now names what one item on each screen is called, so the button reads
+"Book a trip" rather than "Take the action". Proved by driving a delivered
+app in the browser: navigate, search, open, add, edit, mark done, delete,
+theme, reload.
+
+**The tape is folded away.** The run page led with the tape, every move on
+the record, and the delivery was a card somewhere down inside it. The tape is
+the record, not the result, so it is now hidden unless the reader asks for
+it, and the choice is remembered. In its place the page shows what the
+reader came for: the delivery with Open and Full screen, any decision that is
+waiting, and one line on what is happening while the run is live. A ticket
+not yet stamped still shows its plan.
+
+**Opening is one click at the top.** "Open the delivery" now sits in the
+header, right after the status, the moment there is anything to open. No
+scrolling, no hunting.
+
 ## v1.30: A key belongs to the owner (5 Sep 2026)
 
 Keys have always lived in memory only: never written to disk, never in an

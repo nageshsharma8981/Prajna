@@ -459,62 +459,186 @@ ${provenance(mission)}
 
 /* ---------------------------------- MOBILE -------------------------------- */
 
+// The app's own runtime. Serialised into the artifact as a function, so it
+// is real JavaScript here and real JavaScript there. Everything a user can
+// do lives in this one function: navigate, search, open an item, add one,
+// mark it done, delete it, change a setting, reset. State is kept on the
+// device under the mission's serial and survives a reload. A hash route per
+// screen and per item means the phone's Back button does what it should.
+function mobileRuntime() {
+  const DATA = JSON.parse(document.getElementById('app-data').textContent);
+  const KEY = 'prajna-app-' + DATA.serial;
+  const $ = (q, el) => (el || document).querySelector(q);
+  const $$ = (q, el) => Array.from((el || document).querySelectorAll(q));
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const load = () => { try { const v = JSON.parse(localStorage.getItem(KEY)); if (v && v.items) return v; } catch (e) { /* fresh */ } return null; };
+  let state = load() || { items: Object.fromEntries(DATA.screens.map((sc) => [sc.id, sc.items.map((it, i) => ({ id: sc.id + '-' + i, title: it.b, note: it.s, done: false, at: Date.now() }))])), prefs: { theme: 'light' }, seeded: true };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast('This browser will not keep data between visits.'); } };
+  let toastTimer = null;
+  const toast = (msg) => { const t = $('.toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 1800); };
+  const screenOf = (id) => DATA.screens.find((sc) => sc.id === id) || DATA.screens[0];
+  const route = () => { const h = location.hash.replace(/^#\/?/, ''); const [sid, sub, iid] = h.split('/'); return { sid: screenOf(sid).id, sub: sub || null, iid: iid || null }; };
+  const go = (path) => { location.hash = '#' + path; };
+  const applyTheme = () => { document.documentElement.dataset.theme = state.prefs.theme; };
+
+  function renderList(sc, root) {
+    const q = (root.dataset.q || '').toLowerCase();
+    const items = state.items[sc.id].filter((it) => !q || (it.title + ' ' + it.note).toLowerCase().includes(q));
+    const open = items.filter((it) => !it.done), done = items.filter((it) => it.done);
+    const row = (it) => '<button class="card" data-open="' + esc(it.id) + '"' + (it.done ? ' data-done="1"' : '') + '><span class="dot"></span><span class="txt"><b>' + esc(it.title) + '</b><span>' + esc(it.note || '') + '</span></span><span class="chev">›</span></button>';
+    root.innerHTML = '<h2>' + esc(sc.title) + '</h2><p>' + esc(sc.body) + '</p>'
+      + '<label class="search"><input type="search" placeholder="Search ' + esc(sc.plural) + '" value="' + esc(root.dataset.q || '') + '" aria-label="Search ' + esc(sc.plural) + '"></label>'
+      + (items.length ? open.map(row).join('') + (done.length ? '<div class="sect">Done · ' + done.length + '</div>' + done.map(row).join('') : '') : '<div class="empty"><b>' + (q ? 'Nothing matches “' + esc(root.dataset.q) + '”' : 'No ' + esc(sc.plural) + ' yet') + '</b><span>' + (q ? 'Try fewer words.' : 'Add the first one with the button below.') + '</span></div>')
+      + '<button class="cta" data-add="' + esc(sc.id) + '">' + esc(sc.cta) + '</button>';
+    const inp = $('input[type=search]', root);
+    inp.addEventListener('input', () => { root.dataset.q = inp.value; const pos = inp.selectionStart; renderList(sc, root); const again = $('input[type=search]', root); again.focus(); try { again.setSelectionRange(pos, pos); } catch (e) { /* fine */ } });
+    $$('[data-open]', root).forEach((b) => b.addEventListener('click', () => go(sc.id + '/item/' + b.dataset.open)));
+    $('[data-add]', root).addEventListener('click', () => openSheet(sc));
+  }
+  function renderDetail(sc, root, iid) {
+    const it = state.items[sc.id].find((x) => x.id === iid);
+    if (!it) { go(sc.id); return; }
+    root.innerHTML = '<button class="back" data-back>‹ ' + esc(sc.tab) + '</button><h2>' + esc(it.title) + '</h2><p class="note">' + (it.note ? esc(it.note) : '<i>No note.</i>') + '</p>'
+      + '<p class="meta">' + (it.done ? 'Done' : 'Open') + ' · added ' + new Date(it.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + '</p>'
+      + '<button class="cta" data-toggle>' + (it.done ? 'Reopen' : 'Mark done') + '</button>'
+      + '<button class="cta ghost" data-edit>Edit</button>'
+      + '<button class="cta danger" data-del>Delete</button>';
+    $('[data-back]', root).addEventListener('click', () => go(sc.id));
+    $('[data-toggle]', root).addEventListener('click', () => { it.done = !it.done; save(); toast(it.done ? 'Marked done' : 'Reopened'); go(sc.id); });
+    $('[data-edit]', root).addEventListener('click', () => openSheet(sc, it));
+    $('[data-del]', root).addEventListener('click', () => { if (!confirm('Delete “' + it.title + '”?')) return; state.items[sc.id] = state.items[sc.id].filter((x) => x.id !== it.id); save(); toast('Deleted'); go(sc.id); });
+  }
+  function openSheet(sc, it) {
+    const sh = $('.sheet');
+    sh.innerHTML = '<form class="sheet-body" novalidate><h3>' + (it ? 'Edit ' : 'New ') + esc(sc.noun) + '</h3>'
+      + '<label>Title<input name="title" required maxlength="80" value="' + esc(it ? it.title : '') + '" autocomplete="off"></label>'
+      + '<label>Note<textarea name="note" rows="3" maxlength="300">' + esc(it ? it.note : '') + '</textarea></label>'
+      + '<p class="err" role="alert"></p>'
+      + '<div class="row"><button type="button" class="cta ghost" data-cancel>Cancel</button><button type="submit" class="cta">' + (it ? 'Save' : 'Add') + '</button></div></form>';
+    sh.classList.add('on'); $('.scrim').classList.add('on');
+    const form = $('form', sh); const title = $('[name=title]', form);
+    setTimeout(() => title.focus(), 50);
+    const close = () => { sh.classList.remove('on'); $('.scrim').classList.remove('on'); };
+    $('[data-cancel]', form).addEventListener('click', close);
+    $('.scrim').onclick = close;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const t = title.value.trim(); const n = $('[name=note]', form).value.trim();
+      if (!t) { $('.err', form).textContent = 'A title is needed.'; title.focus(); return; }
+      if (state.items[sc.id].some((x) => x.id !== (it && it.id) && x.title.toLowerCase() === t.toLowerCase())) { $('.err', form).textContent = 'There is already one called that.'; title.focus(); return; }
+      if (it) { it.title = t; it.note = n; toast('Saved'); } else { state.items[sc.id].unshift({ id: sc.id + '-' + Date.now().toString(36), title: t, note: n, done: false, at: Date.now() }); toast('Added'); }
+      save(); close(); render();
+    });
+  }
+  function openSettings() {
+    const sh = $('.sheet');
+    const counts = DATA.screens.map((sc) => '<li><span>' + esc(sc.tab) + '</span><b>' + state.items[sc.id].filter((x) => !x.done).length + ' open · ' + state.items[sc.id].filter((x) => x.done).length + ' done</b></li>').join('');
+    sh.innerHTML = '<div class="sheet-body"><h3>Settings</h3><ul class="counts">' + counts + '</ul>'
+      + '<label class="switch"><span>Dark theme</span><input type="checkbox" data-pref-theme' + (state.prefs.theme === 'dark' ? ' checked' : '') + '></label>'
+      + '<p class="meta">Data lives on this device only. Nothing here is sent anywhere.</p>'
+      + '<div class="row"><button type="button" class="cta danger" data-reset>Reset all data</button><button type="button" class="cta" data-close>Done</button></div></div>';
+    sh.classList.add('on'); $('.scrim').classList.add('on');
+    const close = () => { sh.classList.remove('on'); $('.scrim').classList.remove('on'); };
+    $('[data-close]', sh).addEventListener('click', close); $('.scrim').onclick = close;
+    $('[data-pref-theme]', sh).addEventListener('change', (e) => { state.prefs.theme = e.target.checked ? 'dark' : 'light'; save(); applyTheme(); });
+    $('[data-reset]', sh).addEventListener('click', () => { if (!confirm('Reset the app to its starting data?')) return; try { localStorage.removeItem(KEY); } catch (e) { /* fine */ } location.reload(); });
+  }
+  function render() {
+    const r = route();
+    $$('.tab').forEach((b) => { const on = b.dataset.go === r.sid; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $$('.screen').forEach((el) => {
+      const on = el.dataset.screen === r.sid; el.classList.toggle('on', on);
+      if (!on) return;
+      const sc = screenOf(r.sid);
+      if (r.sub === 'item') renderDetail(sc, el, r.iid); else renderList(sc, el);
+    });
+    document.title = screenOf(r.sid).title + ' · ' + DATA.name;
+  }
+  $$('.tab').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+  $('.gear').addEventListener('click', openSettings);
+  window.addEventListener('hashchange', render);
+  applyTheme();
+  if (!location.hash) history.replaceState(null, '', '#' + DATA.screens[0].id);
+  render();
+}
+
 export function mobileArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
   const short = t.replace(/^Build a mobile app for (a |an )?/i, '').replace(/^\w/, (c) => c.toUpperCase());
   const A = authored(mission);
-  const screens = A ? A.screens.slice(0, 4).map((sc, i) => ({ id: `s${i}`, tab: str(sc.tab, `Tab ${i + 1}`).slice(0, 10), title: str(sc.title, i === 0 ? str(A.short, short) : `Screen ${i + 1}`), body: str(sc.body), items: Array.isArray(sc.items) ? sc.items.slice(0, 3) : [], cta: str(sc.cta, 'Take the action') })) : [
-    { id: 'home', tab: 'Home', title: short, body: 'The one thing this app is for, reachable in one tap. Everything else is a tab away.' },
-    { id: 'browse', tab: 'Browse', title: 'Browse', body: 'A scannable list with real hierarchy: title, one line of context, one action.' },
-    { id: 'detail', tab: 'Activity', title: 'Activity', body: 'What happened, when, and what to do next. Empty state written first.' },
-    { id: 'me', tab: 'You', title: 'You', body: 'Account, preferences, and the door out. No dark patterns.' },
-  ];
+  const nounOf = (sc, fallback) => str(sc && sc.noun, fallback).toLowerCase().replace(/[^a-z0-9 -]/g, '').trim().slice(0, 24) || fallback;
+  const plural = (n) => (/s$/.test(n) ? n : /y$/.test(n) && !/[aeiou]y$/.test(n) ? `${n.slice(0, -1)}ies` : `${n}s`);
+  const screens = (A ? A.screens.slice(0, 4).map((sc, i) => ({ id: `s${i}`, tab: str(sc.tab, `Tab ${i + 1}`).slice(0, 10), title: str(sc.title, i === 0 ? str(A.short, short) : `Screen ${i + 1}`), body: str(sc.body), items: Array.isArray(sc.items) ? sc.items.slice(0, 3).map((it) => ({ b: str(it.b, 'Item'), s: str(it.s) })) : [], cta: str(sc.cta, ''), noun: nounOf(sc, 'item') })) : [
+    { id: 'home', tab: 'Home', title: short, body: 'The one thing this app is for, reachable in one tap. Everything else is a tab away.', noun: 'task', items: [{ b: 'First task', s: 'Tap to open it, or add your own.' }, { b: 'Second task', s: 'Search filters as you type.' }, { b: 'Third task', s: 'Mark done from the detail view.' }] },
+    { id: 'browse', tab: 'Browse', title: 'Browse', body: 'A scannable list with real hierarchy: title, one line of context, one action.', noun: 'entry', items: [{ b: 'An entry', s: 'One line of context.' }, { b: 'Another entry', s: 'Everything here is editable.' }, { b: 'A third', s: 'Delete from the detail view.' }] },
+    { id: 'detail', tab: 'Activity', title: 'Activity', body: 'What happened, when, and what to do next. Empty state written first.', noun: 'note', items: [] },
+    { id: 'me', tab: 'You', title: 'You', body: 'Your own list. The settings are behind the dots at the top.', noun: 'reminder', items: [] },
+  ]).map((sc) => ({ ...sc, plural: plural(sc.noun), cta: sc.cta && !/^(do the one thing|take the action)$/i.test(sc.cta) ? sc.cta : `Add ${sc.noun}` }));
+  const name = A ? str(A.short, short) : short;
+  const data = { serial: mission.serial, name, screens };
+  const manifest = encodeURIComponent(JSON.stringify({ name, short_name: name.slice(0, 12), display: 'standalone', start_url: './', background_color: '#f7f6f1', theme_color: '#1d5c3a' }));
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${t}, Mobile prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="${esc(name)}">
+<link rel="manifest" href="data:application/manifest+json,${manifest}">
+<title>${esc(name)}, working app</title>
 <style>
-:root{--ink:#131a17;--paper:#f7f6f1;--acc:#1d5c3a;--muted:#6b756f}
+:root{--ink:#131a17;--paper:#f7f6f1;--card:#fff;--line:#e3e6e1;--acc:#1d5c3a;--muted:#6b756f;--danger:#a2402f}
+:root[data-theme="dark"]{--ink:#eef1ec;--paper:#151a17;--card:#1e2521;--line:#2c3530;--acc:#5fc28f;--muted:#9aa59e}
 *{box-sizing:border-box}body{margin:0;background:#dfe3dd;font:15px/1.45 -apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 3rem;gap:1rem}
 h1{font-size:1.05rem;margin:0;color:#3e4842;font-weight:600}
 .phone{width:min(390px,94vw);aspect-ratio:390/780;background:#000;border-radius:44px;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35);position:relative}
-.glass{background:var(--paper);border-radius:34px;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.glass{background:var(--paper);color:var(--ink);border-radius:34px;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#000;border-radius:20px}
-.status{display:flex;justify-content:space-between;padding:1rem 1.4rem 0;font-size:.8rem;font-weight:600}
-.screen{display:none;flex:1;padding:1.4rem 1.3rem;overflow:auto}
+.status{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.2rem 0 1.4rem;font-size:.8rem;font-weight:600}
+.gear{background:none;border:none;color:var(--muted);font:700 1.1rem inherit;min-height:44px;min-width:44px;border-radius:12px;cursor:pointer}.gear:hover{color:var(--acc)}
+.screen{display:none;flex:1;padding:1rem 1.3rem 1.4rem;overflow:auto;-webkit-overflow-scrolling:touch}
 .screen.on{display:block}
-.screen h2{font-size:1.7rem;letter-spacing:-.02em;margin:1.2rem 0 .4rem}
-.screen p{color:var(--muted);margin:0 0 1rem}
-.card{background:#fff;border:1px solid #e3e6e1;border-radius:14px;padding:.9rem 1rem;margin:.6rem 0;display:flex;align-items:center;gap:.8rem;min-height:44px}
+.screen h2{font-size:1.7rem;letter-spacing:-.02em;margin:1rem 0 .3rem}
+.screen p{color:var(--muted);margin:0 0 .8rem}
+.search{display:block;margin:0 0 .6rem}.search input{width:100%;min-height:44px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:.6rem .9rem;font:inherit}
+.card{width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:.8rem .9rem;margin:.5rem 0;display:flex;align-items:center;gap:.8rem;min-height:44px;font:inherit;cursor:pointer}
+.card:active{transform:scale(.99)}.card[data-done]{opacity:.55}.card[data-done] b{text-decoration:line-through}
 .card .dot{width:34px;height:34px;border-radius:10px;background:var(--acc);opacity:.85;flex:none}
-.card b{display:block;font-size:.95rem}.card span{font-size:.8rem;color:var(--muted)}
-.cta{display:block;width:100%;background:var(--acc);color:#fff;border:none;border-radius:14px;padding:.95rem;font:600 1rem inherit;min-height:44px;margin-top:1rem}
-.tabs{display:flex;border-top:1px solid #e3e6e1;background:#fff;padding:.5rem .4rem 1.4rem}
+.card .txt{flex:1;min-width:0}.card b{display:block;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card .txt span{font-size:.8rem;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .chev{color:var(--muted);font-size:1.3rem}
+.sect{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:1rem 0 .2rem}
+.empty{border:1px dashed var(--line);border-radius:14px;padding:1.4rem 1rem;text-align:center;margin:.6rem 0}.empty b{display:block}.empty span{font-size:.85rem;color:var(--muted)}
+.cta{display:block;width:100%;background:var(--acc);color:#fff;border:none;border-radius:14px;padding:.95rem;font:600 1rem inherit;min-height:44px;margin-top:.8rem;cursor:pointer}
+.cta.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc)}.cta.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.back{background:none;border:none;color:var(--acc);font:600 1rem inherit;padding:.4rem 0;min-height:44px;cursor:pointer}
+.note{font-size:1rem;color:var(--ink)!important}.meta{font-size:.8rem}
+.tabs{display:flex;border-top:1px solid var(--line);background:var(--card);padding:.5rem .4rem 1.4rem}
 .tab{flex:1;background:none;border:none;font:600 .7rem inherit;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:.3rem;min-height:44px;min-width:44px;padding:.3rem;border-radius:10px;cursor:pointer}
 .tab .ico{width:22px;height:22px;border-radius:7px;background:currentColor;opacity:.35}
 .tab.on{color:var(--acc)}.tab.on .ico{opacity:1}
-.hint{font-size:.8rem;color:#5a655f}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;border-radius:34px}.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);color:var(--ink);border-radius:22px 22px 34px 34px;padding:1rem 1.2rem 2rem;transform:translateY(105%);transition:transform .25s;max-height:85%;overflow:auto}.sheet.on{transform:none}
+.sheet h3{margin:.2rem 0 .8rem}.sheet label{display:block;font-size:.8rem;color:var(--muted);margin:.6rem 0}.sheet input,.sheet textarea{display:block;width:100%;margin-top:.3rem;min-height:44px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:.6rem .8rem;font:inherit}
+.sheet .row{display:flex;gap:.6rem}.sheet .row .cta{margin-top:.6rem}.sheet .err{color:var(--danger);font-size:.85rem;min-height:1.2em;margin:.2rem 0}
+.switch{display:flex!important;justify-content:space-between;align-items:center;font-size:1rem!important;color:var(--ink)!important;min-height:44px}.switch input{width:auto;min-height:0;transform:scale(1.4);margin:0 .4rem}
+.counts{list-style:none;padding:0;margin:0 0 .6rem}.counts li{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.toast{position:absolute;left:50%;bottom:6.2rem;transform:translate(-50%,10px);background:var(--ink);color:var(--paper);padding:.5rem .9rem;border-radius:999px;font-size:.85rem;opacity:0;transition:.2s;pointer-events:none}.toast.on{opacity:1;transform:translate(-50%,0)}
+.hint{font-size:.8rem;color:#5a655f;max-width:min(390px,94vw);text-align:center}
+@media (max-width:480px){body{padding:0;background:var(--paper)}h1,.hint,.carried-dissent{display:none}.phone{width:100%;height:100dvh;aspect-ratio:auto;border-radius:0;padding:0;box-shadow:none}.glass,.scrim{border-radius:0}.notch{display:none}.status{padding-top:max(.6rem,env(safe-area-inset-top))}.tabs{padding-bottom:max(1rem,env(safe-area-inset-bottom))}.prov{display:none}}
 ${PROV_CSS}
 .prov{max-width:min(390px,94vw)}
 </style></head><body>${partialBanner(mission)}
-<h1>${A ? esc(str(A.short, t)) : t}, tappable prototype</h1>
+<h1>${esc(name)}, working app</h1>
 <div class="phone"><div class="glass"><div class="notch"></div>
-<div class="status"><span>9:41</span><span>●●●</span></div>
-${screens.map((s, i) => `<section class="screen${i === 0 ? ' on' : ''}" data-screen="${s.id}"><h2>${esc(s.title)}</h2><p>${esc(s.body)}</p>
-${s.items && s.items.length ? s.items.map((it, j) => `<div class="card"><span class="dot" style="opacity:${[1, .55, .3][j] || .3}"></span><div><b>${esc(str(it.b, 'Item'))}</b><span>${esc(str(it.s))}</span></div></div>`).join('') : `<div class="card"><span class="dot"></span><div><b>Primary item</b><span>One line of context</span></div></div>
-<div class="card"><span class="dot" style="opacity:.55"></span><div><b>Second item</b><span>Real content goes here</span></div></div>
-<div class="card"><span class="dot" style="opacity:.3"></span><div><b>Third item</b><span>Empty state written first</span></div></div>`}
-<button class="cta">${s.cta ? esc(s.cta) : i === 0 ? 'Do the one thing' : 'Take the action'}</button></section>`).join('')}
-<nav class="tabs">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
+<div class="status"><span>9:41</span><button class="gear" aria-label="Settings" title="Settings">⋯</button></div>
+${screens.map((s, i) => `<section class="screen${i === 0 ? ' on' : ''}" data-screen="${s.id}" aria-label="${esc(s.title)}"></section>`).join('')}
+<nav class="tabs" aria-label="Sections">${screens.map((s, i) => `<button class="tab${i === 0 ? ' on' : ''}" data-go="${s.id}"><span class="ico"></span>${esc(s.tab)}</button>`).join('')}</nav>
+<div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"></div><div class="toast" role="status" aria-live="polite"></div>
 </div></div>
 ${mission.dissent ? `<p class="carried-dissent" style="max-width:min(390px,94vw);font-size:.82rem;color:#3e4842;border-left:3px solid var(--acc);padding-left:.8rem;margin:0"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}
-<p class="hint">Tap the tab bar, the prototype navigates. Built by Prajñā · ${A ? `content written by ${esc(mission.authored.model)}` : 'placeholder content marked for replacement'}.</p>
-<script>
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===b.dataset.go));}));
-</script>
+<p class="hint">A working app, not a picture of one: search, open, add, edit, mark done, delete, settings, all live. Data stays on this device. On a phone it runs full screen and can be added to the home screen. It is a web app, not a native build. Built by Prajñā · ${A ? `content written by ${esc(mission.authored.model)}` : 'starting content by the house'}.</p>
+<script type="application/json" id="app-data">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>
+<script>(${mobileRuntime.toString()})();</script>
 ${provenance(mission)}
 </body></html>`;
-  return { title: `${subject}, Mobile prototype`, kind: 'mobile', html };
+  return { title: `${subject}, Working app`, kind: 'mobile', html };
 }
 
 /* ------------------------------- DESIGN DRAFT ----------------------------- */
