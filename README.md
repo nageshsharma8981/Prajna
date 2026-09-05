@@ -1519,6 +1519,26 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.27: The house rules are accepted by a person (5 Sep 2026)
+
+Consent was recorded against the building. The first visitor to accept the
+Terms, the Privacy and GDPR Policy and the AI Disclaimer opened the door for
+every stranger who came after, and none of them was ever shown the documents
+or asked. A document that says "you agree" cannot be agreed to on your behalf
+by whoever happened to arrive first.
+
+Now every browser is given an identity of its own the moment it opens the
+page, before it asks for anything, and the gate reads that person's own
+acceptance. A second visitor sees the three documents, accepts them or does
+not, and inherits nothing either way. The house still keeps the acceptance
+that opened it, because that one was really made, and the house check still
+reads it. A client at the API with no browser identity still answers to the
+house record, which is the acceptance somebody did make.
+
+One thing changed alongside it: the house is claimed by the first person to
+sign a name, not by the first to be handed a cookie. Accepting the rules now
+leaves a record of its own, and a record with no name on it is nobody.
+
 ## v1.26: One gate, at the door (5 Sep 2026)
 
 Every write in this building was gated route by route, which means it was

@@ -268,11 +268,23 @@ function guestGate(req, res, act) {
     : `Only ${who} can stamp a ticket and spend the house's credits. Write the ticket and it will wait for them.`, guests: mode });
   return true;
 }
+// Consent is a person's, not a building's. One visitor accepting the house
+// rules used to open the door for every stranger who followed, which is
+// exactly the wrong reading of a document that says "you agree". A browser
+// carries its own identity, so it answers for its own acceptance; a client
+// with no identity at all (a script at the API) falls back to the house's
+// record, which is the acceptance somebody did make.
+function myConsent(req) {
+  const id = whoId(req);
+  if (!id) return ws().consent || null;
+  return visitors()[id]?.consent || null;
+}
+function consentOk(req) { const c = myConsent(req); return !!c && c.version === LEGAL.version; }
 // The only writes that answer before the door and the guest policy: reading
 // the door itself, accepting the house rules, signing in, and leaving.
 const OPEN_TO_ALL = ['/api/session', '/api/consent', '/api/logout', '/api/me'];
 function visitors() { const w = ws(); if (!w.visitors || typeof w.visitors !== 'object') w.visitors = {}; return w.visitors; }
-function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
+function meOf(req) { const id = whoId(req); const v = id ? visitors()[id] : null; return v && v.name ? { name: v.name || '', email: v.email || '', handle: v.handle || '', bio: v.bio || '', avatar: (v.name || '?').trim()[0]?.toUpperCase() || '?', since: v.at } : null; }
 
 function sessionCookie(req, value, maxAge) {
   const secure = String(req.headers['x-forwarded-proto'] || '').includes('https');
@@ -584,7 +596,14 @@ async function handle(req, res) {
       if (body.accept !== true || body.version !== LEGAL.version) return json(res, 400, { error: 'Acceptance must name the current version and accept all three documents.' });
       const w = ws();
       const entry = { version: LEGAL.version, acceptedAt: Date.now(), name: String(body.name || w.profile?.name || '').trim().slice(0, 120) || null, ip: ipOf(req) || null, agent: String(req.headers['user-agent'] || '').slice(0, 200) };
-      w.consent = entry;
+      // Against this person first. A visitor with no identity yet is given
+      // one here, so their acceptance has somewhere of their own to live.
+      let wid = whoId(req);
+      if (!wid) { wid = crypto.randomBytes(12).toString('hex'); res.setHeader('set-cookie', whoCookie(req, encodeURIComponent(signWho(wid)), 60 * 60 * 24 * 365)); }
+      const v = visitors(); v[wid] = { ...(v[wid] || { at: Date.now() }), consent: entry };
+      // And against the house, which is what the house check and the record
+      // read: the acceptance that opened this workspace in the first place.
+      if (!w.consent || w.consent.version !== LEGAL.version) w.consent = entry;
       if (!Array.isArray(w.consentLog)) w.consentLog = [];
       const known = w.consentLog.some((e) => e.ip === entry.ip && e.name === entry.name);
       w.consentLog.unshift(entry);
@@ -594,8 +613,7 @@ async function handle(req, res) {
       if (!known) fireHook('house.entered', { who: { name: entry.name, ip: entry.ip, agent: entry.agent }, accepted: entry.version, open: !ACCESS_CODE, people: w.consentLog.length });
       return json(res, 200, { ok: true, consent: w.consent });
     }
-    const c = ws().consent;
-    return json(res, 200, { version: LEGAL.version, accepted: !!c && c.version === LEGAL.version, consent: c });
+    return json(res, 200, { version: LEGAL.version, accepted: consentOk(req), consent: myConsent(req), house: ws().consent || null });
   }
 
   // ---- Session (always reachable) ----
@@ -669,8 +687,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   // Nothing that changes the workspace runs before the house rules are accepted.
   if (p.startsWith('/api/') && req.method !== 'GET' && !OPEN_TO_ALL.includes(p)) {
-    const c = ws().consent;
-    if (!c || c.version !== LEGAL.version) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
+    if (!consentOk(req)) return json(res, 403, { consentRequired: true, version: LEGAL.version, error: 'Accept the Terms, the Privacy and GDPR Policy and the AI Disclaimer before using the workspace.' });
     // Default deny, in one place. Gates written route by route are only as
     // good as the last route somebody remembered to gate, and a dozen of
     // them had been forgotten: a stranger with no cookie could delete this
@@ -841,6 +858,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       toolCatalog: TOOLS,
       planTiers: PLAN_TIERS,
       ...publicWs(whoId(req)),
+      consent: myConsent(req),
       oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(lean),
       // A delivery whose mission has a data table can leave as a workbook.
@@ -1481,7 +1499,10 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(res, 400, { error: 'That does not look like an email address.' });
     let id = whoId(req);
     if (!id) { id = crypto.randomBytes(12).toString('hex'); res.setHeader('set-cookie', whoCookie(req, encodeURIComponent(signWho(id)), 60 * 60 * 24 * 365)); }
-    const first = Object.keys(visitors()).length === 0;
+    // First means the first to sign a name, not the first to be given a
+    // cookie: accepting the house rules now leaves a record of its own, and
+    // a record without a name is nobody.
+    const first = !Object.values(visitors()).some((v) => v && v.name);
     if (first && !ws().ownerId) ws().ownerId = id;
     visitors()[id] = { ...(visitors()[id] || {}), name, email, handle: String(body.handle || '').trim().slice(0, 60), bio: String(body.bio || '').trim().slice(0, 300), at: visitors()[id]?.at || Date.now(), lastSeen: Date.now() };
     // The first person to sign in is the house's own: the digest and the
@@ -1690,6 +1711,13 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     const ext = path.extname(file);
     const immutable = p.startsWith('/assets/') || p.startsWith('/fonts/');
     const headers = { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache' };
+    // Every browser that opens the page gets an identity of its own, before
+    // it asks for anything. Without one a second visitor would inherit the
+    // first visitor's acceptance of the house rules, which is not consent.
+    if (ext === '.html' && !whoId(req)) {
+      const fresh = crypto.randomBytes(12).toString('hex');
+      headers['set-cookie'] = whoCookie(req, encodeURIComponent(signWho(fresh)), 60 * 60 * 24 * 365);
+    }
     if (['.js', '.css', '.html', '.svg', '.json'].includes(ext)) return sendCompressed(req, res, 200, headers, data);
     res.writeHead(200, headers);
     res.end(data);

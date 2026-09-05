@@ -855,7 +855,14 @@ test('nobody is greeted by name until they sign in, and signing out forgets them
 
 test('the record says whose request it was and who decided', async () => {
   const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
-  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  // Signing in gives this browser its own identity, and consent belongs to
+  // the person holding it, so each one accepts the house rules for itself.
+  const signIn = async (name) => {
+    const c = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+    const legal = await (await fetch(`${BASE}/api/legal`)).json();
+    await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name }) });
+    return c;
+  };
   const asker = await signIn('Rakhi');
   const decider = await signIn('Tomas');
   const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', cookie }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
@@ -891,7 +898,14 @@ test('the record says whose request it was and who decided', async () => {
 
 test('a conversation belongs to whoever started it', async () => {
   const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
-  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  // Signing in gives this browser its own identity, and consent belongs to
+  // the person holding it, so each one accepts the house rules for itself.
+  const signIn = async (name) => {
+    const c = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+    const legal = await (await fetch(`${BASE}/api/legal`)).json();
+    await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name }) });
+    return c;
+  };
   const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   const get = async (p, cookie) => call(p, cookie, null, 'GET');
   const mine = await signIn('Priya');
@@ -922,7 +936,14 @@ test('a conversation belongs to whoever started it', async () => {
 
 test('the house itself belongs to its own: a visitor can work, not dismantle', async () => {
   const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
-  const signIn = async (name) => jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+  // Signing in gives this browser its own identity, and consent belongs to
+  // the person holding it, so each one accepts the house rules for itself.
+  const signIn = async (name) => {
+    const c = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }));
+    const legal = await (await fetch(`${BASE}/api/legal`)).json();
+    await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name }) });
+    return c;
+  };
   const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BASE + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   const guest = await signIn('A Passing Guest');
   const boot = (await call('/api/bootstrap', guest, null, 'GET')).j;
@@ -965,7 +986,12 @@ test('an owner can say what a guest may do, without locking the door', async () 
   const child4 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P4), PRAJNA_DATA_DIR: DIR4, PRAJNA_OWNER: 'Boss' }, stdio: ['ignore', 'pipe', 'pipe'] });
   const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
   const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(B4 + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), r }; };
-  const signIn = async (name) => jar((await call('/api/me', null, { name })).r);
+  const signIn = async (name) => {
+    const c = jar((await call('/api/me', null, { name })).r);
+    const legal = (await call('/api/legal', c, null, 'GET')).j;
+    await call('/api/consent', c, { accept: true, version: legal.version, name });
+    return c;
+  };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B4}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
@@ -1554,4 +1580,48 @@ test('the door holds every write, not only the ones somebody remembered to gate'
     assert.equal((await call('/api/me', key, { name: 'Holder' })).status, 200);
     assert.equal((await call('/api/logout', key, null)).status, 200);
   } finally { child6.kill(); fs.rmSync(DIR6, { recursive: true, force: true }); }
+});
+
+test('the house rules are accepted by a person, not by the building', async () => {
+  // One visitor accepting used to open the door for every stranger who came
+  // after. A document that says "you agree" cannot be agreed to on your
+  // behalf by whoever happened to arrive first.
+  const DIR7 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-consent-'));
+  const P7 = PORT + 6;
+  const B7 = `http://localhost:${P7}`;
+  const child7 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P7), PRAJNA_DATA_DIR: DIR7 }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(B7 + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), r }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B7}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, null, 'GET')).j;
+
+    // Opening the page is enough to be told apart from the next person.
+    const first = jar(await fetch(B7 + '/'));
+    const second = jar(await fetch(B7 + '/'));
+    assert.match(first, /prajna_who=/, 'a browser is given an identity before it asks for anything');
+    assert.notEqual(first, second, 'and two browsers are not the same person');
+
+    // Neither can work until they have each accepted, for themselves.
+    assert.equal((await call('/api/chats', first, { title: 'before reading' })).status, 403);
+    assert.equal((await call('/api/consent', first, { accept: true, version: legal.version, name: 'Ada' })).status, 200);
+    assert.equal((await call('/api/chats', first, { title: 'after reading' })).status, 200);
+
+    const stranger = await call('/api/chats', second, { title: 'on somebody else\'s acceptance' });
+    assert.equal(stranger.status, 403, 'the second visitor inherits nothing');
+    assert.equal(stranger.j.consentRequired, true);
+    assert.equal((await call('/api/consent', second, null, 'GET')).j.accepted, false, 'and is told so plainly');
+    assert.ok((await call('/api/consent', second, null, 'GET')).j.house, 'though the house does keep the acceptance that opened it');
+
+    // Nor does an unsigned visitor wear the first one's name.
+    assert.equal((await call('/api/bootstrap', second, null, 'GET')).j.me, null);
+    assert.equal((await call('/api/consent', second, { accept: true, version: legal.version, name: 'Sam' })).status, 200);
+    assert.equal((await call('/api/chats', second, { title: 'on their own acceptance' })).status, 200);
+
+    // And the house is still claimed by the first to sign a name, not by the
+    // first to be handed a cookie.
+    assert.equal((await call('/api/me', first, { name: 'Ada' })).j.owner, true);
+    assert.equal((await call('/api/me', second, { name: 'Sam' })).j.owner, false);
+  } finally { child7.kill(); fs.rmSync(DIR7, { recursive: true, force: true }); }
 });
