@@ -78,6 +78,14 @@ async function houseCheck() {
   const lh = limitHealth(); add('limits', lh.ok, lh.detail);
   const log = ws().consentLog || [];
   const people = new Set(log.map((e) => `${e.name || ''}@${e.ip || ''}`));
+  // What a held key can do now, and what its absence leaves to the house.
+  // Like the keys row: a missing key is a fault only once a run has needed one.
+  { const mediaOn = !!ws().tools?.media; const held = ['openai', 'google'].find((id) => store.keyFor(id));
+    // A run that reached the illustrate step and found no key leaves an empty list; a seeded or scripted run leaves none.
+    const needed = ms.some((m) => Array.isArray(m.visuals) && m.visuals.length === 0);
+    add('media', !mediaOn || !!held || !needed, !mediaOn ? 'Media Generation is off under Tools: nothing is drawn or spoken on any key, the house draws its own visuals and the film reads with the browser voice'
+      : held ? `Media Generation is on and a ${PROVIDERS[held]?.label || held} key is held: decks are illustrated and narrated, pages get a hero, apps an icon`
+      : 'Media Generation is on but no image or speech key is in memory: the house draws its own visuals and the film reads with the browser voice; load an OpenAI or Google key under Your keys'); }
   add('door', !!ACCESS_CODE || people.size <= 1, ACCESS_CODE
     ? `an access code is set; ${people.size} ${people.size === 1 ? 'person has' : 'people have'} accepted the house rules`
     : people.size <= 1

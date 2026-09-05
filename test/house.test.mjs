@@ -1892,6 +1892,11 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.equal((html.match(/ data-narration="[a-f0-9]{16}"/g) || []).length, 9, 'every slide names its clip');
     for (const bit of ['class="btn-film"', 'new MediaRecorder(', 'captureStream(']) assert.ok(html.includes(bit), `the film runtime is on the page: ${bit}`);
     assert.ok(gate.sealed.includes('VAL-FILM'), 'the gate sealed the film');
+    // The house check says what the held key can do.
+    const hc1 = await (await fetch(`${lit.B}/api/housecheck`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json();
+    const mediaRow = (hc1.rows || hc1.check?.rows || []).find((r) => r.id === 'media');
+    assert.ok(mediaRow && mediaRow.ok, `the media row is green with a key held: ${JSON.stringify(mediaRow)}`);
+    assert.match(mediaRow.detail, /OpenAI(?:-compatible)? key is held: decks are illustrated and narrated/);
     // And the PowerPoint carries the same pictures.
     const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
     const names = pptx.toString('latin1');
@@ -1921,6 +1926,10 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     assert.ok((m2.events || []).some((e) => e.type === 'log' && /no image key in memory/.test(e.detail)), 'the tape says why');
     assert.ok((m2.events || []).some((e) => e.type === 'log' && /browser's own voice/.test(e.detail)), 'and that the film will use the browser voice');
     assert.equal((m2.narration || []).length, 0);
+    const hc2 = await (await fetch(`${dark.B}/api/housecheck`, { method: 'POST', headers: hdr(dark.cookie), body: '{}' })).json();
+    const mediaRow2 = (hc2.rows || hc2.check?.rows || []).find((r) => r.id === 'media');
+    assert.ok(mediaRow2 && !mediaRow2.ok, 'the media row is not green without a key');
+    assert.match(mediaRow2.detail, /no image or speech key is in memory/);
     const html2 = await (await fetch(`${dark.B}/api/artifacts/${m2.artifactId}/html`)).text();
     assert.equal((html2.match(/class="visual house"/g) || []).length, 7, 'seven house drawings');
     assert.equal((html2.match(/<img class="visual"/g) || []).length, 0);

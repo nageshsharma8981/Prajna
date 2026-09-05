@@ -1519,6 +1519,25 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.46: The house says what your keys can do (5 Sep 2026)
+
+Decks, pages and apps now draw and speak on the owner's key, and a house
+with Media Generation off, or with no image or speech key held, quietly
+gets the house's own drawings and the browser's voice instead. Nothing on
+the site said so except the tape of a run already stamped.
+
+The house check now has a media row. Green when Media Generation is on and
+a key that can draw and speak is held, and it says what that buys: decks
+illustrated and narrated, pages a hero, apps an icon. Not green when the
+tool is off, or on with no such key, and it says exactly what the house
+will do instead and where to load a key. The keys page, on loading an
+OpenAI or Google key, says that decks, pages and apps are now illustrated
+and narrated on it while Media Generation is on, and each provider's hint
+names the image and speech models a key there brings.
+
+Proved in the deck test: the media row green with the key held, naming what
+it enables; not green without one, naming the fallback.
+
 ## v1.45: The app has an icon (5 Sep 2026)
 
 The last desk without a picture. An app added to a home screen had no icon

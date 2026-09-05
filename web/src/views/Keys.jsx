@@ -21,7 +21,7 @@ function ProviderCard({ id, meta, saved, models, onChange }) {
 
   const save = async () => {
     setBusy(true); setErr(null); setMsg(null);
-    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(meta.kind === 'search' ? `Loaded as ${r.masked} for this session (not saved to disk). The research desk now sweeps the live web through ${meta.label} until the server restarts.` : `Loaded as ${r.masked} for this session (not saved to disk). Models on ${meta.label} are live until the server restarts.`); setKey(''); await onChange(); }
+    try { const r = await send(`/api/keys/${id}`, 'PUT', { key, baseUrl }); setMsg(meta.kind === 'search' ? `Loaded as ${r.masked} for this session (not saved to disk). The research desk now sweeps the live web through ${meta.label} until the server restarts.` : `Loaded as ${r.masked} for this session (not saved to disk). Models on ${meta.label} are live until the server restarts${['openai', 'google'].includes(id) ? ', and decks, pages and apps are illustrated and narrated on it while Media Generation is on under Tools' : ''}.`); setKey(''); await onChange(); }
     catch (e) { setErr(e.message); } finally { setBusy(false); }
   };
   const test = async () => {

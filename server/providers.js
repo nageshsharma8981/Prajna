@@ -123,7 +123,7 @@ export const PROVIDERS = {
   },
   openai: {
     label: 'OpenAI-compatible',
-    hint: 'Works for OpenAI, DeepSeek, Groq, Together, Ollama… set the base URL for non-OpenAI hosts (e.g. https://api.deepseek.com/v1).',
+    hint: 'Works for OpenAI, DeepSeek, Groq, Together, Ollama… set the base URL for non-OpenAI hosts (e.g. https://api.deepseek.com/v1). A key here also draws pictures (gpt-image-1) and speaks narration (gpt-4o-mini-tts) for decks, pages and apps.',
     async call({ key, modelId, prompt, baseUrl, maxTokens = 400 }) {
       const base = (baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
       const r = await withTimeout(fetch(`${base}/chat/completions`, {
@@ -139,7 +139,7 @@ export const PROVIDERS = {
   },
   google: {
     label: 'Google Gemini',
-    hint: 'AI Studio key. Models: gemini-2.5-pro, gemini-2.5-flash (or newer ids).',
+    hint: 'AI Studio key. Models: gemini-2.5-pro, gemini-2.5-flash (or newer ids). A key here also draws pictures (Gemini image) and speaks narration (Gemini TTS) for decks, pages and apps.',
     async call({ key, modelId, prompt, maxTokens = 400 }) {
       const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(key)}`, {
         method: 'POST',
