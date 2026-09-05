@@ -417,15 +417,15 @@ export function deckArtifact(mission) {
     ...A.slides.slice(2, 6).map((x) => ({ k: 'claim', n: esc(str(x.n, 'Beat')), h: esc(str(x.h)), s: esc(str(x.s)), notes: esc(str(x.notes)) })),
     { k: 'end', h: 'The close', s: esc(str(A.close, 'End on the claim.')), notes: 'End on the claim, not on thank you. Leave this slide up while you take questions.' },
   ] : [
-    { k: 'title', h: t, s: 'The argument in nine slides, one idea per slide, evidence beneath assertion.' },
-    { k: 'claim', n: 'The problem', h: 'The status quo has a cost, and it compounds.', s: 'Name the pain precisely: who bleeds, how much, how often. A problem the room already feels needs one slide, not three.' },
-    { k: 'claim', n: 'The shift', h: 'Something changed that makes now different.', s: 'Timing is the investor question under every other question. State the enabling shift, technical, regulatory, or behavioral, and date it.' },
-    { k: 'big', h: 'One sentence.', s: `${t}, stated so plainly that a skeptic could repeat it back.` },
-    { k: 'claim', n: 'The mechanism', h: 'How it works, shown, not adjectived.', s: 'The demo slide. Walk one concrete case end to end. If the mechanism needs three slides, it is not yet understood.' },
-    { k: 'claim', n: 'The proof', h: 'Evidence a competitor could not copy-paste.', s: 'Illustrative placeholder: replace with your real traction, pilot results, or signed intent. The deck refuses invented numbers.' },
-    { k: 'claim', n: 'The economics', h: 'The unit that makes money, and when.', s: 'One unit, its cost, its price, its payback window. Illustrative placeholder: wire in your model before the room.' },
-    { k: 'claim', n: 'The ask', h: 'What you want, what it buys, what it proves.', s: 'A specific amount, a specific runway, and the two milestones that de-risk the next round.' },
-    { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.' },
+    { k: 'title', h: t, s: 'The argument in nine slides, one idea per slide, evidence beneath assertion.', notes: 'Say the title and the one line, then stop. Let the room read it. Do not narrate the agenda.' },
+    { k: 'claim', n: 'The problem', h: 'The status quo has a cost, and it compounds.', s: 'Name the pain precisely: who bleeds, how much, how often. A problem the room already feels needs one slide, not three.', notes: 'Name one person who has this problem and what it costs them this month. Then stop; the room will supply the rest.' },
+    { k: 'claim', n: 'The shift', h: 'Something changed that makes now different.', s: 'Timing is the investor question under every other question. State the enabling shift, technical, regulatory, or behavioral, and date it.', notes: 'Give the date the shift happened. If you cannot date it, it is not a shift, it is a hope.' },
+    { k: 'big', h: 'One sentence.', s: `${t}, stated so plainly that a skeptic could repeat it back.`, notes: 'Read the sentence aloud exactly as written, once. This is the line the room should be able to repeat back at the end.' },
+    { k: 'claim', n: 'The mechanism', h: 'How it works, shown, not adjectived.', s: 'The demo slide. Walk one concrete case end to end. If the mechanism needs three slides, it is not yet understood.', notes: 'Walk one real case from start to finish, in the order the user meets it. No adjectives; verbs only.' },
+    { k: 'claim', n: 'The proof', h: 'Evidence a competitor could not copy-paste.', s: 'Illustrative placeholder: replace with your real traction, pilot results, or signed intent. The deck refuses invented numbers.', notes: 'Say only what you can show. If the number is not on the slide, do not say it out loud either.' },
+    { k: 'claim', n: 'The economics', h: 'The unit that makes money, and when.', s: 'One unit, its cost, its price, its payback window. Illustrative placeholder: wire in your model before the room.', notes: 'One unit, three numbers: what it costs, what it earns, when it pays back. Say them in that order and stop.' },
+    { k: 'claim', n: 'The ask', h: 'What you want, what it buys, what it proves.', s: 'A specific amount, a specific runway, and the two milestones that de-risk the next round.', notes: 'The amount, the months it buys, the two things that will be true at the end. Then ask for the meeting, not the money.' },
+    { k: 'end', h: 'The close', s: 'End on the claim, not on “thank you”. Leave the one sentence on screen while you take questions.', notes: 'End on the claim, not on thank you. Leave this slide up while you take questions.' },
   ];
   const notesOf = (sl) => sl.notes ? `<aside class="notes" hidden>${sl.notes}</aside>` : '';
   const slideHtml = slides.map((sl, i) => {

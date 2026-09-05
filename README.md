@@ -1519,6 +1519,32 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.36: Word keeps the prose, PowerPoint keeps the notes (5 Sep 2026)
+
+The five-desk pass gave every delivery a runtime, and the Word and
+PowerPoint exports are built from the same page, so this is the check that
+the pass owed them.
+
+The Word export took every paragraph and cell on the page, which now
+included the brief's decision section and the analysis's table note. A Word
+document that says "Recorded on this device, sent nowhere" makes no sense,
+so the page's working parts now stay on the page: the evidence bar, the
+decision form and what it recorded, chart readouts, table notes, app hints
+and form errors. The prose and the tables come through as before. Proved
+on a delivered brief: the chrome is gone and the sections are intact.
+
+The PowerPoint export ignored the presenter notes, when PowerPoint has a
+notes pane for exactly that. Every slide now ships with its note in that
+pane: a notes part per slide, a notes master, the relationships and content
+types PowerPoint expects, and nothing printed on the slide face. Proved on
+a delivered deck: ten notes parts for ten slides, the right note on slide
+three, a valid package that QuickLook renders.
+
+And a defect of my own from v1.33, found on the way: the deck's no-key
+fallback slides had never been given notes, so a scripted deck failed the
+assertion that every slide carries them and paused for a decision it did
+not need. The house now writes notes for its own slides, nine for nine.
+
 ## v1.35: The brief does the reader's job (5 Sep 2026)
 
 Fifth desk, and the last. A decision brief exists so somebody can decide,

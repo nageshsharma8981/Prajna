@@ -546,6 +546,8 @@ test('a delivery can leave as Word, and the house can read back what it wrote', 
   assert.match(text, /Written by Prajñā as mission/);
   assert.ok(text.length > 400, `real content, not an empty shell: ${text.length} chars`);
   assert.ok(!/<w:p>|<\/w:t>/.test(text), 'markup did not leak into the text');
+  // The page's working parts stay on the page. A Word document is the prose.
+  for (const chrome of ['Your decision', 'Recorded on this device', 'Record the decision', 'Leaned on by', 'Point at a period', 'Download the data as CSV', 'Show claims graded']) assert.ok(!text.includes(chrome), `runtime chrome did not leak into Word: “${chrome}”`);
   assert.equal((await fetch(`${BASE}/api/artifacts/nosuchid/docx`)).status, 404);
 });
 
@@ -567,6 +569,14 @@ test('a deck can leave as PowerPoint, with every slide and the dissent intact', 
   assert.ok(text.includes(deck.serial), 'the serial is on the deck');
   assert.match(text, /Provenance/);
   assert.ok(!/<a:t>|<\/p:sp>/.test(text), 'markup did not leak into the text');
+  // What the presenter says travels in PowerPoint's own notes pane, one
+  // notes part per slide, wired to a notes master, and not on the slide face.
+  for (const part of ['ppt/notesMasters/notesMaster1.xml', 'ppt/notesSlides/notesSlide1.xml', 'ppt/notesSlides/_rels/notesSlide1.xml.rels']) assert.ok(names.includes(part), part);
+  const notesParts = (names.match(/ppt\/notesSlides\/notesSlide\d+\.xml/g) || []).length;
+  assert.ok(notesParts >= 9, `a notes part for every slide: ${notesParts}`);
+  assert.ok(/notesSlide/.test(names.slice(names.indexOf('ppt/slides/_rels/slide1.xml.rels'))), 'the slide points at its notes');
+  assert.ok(names.includes('Say the title and the one line'), 'the first slide’s note is in the file');
+  assert.ok(!/Say the title and the one line[\s\S]{0,400}<\/p:sld>/.test(names.slice(names.indexOf('ppt/slides/slide1.xml'), names.indexOf('ppt/slides/slide1.xml') + 6000)), 'and not printed on the slide face');
   // A brief has no slides, so the house refuses rather than shipping an empty deck.
   const brief = b.artifacts.find((x) => /brief/i.test(x.kind) || /brief/i.test(x.title));
   if (brief) { const bad = await fetch(`${BASE}/api/artifacts/${brief.id}/pptx`); assert.equal(bad.status, 400); assert.match((await bad.json()).error, /no slides/); }
