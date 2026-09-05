@@ -21,6 +21,7 @@ import { LEGAL, legalPage } from './legal.js';
 import { missionDelta } from './delta.js';
 import { costHistory, historyLine } from './history.js';
 import { weeklyReview } from './review.js';
+import { clarify } from './clarify.js';
 import { search } from './search.js';
 import { docxFromArtifact, pptxFromArtifact, xlsxFromMission } from './office.js';
 import { limits, setLimits, usage as limitUsage, refusal as limitRefusal, limitHealth } from './limits.js';
@@ -520,6 +521,11 @@ async function handle(req, res) {
   }
   // The cheap question: has anything changed? A tab asks this, not for the
   // whole workspace, and pulls the workspace only when the answer moves.
+  if (p === '/api/clarify' && req.method === 'POST') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const body = await readBody(req);
+    return json(res, 200, clarify(String(body.goal || ''), String(body.deskId || 'brief')));
+  }
   if (p === '/api/review' && req.method === 'GET') {
     if (!authed(req)) return json(res, 401, { locked: true });
     const weeks = Math.max(1, Math.min(8, Number(url.searchParams.get('weeks')) || 1));

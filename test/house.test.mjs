@@ -1479,3 +1479,27 @@ test('the house says when a restart has taken its keys', async () => {
     } finally { model.close(); }
   } finally { child9.kill(); fs.rmSync(DIR9, { recursive: true, force: true }); }
 });
+
+test('a goal too thin to price is questioned, never refused', async () => {
+  // Asked before writing.
+  const thin = await post('/api/clarify', { goal: 'help me with marketing', deskId: 'brief' });
+  assert.equal(thin.status, 200);
+  assert.equal(thin.j.thin, true);
+  assert.equal(thin.j.questions.length, 3);
+  assert.match(thin.j.why, /about as specific as the ask/);
+  assert.match(thin.j.note, /a thin ticket is allowed/);
+  const real = await post('/api/clarify', { goal: 'Should we open a second roastery in Mysore?', deskId: 'brief' });
+  assert.equal(real.j.thin, false, 'a real question is not questioned');
+  const deck = await post('/api/clarify', { goal: 'a deck', deskId: 'deck' });
+  assert.match(deck.j.questions[0], /Who is in the room/, 'the questions suit the desk');
+
+  // And recorded on the ticket, which is still written and still stampable.
+  const w = await post('/api/missions', { goal: 'help me with marketing', deskId: 'brief', depth: 'fast' });
+  assert.equal(w.status, 200, 'a thin ask still gets a ticket');
+  assert.ok(w.j.thin, 'the ticket says the ask was thin');
+  assert.equal(w.j.thin.questions.length, 3);
+  assert.ok(w.j.contract.plan.length > 0 && w.j.contract.ceiling > 0, 'with a real plan and a real price');
+  assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200, 'and it may be stamped anyway');
+  const solid = await post('/api/missions', { goal: 'Should we open a second roastery in Mysore this year?', deskId: 'brief', depth: 'fast' });
+  assert.equal(solid.j.thin, null, 'a specific ask carries no such note');
+});

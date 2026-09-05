@@ -1518,3 +1518,17 @@ keys are held and why they will not survive a restart, and it fails
 when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
+
+## v1.24: A thin ask makes a thin contract, and the house says which (2026-09-05)
+
+"Help me with marketing" got the same plan, the same price and the same
+confident ticket as a real question. Both were honest about cost and
+dishonest about worth. A goal with too few words that mean anything is
+now questioned before it is priced: the house says why it is thin, asks
+the three things that would make it mean something on that desk, and
+records the note on the ticket.
+
+It never refuses. You can answer, or stamp it as it stands, or void it
+and ask again with more. The questions are deterministic, need no model,
+and a specific goal carries no note at all, because a false question is
+an insult.

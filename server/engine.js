@@ -17,6 +17,7 @@ import { authorContent, critiqueContent } from './author.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { composeFor } from './compose.js';
 import { costHistory } from './history.js';
+import { clarify } from './clarify.js';
 
 // The table sets the estimate; the house's own past sets the ceiling when it
 // knows better. A ceiling too low does not save money, it stops a run and
@@ -256,6 +257,9 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     // Who asked for this. A house several people can enter should say whose
     // request each ticket is, and it travels with the artifact.
     writtenBy: by ? { name: by, at: Date.now() } : null,
+    // A thin ask makes a thin contract; the ticket says so rather than
+    // pretending the plan and the price mean more than the goal does.
+    thin: (() => { const c = clarify(goal, desk.id); return c.thin ? { why: c.why, questions: c.questions } : null; })(),
     lineage: lineage || null, // { parentId, parentSerial, version }
     variant: variant || 'build',
     template: template || null,

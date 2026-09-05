@@ -716,6 +716,11 @@ export default function Run({ id }) {
             {mission.status === 'OPEN' && (
               <div className="board-empty" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <span>This ticket is written but not stamped. Nothing has run, nothing is reserved, nothing is spent.</span>
+                {mission.thin && (
+                  <span className="house-warn" role="status" style={{ maxWidth: '46rem' }}>
+                    {mission.thin.why} Worth answering before you stamp: {mission.thin.questions.join(' ')} You can stamp it as it stands, or void it and ask again with more.
+                  </span>
+                )}
                 {mission.history?.line && <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>{mission.history.line}</span>}
                 {mission.contract?.ceilingFrom?.from === 'history' && (
                   <span className="src-check" style={{ maxWidth: '46rem', textAlign: 'center' }}>The ceiling is {mission.contract.ceiling} rather than the {mission.contract.ceilingFrom.table} the step table gives, because {mission.contract.ceilingFrom.n} of this kind settled as high as {mission.contract.ceilingFrom.high}. Reserving honestly costs nothing: what a run does not use is released.</span>
