@@ -21,6 +21,36 @@ const api = async (p, opts = {}) => {
   return { status: r.status, j, headers: r.headers };
 };
 const post = (p, body) => api(p, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
+// The shared house's owner: the first name signed on it, claimed once and
+// kept for the whole file. House-level acts wait for an owner, so the
+// tests that erase, restore, set hooks or read the log act as this one.
+let _ownerCookie = null;
+async function ownerCookie() {
+  // An erase can empty the house of its people; if this cookie no longer
+  // owns it, claim it again with a fresh one, as the first name signed.
+  // On an unclaimed house "mine" is true for everyone, so the test is
+  // whether the house has a named owner and it is this cookie. If not, sign
+  // the same cookie in again: the first name signed claims the house.
+  const signAndAccept = async (c) => {
+    const legal = await (await fetch(`${BASE}/api/legal`)).json();
+    await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Ada' }) });
+    const r = await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ name: 'Ada' }) });
+    const issued = (r.headers.get('set-cookie') || '').match(/prajna_who=[^;]+/);
+    if (issued) _ownerCookie = issued[0];
+  };
+  if (_ownerCookie) {
+    try { const b = await (await fetch(`${BASE}/api/bootstrap`, { headers: { cookie: _ownerCookie } })).json(); if (b.owner?.mine && b.owner?.name) return _ownerCookie; } catch { /* re-claim */ }
+    await signAndAccept(_ownerCookie);
+    return _ownerCookie;
+  }
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const c = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) }));
+  const legal = await (await fetch(`${BASE}/api/legal`)).json();
+  await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Ada' }) });
+  _ownerCookie = c; return c;
+}
+async function ownerPost(p, body) { const r = await fetch(BASE + p, { method: 'POST', headers: { 'content-type': 'application/json', cookie: await ownerCookie() }, body: body === undefined ? undefined : JSON.stringify(body) }); return { status: r.status, j: await r.json().catch(() => ({})) }; }
+async function ownerApi(p, opts = {}) { const r = await fetch(BASE + p, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}), cookie: await ownerCookie() } }); return { status: r.status, j: await r.json().catch(() => ({})), r }; }
 
 before(async () => {
   child = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT), PRAJNA_DATA_DIR: DIR, PRAJNA_PUBLIC_URL: BASE, PRAJNA_ALLOW_LOCAL_PAGES: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -64,7 +94,7 @@ test('repair regenerates a missing artifact file and reconciles a drifted reserv
   const a = b.j.artifacts[0];
   fs.unlinkSync(path.join(DIR, 'artifacts', `${a.id}.html`));
   const c1 = await post('/api/housecheck'); assert.equal(c1.j.rows.find((r) => r.id === 'artifacts').ok, false);
-  const r = await post('/api/housecheck/repair'); assert.equal(r.status, 200);
+  const r = await ownerPost('/api/housecheck/repair'); assert.equal(r.status, 200);
   assert.ok(r.j.actions.some((x) => x.id === 'artifacts' && x.ok), JSON.stringify(r.j.actions));
   assert.equal(r.j.check.rows.find((x) => x.id === 'artifacts').ok, true);
   assert.equal((await fetch(`${BASE}/api/artifacts/${a.id}/html`)).status, 200);
@@ -147,9 +177,12 @@ test('take your data: the export is a real zip holding the whole workspace, with
 });
 
 test('erase: typed confirmation only, then a fresh house with the consent record kept', async () => {
-  const no = await post('/api/erase', { confirm: 'yes' }); assert.equal(no.status, 400);
+  const no = await ownerPost('/api/erase', { confirm: 'yes' }); assert.equal(no.status, 400);
   const before = (await api('/api/bootstrap')).j; assert.ok(before.missions.length > 3);
-  const r = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(r.status, 200, JSON.stringify(r.j)); assert.equal(r.j.consentKept, true);
+  const r = await ownerPost('/api/erase', { confirm: 'ERASE' }); assert.equal(r.status, 200, JSON.stringify(r.j)); assert.equal(r.j.consentKept, true);
+  // The one who erased owns the fresh house, and their cookie still says so.
+  const fresh = (await ownerApi('/api/bootstrap')).j;
+  assert.deepEqual(fresh.owner, { name: 'Ada', mine: true }, `the eraser owns the fresh house: ${JSON.stringify(fresh.owner)}`);
   const after = (await api('/api/bootstrap')).j;
   assert.equal(after.missions.length, 3, 'fresh seeded house');
   assert.ok(after.consent && after.consent.version, 'consent version kept'); assert.equal(after.consent.name, undefined, 'no personal data in the kept consent');
@@ -163,11 +196,11 @@ test('restore: an export goes back in whole after an erase', async () => {
   const before = (await api('/api/bootstrap')).j;
   assert.equal(before.missions.find((m) => m.id === live.j.id).status, 'LIVE');
   const zip = Buffer.from(await (await fetch(`${BASE}/api/export`)).arrayBuffer());
-  const e = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
+  const e = await ownerPost('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
   assert.equal((await api('/api/bootstrap')).j.missions.length, 3);
-  const noConfirm = await fetch(`${BASE}/api/import`, { method: 'POST', body: zip }); assert.equal(noConfirm.status, 400);
-  const junk = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', body: Buffer.from('not a zip at all, but long enough to pass the size check') }); assert.equal(junk.status, 400);
-  const r = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', headers: { 'content-type': 'application/zip' }, body: zip }); const j = await r.json(); assert.equal(r.status, 200, JSON.stringify(j));
+  const noConfirm = await fetch(`${BASE}/api/import`, { method: 'POST', headers: { cookie: await ownerCookie() }, body: zip }); assert.equal(noConfirm.status, 400);
+  const junk = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', headers: { cookie: await ownerCookie() }, body: Buffer.from('not a zip at all, but long enough to pass the size check') }); assert.equal(junk.status, 400);
+  const r = await fetch(`${BASE}/api/import?confirm=REPLACE`, { method: 'POST', headers: { 'content-type': 'application/zip', cookie: await ownerCookie() }, body: zip }); const j = await r.json(); assert.equal(r.status, 200, JSON.stringify(j));
   const after = (await api('/api/bootstrap')).j;
   assert.equal(after.missions.length, before.missions.length, 'missions restored');
   assert.equal(after.artifacts.length, before.artifacts.length, 'artifacts restored');
@@ -180,21 +213,21 @@ test('restore: an export goes back in whole after an erase', async () => {
 
 test('backups: written on demand, listed, healthy, downloadable, and a way back', async () => {
   const w = await post('/api/missions', { goal: 'Backup test: a brief', deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200);
-  const b = await post('/api/backup'); assert.equal(b.status, 200, JSON.stringify(b.j)); assert.match(b.j.name, /^prajna-backup-.*\.zip$/); assert.ok(b.j.bytes > 1000);
-  const list = await api('/api/backups'); assert.equal(list.j.backups[0].name, b.j.name); assert.equal(list.j.health.ok, true, list.j.health.detail);
+  const b = await ownerPost('/api/backup'); assert.equal(b.status, 200, JSON.stringify(b.j)); assert.match(b.j.name, /^prajna-backup-.*\.zip$/); assert.ok(b.j.bytes > 1000);
+  const list = await ownerApi('/api/backups'); assert.equal(list.j.backups[0].name, b.j.name); assert.equal(list.j.health.ok, true, list.j.health.detail);
   const dl = await fetch(`${BASE}/api/backups/${b.j.name}`); assert.equal(dl.status, 200); assert.equal(Buffer.from(await dl.arrayBuffer()).readUInt32LE(0), 0x04034b50);
   assert.equal((await fetch(`${BASE}/api/backups/prajna-backup-nope.zip`)).status, 404);
   const c = await post('/api/housecheck'); const row = c.j.rows.find((r) => r.id === 'backups'); assert.ok(row && row.ok, JSON.stringify(row));
-  const e = await post('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
-  assert.equal((await api('/api/backups')).j.backups.length >= 1, true, 'backups survive an erase');
-  const no = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'no' }); assert.equal(no.status, 400);
-  const r = await post(`/api/backups/${b.j.name}/restore`, { confirm: 'REPLACE' }); assert.equal(r.status, 200, JSON.stringify(r.j));
+  const e = await ownerPost('/api/erase', { confirm: 'ERASE' }); assert.equal(e.status, 200);
+  assert.equal((await ownerApi('/api/backups')).j.backups.length >= 1, true, 'backups survive an erase');
+  const no = await ownerPost(`/api/backups/${b.j.name}/restore`, { confirm: 'no' }); assert.equal(no.status, 400);
+  const r = await ownerPost(`/api/backups/${b.j.name}/restore`, { confirm: 'REPLACE' }); assert.equal(r.status, 200, JSON.stringify(r.j));
   assert.ok((await api('/api/bootstrap')).j.missions.some((m) => m.id === w.j.id), 'the ticket came back from the backup');
 });
 
 test('the Browser tool reads the pages a ticket names and puts them on the table', async () => {
-  const t = await post('/api/tools/browser/toggle'); assert.equal(t.status, 200);
-  if (!t.j.enabled) await post('/api/tools/browser/toggle');
+  const t = await ownerPost('/api/tools/browser/toggle'); assert.equal(t.status, 200);
+  if (!t.j.enabled) await ownerPost('/api/tools/browser/toggle');
   const w = await post('/api/missions', { goal: `Summarise the house rules at ${BASE}/legal/terms for a new user`, deskId: 'brief', depth: 'fast' }); assert.equal(w.status, 200, JSON.stringify(w.j));
   assert.equal(w.j.status, 'OPEN');
   const onTable = (w.j.sources || []).find((s) => s.engine === 'page'); assert.ok(onTable && onTable.words > 500, `page on the table before stamping: ${JSON.stringify(w.j.sources)}`);
@@ -215,7 +248,7 @@ test('the Browser tool reads the pages a ticket names and puts them on the table
 });
 
 test('the companion reads a pasted address and quotes it, even without a model key', async () => {
-  const t = await api('/api/bootstrap'); if (!t.j.tools?.browser) await post('/api/tools/browser/toggle');
+  const t = await api('/api/bootstrap'); if (!t.j.tools?.browser) await ownerPost('/api/tools/browser/toggle');
   const c = await post('/api/chats', { title: 'Page test' }); assert.equal(c.status, 200);
   const r = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `What do the rules at ${BASE}/legal/ai say?` }) });
   assert.equal(r.status, 200);
@@ -226,7 +259,7 @@ test('the companion reads a pasted address and quotes it, even without a model k
   assert.ok(raw.includes('event: read'), 'a read event before the reply');
   const user = done.chat.messages.find((m) => m.role === 'user' && m.pages);
   assert.ok(user && user.pages[0].words > 100, JSON.stringify(user?.pages));
-  const off = await post('/api/tools/browser/toggle'); assert.equal(off.j.enabled, false);
+  const off = await ownerPost('/api/tools/browser/toggle'); assert.equal(off.j.enabled, false);
   const r2 = await fetch(`${BASE}/api/chats/${c.j.id}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: `And ${BASE}/legal/terms?` }) });
   const raw2 = await r2.text(); assert.ok(!raw2.includes('event: read'), 'nothing read with the tool off');
 });
@@ -298,19 +331,19 @@ test('house limits refuse a ticket before anything is reserved, and let it throu
   const before = (await api('/api/bootstrap')).j.workspace;
   const w = await post('/api/missions', { goal: 'Limits test: a brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
   const ceiling = w.j.contract.ceiling; assert.ok(ceiling > 2);
-  const bad = await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: -3 }) }); assert.equal(bad.status, 400);
-  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: ceiling - 1 }) })).status, 200);
+  const bad = await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: -3 }) }); assert.equal(bad.status, 400);
+  assert.equal((await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: ceiling - 1 }) })).status, 200);
   const refused = await post(`/api/missions/${w.j.id}/launch`);
   assert.equal(refused.status, 403); assert.equal(refused.j.limit, true); assert.match(refused.j.error, /no single ticket may reserve more than/);
   const still = (await api(`/api/missions/${w.j.id}`)).j; assert.equal(still.status, 'OPEN', 'the ticket is untouched');
   assert.equal((await api('/api/bootstrap')).j.workspace.reserved, before.reserved, 'nothing was reserved');
   const check = await post('/api/housecheck'); const row = check.j.rows.find((r) => r.id === 'limits'); assert.ok(row && /ticket ceiling/.test(row.detail), JSON.stringify(row));
-  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null, dailyRuns: 0 }) })).status, 200);
+  assert.equal((await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null, dailyRuns: 0 }) })).status, 200);
   const byRuns = await post(`/api/missions/${w.j.id}/launch`);
   assert.equal(byRuns.status, 403); assert.match(byRuns.j.error, /run(s)? in any 24 hours/);
-  assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ dailyRuns: null }) })).status, 200);
+  assert.equal((await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ dailyRuns: null }) })).status, 200);
   assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200, 'with no limit it runs');
-  const l = (await api('/api/limits')).j; assert.deepEqual(l.limits, { ticketCeiling: null, monthlySpend: null, dailyRuns: null });
+  const l = (await ownerApi('/api/limits')).j; assert.deepEqual(l.limits, { ticketCeiling: null, monthlySpend: null, dailyRuns: null });
   assert.ok(l.usage.runsToday >= 1);
 });
 
@@ -321,7 +354,7 @@ test('the evidence check re-visits cited addresses and catches one that has gone
   const art = b.artifacts[0];
   const share = await post(`/api/artifacts/${art.id}/share`); assert.equal(share.status, 200);
   const link = `${BASE}${share.j.path}`;
-  if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
+  if (!(await api('/api/bootstrap')).j.tools?.browser) await ownerPost('/api/tools/browser/toggle');
   const w = await post('/api/missions', { goal: `Evidence test: summarise ${link} and ${BASE}/legal/ai`, deskId: 'brief', depth: 'fast' });
   assert.equal(w.status, 200);
   const cited = (w.j.sources || []).filter((s) => s.url);
@@ -346,21 +379,21 @@ test('house webhooks carry decisions, deliveries and refusals to an address of y
   await new Promise((r) => sink.listen(0, '127.0.0.1', r));
   const sinkUrl = `http://127.0.0.1:${sink.address().port}/hook`;
   try {
-    const bad = await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: 'ftp://nope' }) });
+    const bad = await ownerApi('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: 'ftp://nope' }) });
     assert.equal(bad.status, 400);
-    const set = await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: sinkUrl, secret: 'house-secret' }) });
+    const set = await ownerApi('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: sinkUrl, secret: 'house-secret' }) });
     assert.equal(set.status, 200); assert.equal(set.j.hooks.secretHeld, true);
     assert.ok(!JSON.stringify(set.j).includes('house-secret'), 'the secret never comes back');
 
-    const t = await post('/api/hooks/test'); assert.equal(t.status, 200); assert.equal(t.j.ok, true);
+    const t = await ownerPost('/api/hooks/test'); assert.equal(t.status, 200); assert.equal(t.j.ok, true);
     assert.equal(got.length, 1); assert.equal(got[0].event, 'housecheck.failed');
     const expect = `sha256=${crypto.createHmac('sha256', 'house-secret').update(got[0].raw).digest('hex')}`;
     assert.equal(got[0].sig, expect, 'the body is signed with the secret');
 
-    assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: 1 }) })).status, 200);
+    assert.equal((await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: 1 }) })).status, 200);
     const w = await post('/api/missions', { goal: 'Webhook test: a brief for a Coorg homestay', deskId: 'brief', depth: 'fast' });
     assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 403);
-    assert.equal((await api('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null }) })).status, 200);
+    assert.equal((await ownerApi('/api/limits', { method: 'PUT', body: JSON.stringify({ ticketCeiling: null }) })).status, 200);
     const refused = got.find((g) => g.event === 'limit.refused');
     assert.ok(refused && refused.body.mission.serial === w.j.serial, JSON.stringify(got.map((g) => g.event)));
     assert.match(refused.body.reason, /no single ticket may reserve/);
@@ -379,17 +412,17 @@ test('house webhooks carry decisions, deliveries and refusals to an address of y
     assert.ok(delivered.body.settled <= delivered.body.ceiling + 0.01);
     assert.ok(delivered.body.artifactId, 'the delivery names its artifact');
 
-    const state = (await api('/api/hooks')).j.hooks;
+    const state = (await ownerApi('/api/hooks')).j.hooks;
     assert.ok(state.log.length >= 3 && state.log.every((l) => l.ok && l.signed), JSON.stringify(state.log.slice(0, 3)));
-    assert.equal((await api('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: '' }) })).status, 200);
+    assert.equal((await ownerApi('/api/hooks', { method: 'PUT', body: JSON.stringify({ url: '' }) })).status, 200);
     const quiet = got.length;
-    await post('/api/hooks/test');
+    await ownerPost('/api/hooks/test');
     assert.equal(got.length, quiet, 'with no address, nothing is sent');
   } finally { sink.close(); }
 });
 
 test('without a model, a brief is composed from the real sources, quoted and cited, never invented', async () => {
-  if (!(await api('/api/bootstrap')).j.tools?.browser) await post('/api/tools/browser/toggle');
+  if (!(await api('/api/bootstrap')).j.tools?.browser) await ownerPost('/api/tools/browser/toggle');
   const w = await post('/api/missions', { goal: `What do the house rules at ${BASE}/legal/terms and ${BASE}/legal/privacy say about data?`, deskId: 'brief', depth: 'fast' });
   assert.equal(w.status, 200);
   assert.ok((w.j.sources || []).filter((s) => s.engine === 'page').length === 2, JSON.stringify((w.j.sources || []).map((s) => s.url)));
@@ -476,12 +509,12 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
   await new Promise((r) => good.listen(0, '127.0.0.1', r));
   await new Promise((r) => bad.listen(0, '127.0.0.1', r));
   try {
-    assert.equal((await api('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` }) })).status, 200);
-    const leadModel = await post('/api/models', { name: 'Flaky Lead', provider: 'openai', modelId: 'flaky-1', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` });
-    const standIn = await post('/api/models', { name: 'Steady Adviser', provider: 'openai', modelId: 'steady-1', baseUrl: `http://127.0.0.1:${good.address().port}/v1` });
+    assert.equal((await ownerApi('/api/keys/openai', { method: 'PUT', body: JSON.stringify({ key: 'sk-test-key', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` }) })).status, 200);
+    const leadModel = await ownerPost('/api/models', { name: 'Flaky Lead', provider: 'openai', modelId: 'flaky-1', baseUrl: `http://127.0.0.1:${bad.address().port}/v1` });
+    const standIn = await ownerPost('/api/models', { name: 'Steady Adviser', provider: 'openai', modelId: 'steady-1', baseUrl: `http://127.0.0.1:${good.address().port}/v1` });
     assert.equal(leadModel.status, 200); assert.equal(standIn.status, 200);
     // Standing instructions must reach both the writer and the judge.
-    assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: 'British English throughout. Name the customer before the product.' }) })).status, 200);
+    assert.equal((await ownerApi('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: 'British English throughout. Name the customer before the product.' }) })).status, 200);
     const w = await post('/api/missions', { goal: 'Fallback test: should we open a second roastery in Mysore?', deskId: 'brief', depth: 'fast', lead: leadModel.j.id, advisers: [standIn.j.id] });
     assert.equal(w.status, 200, JSON.stringify(w.j));
     assert.equal((await post(`/api/missions/${w.j.id}/launch`)).status, 200);
@@ -506,7 +539,7 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     assert.ok(authorPrompts.every((p) => /Name the customer before the product/.test(p)), 'the writer was given the standing instructions');
     assert.ok(critiquePrompts.length && critiquePrompts.every((p) => /judge the draft against them too/.test(p)), 'the adviser judges against them too');
     assert.equal(m.houseBrief?.chars, 65, JSON.stringify(m.houseBrief));
-    assert.equal((await api('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: '' }) })).status, 200);
+    assert.equal((await ownerApi('/api/housebrief', { method: 'PUT', body: JSON.stringify({ text: '' }) })).status, 200);
     const critique = (m.critiques || []).find((c) => c.verdict === 'revise');
     assert.ok(critique, JSON.stringify(m.critiques));
     const revised = (m.events || []).find((e) => e.label === 'revise');
@@ -524,7 +557,7 @@ test('when the lead model refuses, the panel stands in and the artifact says so'
     assert.match(html, /Your own key was called \d+ times? for this run, using [\d,]+ prompt and [\d,]+ completion tokens as reported by the provider itself/);
     assert.match(html, /the house does not guess a price/);
   } finally {
-    await api('/api/keys/openai', { method: 'DELETE' });
+    await ownerApi('/api/keys/openai', { method: 'DELETE' });
     good.close(); bad.close();
   }
 });
@@ -701,10 +734,7 @@ test('the house records who came through the door and says when the door is open
   const legal = (await api('/api/legal')).j;
   // The record of who came through is the owner's, and only a claimed
   // house has one: the first name signed here claims it, and reads the log.
-  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
-  const ownerCookie = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada' }) }));
-  await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: ownerCookie }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Ada' }) });
-  const asOwner = async () => (await fetch(`${BASE}/api/bootstrap`, { headers: { cookie: ownerCookie } })).json();
+  const asOwner = async () => (await ownerApi('/api/bootstrap')).j;
   const before = (await asOwner()).consentLog || [];
   assert.equal((await post('/api/consent', { accept: true, version: legal.version, name: 'A Second Person' })).status, 200);
   assert.deepEqual((await api('/api/bootstrap')).j.consentLog, [], 'a caller who is not the owner sees no names');
@@ -1647,6 +1677,10 @@ test('the house rules are accepted by a person, not by the building', async () =
     // Neither can work until they have each accepted, for themselves.
     assert.equal((await call('/api/chats', first, { title: 'before reading' })).status, 403);
     assert.equal((await call('/api/consent', first, { accept: true, version: legal.version, name: 'Ada' })).status, 200);
+    // Nobody has claimed this house yet, so nobody may take it apart: an
+    // erase is refused with the way to claim it, not carried out.
+    const unclaimed = await call('/api/erase', first, { confirm: 'ERASE' });
+    assert.equal(unclaimed.status, 403); assert.equal(unclaimed.j.unclaimed, true); assert.match(unclaimed.j.error, /no owner yet/);
     assert.equal((await call('/api/chats', first, { title: 'after reading' })).status, 200);
 
     const stranger = await call('/api/chats', second, { title: 'on somebody else\'s acceptance' });

@@ -264,6 +264,26 @@ function isOwner(req) {
   if (!w.ownerId) return true; // nobody has claimed this house yet
   return whoId(req) === w.ownerId;
 }
+// The house-level acts that can destroy or redirect a house: erasing it,
+// restoring over it, pointing its webhook elsewhere, setting who may do
+// what. An unclaimed house lets anyone work in it so that a fresh house is
+// usable; it does not let anyone take it apart. Those wait for an owner.
+// After the house is replaced wholesale (erase, import, restore): the
+// running signing secret stays, because an export never carries one and a
+// new one would sign everyone out, owner included; and the person who did
+// it owns the result, because they proved they own the house by doing it.
+function keepHouse(secret, actorId, actor) {
+  if (secret) ws().secret = secret;
+  if (actorId && actor && actor.name) { visitors()[actorId] = { ...(visitors()[actorId] || {}), ...actor, lastSeen: Date.now() }; ws().ownerId = actorId; }
+  flushWs();
+}
+function houseGate(req, res) {
+  if (!(ws().ownerId || ownerName())) {
+    json(res, 403, { error: 'This house has no owner yet, so nobody may erase it, restore over it, point its webhook elsewhere or set its guest policy. Sign in under My Profile to claim it; the first name signed becomes the house\'s own.', unclaimed: true, owner: true });
+    return true;
+  }
+  return ownerGate(req, res);
+}
 function ownerGate(req, res) {
   if (isOwner(req)) return false;
   const w = ws();
@@ -743,7 +763,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Backups: run now, list, download, restore ----
   if (p === '/api/guests' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     const mode = String(body.mode || '');
     if (!GUEST_MODES[mode]) return json(res, 400, { error: `Choose one of: ${Object.keys(GUEST_MODES).join(', ')}.` });
@@ -789,7 +809,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/hooks' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     const r = setHooks(body || {});
     if (r.error) return json(res, 400, { error: r.error });
@@ -797,7 +817,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/hooks/test' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     if (!hooks().url) return json(res, 400, { error: 'Give the house an address first.' });
     const r = await fireHook('housecheck.failed', { test: true, note: 'A test from the house. Nothing is wrong.' }, { force: true });
     return json(res, 200, { sent: !!r, ...r, log: hookState().log });
@@ -815,14 +835,16 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   const backupOne = p.match(/^\/api\/backups\/([\w.-]+)\/restore$/);
   if (backupOne && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     if (body.confirm !== 'REPLACE') return json(res, 400, { error: 'Type REPLACE to confirm. Nothing was changed.' });
     const buf = readBackup(backupOne[1]);
     if (!buf) return json(res, 404, { error: 'No such backup.' });
     for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
+    const secret = ws().secret || null; const actorId = whoId(req); const actor = actorId ? { ...(visitors()[actorId] || {}) } : null;
     const r = importWorkspace(buf);
     if (r.error) return json(res, 400, { error: r.error });
+    keepHouse(secret, actorId, actor);
     store.flushMissions(); store.flushArtifacts(); store.flushWorkspace(); if (store.state.connectors) store.flushConnectors(); store.flushModels();
     console.log(`prajna: workspace restored from backup ${backupOne[1]}`);
     return json(res, 200, { ok: true, ...r, from: backupOne[1] });
@@ -831,14 +853,16 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Restore: a workspace export goes back in whole, by typed confirmation ----
   if (p === '/api/import' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     if (url.searchParams.get('confirm') !== 'REPLACE') return json(res, 400, { error: 'Add ?confirm=REPLACE: the restore replaces the whole workspace. Nothing was changed.' });
     const buf = await readRaw(req);
     if (buf.__tooLarge) return json(res, 413, { error: 'The export is larger than 64 MB.' });
     if (!Buffer.isBuffer(buf) || buf.length < 22) return json(res, 400, { error: 'Send the export zip as the request body.' });
     for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
+    const secret = ws().secret || null; const actorId = whoId(req); const actor = actorId ? { ...(visitors()[actorId] || {}) } : null;
     const r = importWorkspace(buf);
     if (r.error) return json(res, 400, { error: r.error });
+    keepHouse(secret, actorId, actor);
     store.flushMissions(); store.flushArtifacts(); store.flushWorkspace(); if (store.state.connectors) store.flushConnectors(); store.flushModels();
     console.log(`prajna: workspace restored from export (${r.missions} missions, ${r.artifacts} artifacts, ${r.files} files, ${r.tapes} tapes, ${r.interrupted} interrupted)`);
     return json(res, 200, { ok: true, ...r });
@@ -847,17 +871,25 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // ---- Erase: the owner's own workspace, by typed confirmation, then a fresh house ----
   if (p === '/api/erase' && req.method === 'POST') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     if (body.confirm !== 'ERASE') return json(res, 400, { error: 'Type ERASE to confirm. Nothing was removed.' });
     const before = { missions: store.missions().length, artifacts: store.artifacts().length, chats: (ws().chats || []).length, media: (ws().media || []).length };
     for (const m of store.missions()) if (m.status === 'LIVE' || m.status.startsWith('PAUSED')) { try { killMission(m.id, notify); } catch { /* best effort */ } }
     const kept = ws().consent ? { version: ws().consent.version, acceptedAt: ws().consent.acceptedAt } : null;
+    // The person erasing proved they own the house. They own the fresh one
+    // too: the signing secret survives so their cookie still names them,
+    // their record and acceptance come across, and the house is not left
+    // unclaimed for the next stranger through the door.
+    const secret = ws().secret || null;
+    const eraserId = whoId(req);
+    const eraser = eraserId ? { ...(visitors()[eraserId] || {}) } : null;
     const removed = eraseFiles();
     store.state.missions = []; store.state.artifacts = []; store.state.workspace = null; store.state.connectors = null; store.state.customModels = [];
     store.state.keys = {}; store.state.oauthApps = {}; store.state.tokens = {};
     store.state.ws = null;
-    if (kept) { ws().consent = kept; flushWs(); }
+    if (kept) ws().consent = kept;
+    keepHouse(secret, eraserId, eraser);
     seed();
     store.flushMissions(); store.flushArtifacts(); store.flushWorkspace();
     console.log(`prajna: workspace erased by the owner (${before.missions} missions, ${before.artifacts} artifacts, ${before.chats} chats, ${before.media} media); fresh house seeded`);

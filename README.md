@@ -2118,3 +2118,31 @@ The consent log now requires a real owner: the first person to sign a
 name, or the name the environment sets. Until then nobody sees it, and the
 count is all anyone gets. The fresh-house test asserts it.
 
+## v1.55: An unclaimed house cannot be taken apart (2026-09-06)
+
+The rule that lets anyone act in an unclaimed house, so that a fresh house
+is usable, had no edge. On a public address it meant any visitor who
+accepted the rules could erase the house, restore a backup over it, point
+its webhook at an address of their choosing, or set who may do what. Your
+live house is exactly such a house until you sign in.
+
+Those acts now wait for an owner. Erase, import, restore, the webhook and
+the guest policy refuse on an unclaimed house with one message: this house
+has no owner yet; sign in under My Profile to claim it, and the first name
+signed becomes the house's own. Everything that is work, writing tickets,
+stamping them, talking, loading a key, still works before anyone claims
+it. Once claimed, the owner alone may do the house-level acts, as before.
+
+An erase used to leave the fresh house unclaimed and everyone signed out,
+the owner who had just erased it included, because the house's signing
+secret was minted anew. Restoring an export or a backup did the same,
+and worse: the restored house was claimed by whoever owned it when the
+export was taken, so a locked-out owner could not even reclaim it. The
+person who erases or restores proved they own the house; they own the
+result. The running secret survives, their record and acceptance come
+across, and the house is theirs before anyone else can walk in.
+
+The tests now claim their shared house and act as its owner where the
+house demands one, the erase test proves the refusal first, and it proves
+the eraser keeps the house.
+
