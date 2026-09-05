@@ -1519,6 +1519,25 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.30: A key belongs to the owner (5 Sep 2026)
+
+Keys have always lived in memory only: never written to disk, never in an
+export or a backup, gone on a restart, and an old key file from an earlier
+build is deleted at boot. That is the important half, and it was already
+true. The other half is who can see a key while the house holds it.
+
+A guest's workspace payload carried the masked form of every key, four
+characters at each end, along with the endpoint it calls and the hour it
+arrived. That is still the owner's credential, and it is now the owner's
+alone. A guest sees that the house holds a key, which is what tells them
+their work will run live, and nothing more about it. Testing a saved key is a
+call on the owner's account, so it is the owner's too, and the owner's OAuth
+client ids are no longer handed to anyone else.
+
+A test now sets a key, reads the house as owner and as guest, downloads an
+export, and walks every file the house wrote, and proves the key appears in
+none of them beyond the owner's own mask.
+
 ## v1.29: The dissent is somebody real (5 Sep 2026)
 
 A decision brief has always carried a recorded dissent, and it was the

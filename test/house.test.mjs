@@ -1689,3 +1689,61 @@ test('the recorded dissent is a real objection by a model that made it', async (
     assert.match(html, /The draft was revised in answer to this/);
   } finally { child9.kill(); lead.close(); adviser.close(); fs.rmSync(DIR9, { recursive: true, force: true }); }
 });
+
+test('a key belongs to the owner: nobody else sees it, tests it or gets it back', async () => {
+  // Keys live in memory and never touch disk, which is the important half.
+  // The other half is who can see one while it is held: four characters at
+  // each end, the endpoint it calls and the hour it arrived are still the
+  // owner's credential, and a guest has no business with them.
+  const DIRA = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-keysafe-'));
+  const PA = PORT + 9;
+  const BA = `http://localhost:${PA}`;
+  const childA = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PA), PRAJNA_DATA_DIR: DIRA }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const call = async (p, cookie, body, method = 'POST') => { const r = await fetch(BA + p, { method, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), r }; };
+  const SECRET = 'sk-SUPERSECRET-abcdef123456';
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${BA}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, null, 'GET')).j;
+    const enter = async (name) => {
+      const c = jar(await fetch(BA + '/'));
+      await call('/api/consent', c, { accept: true, version: legal.version, name });
+      await call('/api/me', c, { name });
+      return c;
+    };
+    const owner = await enter('Owner');
+    const guest = await enter('Guest');
+    assert.equal((await call('/api/keys/openai', owner, { key: SECRET }, 'PUT')).status, 200);
+
+    const mine = (await call('/api/bootstrap', owner, null, 'GET')).j;
+    assert.equal(mine.keys.openai.masked, 'sk-S…3456', 'the owner sees their own key, masked');
+
+    const theirs = (await call('/api/bootstrap', guest, null, 'GET')).j;
+    assert.deepEqual(theirs.keys, {}, 'a guest sees no key at all');
+    // But they are not kept in the dark about what it means for their work.
+    assert.equal(theirs.keysHeld, 1, 'they know the house holds one');
+    assert.equal(theirs.models.find((m) => m.provider === 'openai').live, true, 'and that their work will run live');
+
+    // The raw key is nowhere in anything the house hands out, to anyone.
+    for (const [who, cookie] of [['owner', owner], ['guest', guest]]) {
+      const blob = JSON.stringify((await call('/api/bootstrap', cookie, null, 'GET')).j);
+      assert.ok(!blob.includes(SECRET), `the raw key is not in the ${who}'s payload`);
+      assert.ok(!blob.includes('SUPERSECRET'), `nor any part of it beyond the mask, for the ${who}`);
+    }
+    // Nor in what leaves the building.
+    const exported = await (await fetch(BA + '/api/export', { headers: { cookie: owner } })).text();
+    assert.ok(!exported.includes('SUPERSECRET'), 'nor in an export the owner downloads');
+
+    // Testing a saved key is a call on the owner's account, so it is theirs.
+    assert.equal((await call('/api/keys/openai/test', guest, {})).status, 403);
+    assert.equal((await call('/api/keys/openai', guest, { key: 'sk-a-guests-key' }, 'PUT')).status, 403);
+
+    // And it is never written down: no file under the data directory holds it.
+    const seen = [];
+    const walk = (dir) => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, e.name); if (e.isDirectory()) walk(f); else seen.push(f); } };
+    walk(DIRA);
+    for (const f of seen) assert.ok(!fs.readFileSync(f, 'utf8').includes('SUPERSECRET'), `${path.basename(f)} does not hold the key`);
+    assert.ok(seen.length > 0, 'the house did write something, so the check above means something');
+  } finally { childA.kill(); fs.rmSync(DIRA, { recursive: true, force: true }); }
+});

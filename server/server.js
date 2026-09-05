@@ -859,7 +859,11 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       limitUsage: limitUsage(),
       connectorTargets: connectorTargets(),
       deliverableConnectors: DELIVERABLE_CONNECTORS,
-      keys: Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])),
+      // Four characters of a key at each end, the endpoint it calls and the
+      // hour it arrived are the owner's business. A guest can see that the
+      // house holds a key, which is what tells them their work will run
+      // live, and nothing more about it.
+      keys: isOwner(req) ? Object.fromEntries(Object.entries(store.keys()).map(([prov, k]) => [prov, { masked: maskKey(k.key), baseUrl: k.baseUrl, addedAt: k.addedAt }])) : {},
       skills: SKILLS.map((s) => ({ ...s, install: cs.skills.includes(s.id) ? 'installed' : 'available' })),
       connectors: CONNECTOR_CATALOG.map((c) => {
         const prov = c.provider || null;
@@ -872,7 +876,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
       planTiers: PLAN_TIERS,
       ...publicWs(whoId(req)),
       consent: myConsent(req),
-      oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: store.oauthApp(id)?.clientId || null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
+      oauthApps: Object.fromEntries(Object.entries(OAUTH_PROVIDERS).map(([id, p]) => [id, { label: p.label, covers: p.covers, console: p.console, configured: !!store.oauthApp(id), clientId: isOwner(req) ? (store.oauthApp(id)?.clientId || null) : null, connectedAs: store.token(id)?.account || null, redirectUri: redirectUri(req, id) }])),
       missions: store.missions().map(lean),
       // A delivery whose mission has a data table can leave as a workbook.
       artifacts: store.artifacts().map((a) => (a.missionId && store.mission(a.missionId)?.data?.series ? { ...a, hasData: true } : a)),
@@ -1653,6 +1657,8 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const keyTest = p.match(/^\/api\/keys\/([\w-]+)\/test$/);
   if (keyTest && req.method === 'POST') {
+    // Testing the saved key is a call made on the owner's account.
+    if (ownerGate(req, res)) return;
     const prov = keyTest[1];
     if (!PROVIDERS[prov]) return json(res, 404, { error: 'Unknown provider.' });
     const body = await readBody(req);
