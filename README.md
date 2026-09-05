@@ -1519,6 +1519,27 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.34: The charts can be read (5 Sep 2026)
+
+Fourth desk held to the standard. An analysis shipped two charts you could
+look at and nothing you could do with them: no way to read a value without
+guessing from the axis, no keyboard access, no table, no way to take the
+numbers with you.
+
+Now every point and every bar can be pointed at or tabbed to, and a line
+under the chart says what it is: the period and its value, the change on the
+period before, whether it is the peak or the trough; the segment, its value,
+its share of the total, and whether it is the one furthest from the mean.
+A button draws the mean across the trend and says what it is. Beneath the
+charts the whole series is tabled, sortable by any column with the sort
+announced, peak and trough marked. The data leaves as a CSV made on the
+page, so a shared copy of the document still carries its numbers, and the
+page prints cleanly.
+
+A new gate assertion, VAL-READABLE-CHARTS, refuses a chart nobody can read.
+Proved by driving a delivered analysis: hover, keyboard focus, outlier
+readout, mean toggle, twelve rows, both sort directions, the CSV's contents.
+
 ## v1.33: The deck presents (5 Sep 2026)
 
 The app works, the site's action works; the deck was next. It already

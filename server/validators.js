@@ -189,6 +189,11 @@ export const ASSERTIONS = {
       scrutiny: (h) => has(h, /class="read"/), surface: (h) => h.indexOf('class="read"') < h.indexOf('class="grid"') },
     { id: 'VAL-CHART-A11Y', title: 'Charts carry accessible names', owner: 'chart-smith',
       scrutiny: (h) => count(h, /role="img" aria-label=/g) >= 2, surface: (h) => !has(body(h), /<svg(?:(?!aria-label)[^>])*>/) },
+    // A chart you cannot read by pointing at it, or tab to, is a picture of
+    // a chart; and the numbers must be able to leave the page with it.
+    { id: 'VAL-READABLE-CHARTS', title: 'Every point and bar can be pointed at or tabbed to and read aloud, the data is tabled and sortable, and it downloads as CSV', owner: 'chart-smith',
+      scrutiny: (h) => count(h, /<circle data-i="\d+" tabindex="0"/g) >= 3 && count(h, /<rect data-i="\d+" tabindex="0"/g) >= 5 && count(h, /class="readout"/g) >= 2 && has(h, /<table class="data">/),
+      surface: (h) => has(h, /addEventListener\(ev/) && has(h, /aria-sort/) && has(h, /class="btn-csv"/) && has(h, /new Blob\(/) },
     { id: 'VAL-PROVENANCE', title: 'A machine-readable provenance block is present and parseable', owner: 'compose',
       scrutiny: (h) => !!provenance(h), surface: (h) => provenance(h)?.schema === 'prajna.provenance.v1' },
     HONESTY,

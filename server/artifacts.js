@@ -522,6 +522,54 @@ ${mission.dissent ? `<aside class="carried-dissent" style="max-width:72rem;margi
 
 /* --------------------------------- ANALYSIS ------------------------------- */
 
+// The analysis's own runtime. A chart you cannot read by pointing at it is
+// a picture of a chart. Point at or tab to any point or bar and a readout
+// says what it is; the table beneath sorts by any column and marks the
+// outlier; the mean line can be shown; the data leaves as a CSV made on the
+// page, so a shared copy of this document still carries its numbers.
+function analysisRuntime() {
+  const DATA = JSON.parse(document.getElementById('app-data').textContent);
+  const $ = (q, el) => (el || document).querySelector(q);
+  const $$ = (q, el) => Array.from((el || document).querySelectorAll(q));
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (v) => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString() : String(Math.round(v * 100) / 100));
+  const readouts = { trend: $('.readout[data-for=trend]'), bars: $('.readout[data-for=bars]') };
+  const say = (which, text) => { readouts[which].textContent = text; };
+  const idle = { trend: 'Point at a period, or tab to it, to read its value.', bars: 'Point at a bar, or tab to it, to read its value.' };
+  $$('circle[data-i]').forEach((c) => {
+    const i = Number(c.dataset.i); const v = DATA.series[i];
+    const d = i > 0 ? v - DATA.series[i - 1] : null;
+    const text = (DATA.labels[i] || 'Period ' + (i + 1)) + ': ' + fmt(v) + (d == null ? '' : ' (' + (d >= 0 ? '+' : '') + fmt(d) + ' on the period before)') + (v === DATA.peak ? ' · peak' : v === DATA.trough ? ' · trough' : '');
+    ['mouseover', 'focus'].forEach((ev) => c.addEventListener(ev, () => { say('trend', text); c.setAttribute('r', '6'); }));
+    ['mouseout', 'blur'].forEach((ev) => c.addEventListener(ev, () => { say('trend', idle.trend); c.setAttribute('r', '3.5'); }));
+  });
+  $$('rect[data-i]').forEach((r) => {
+    const i = Number(r.dataset.i); const b = DATA.bars[i];
+    const share = DATA.barTotal ? Math.round((b.value / DATA.barTotal) * 1000) / 10 : null;
+    const text = b.name + ': ' + fmt(b.value) + (share == null ? '' : ' (' + share + '% of the total)') + (i === DATA.outlier ? ' · furthest from the mean' : '');
+    ['mouseover', 'focus'].forEach((ev) => r.addEventListener(ev, () => { say('bars', text); r.setAttribute('opacity', '0.75'); }));
+    ['mouseout', 'blur'].forEach((ev) => r.addEventListener(ev, () => { say('bars', idle.bars); r.setAttribute('opacity', '1'); }));
+  });
+  say('trend', idle.trend); say('bars', idle.bars);
+  // The mean line, off until asked for.
+  const meanLine = $('.mean-line'); const meanBtn = $('.btn-mean');
+  meanBtn.addEventListener('click', () => { const on = meanLine.getAttribute('opacity') !== '1'; meanLine.setAttribute('opacity', on ? '1' : '0'); meanBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); meanBtn.textContent = on ? 'Hide the mean (' + fmt(DATA.mean) + ')' : 'Show the mean'; });
+  // The table: every row, sortable by any column, the outlier marked.
+  const rows = DATA.labels.map((l, i) => ({ label: l || 'P' + (i + 1), value: DATA.series[i], change: i > 0 ? DATA.series[i] - DATA.series[i - 1] : null, i }));
+  let sortKey = 'i', sortDir = 1;
+  const table = $('table.data');
+  const render = () => {
+    const sorted = rows.slice().sort((a, b) => { const x = a[sortKey], y = b[sortKey]; if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+    $('tbody', table).innerHTML = sorted.map((r) => '<tr' + (r.value === DATA.peak ? ' class="peak"' : r.value === DATA.trough ? ' class="trough"' : '') + '><td>' + esc(r.label) + '</td><td class="num">' + fmt(r.value) + '</td><td class="num">' + (r.change == null ? '' : (r.change >= 0 ? '+' : '') + fmt(r.change)) + '</td></tr>').join('');
+    $$('th', table).forEach((th) => th.setAttribute('aria-sort', th.dataset.key === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+  };
+  $$('th', table).forEach((th) => th.addEventListener('click', () => { if (sortKey === th.dataset.key) sortDir = -sortDir; else { sortKey = th.dataset.key; sortDir = 1; } render(); }));
+  render();
+  // The data leaves as a file made here, not fetched from anywhere.
+  const csv = 'label,value\n' + rows.map((r) => '"' + String(r.label).replace(/"/g, '""') + '",' + r.value).join('\n') + (DATA.bars.length ? '\n\nsegment,value\n' + DATA.bars.map((b) => '"' + String(b.name).replace(/"/g, '""') + '",' + b.value).join('\n') : '') + '\n';
+  const a = $('.btn-csv'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = DATA.file;
+}
+
 export function analysisArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
@@ -536,6 +584,8 @@ export function analysisArtifact(mission) {
   const labels = D ? D.series.points.map((p) => p.label || '') : series.map((_, i) => `P${i + 1}`);
   const n = series.length;
   const max = Math.max(...series.map((v) => Math.abs(v)), 1) * 1.15;
+  const mean = series.reduce((a, v) => a + v, 0) / Math.max(1, n);
+  const peak = Math.max(...series), trough = Math.min(...series);
   const pts = series.map((v, i) => `${(i / Math.max(1, n - 1)) * 560},${180 - (Math.max(0, v) / max) * 180}`).join(' ');
   const barItems = D && D.segments && D.segments.items.length >= 5
     ? D.segments.items.slice(0, 8).map((s) => ({ name: s.name, value: s.value }))
@@ -544,7 +594,7 @@ export function analysisArtifact(mission) {
   const outlier = barItems.reduce((best, b, i) => (Math.abs(b.value - (barItems.reduce((a, x) => a + x.value, 0) / barItems.length)) > Math.abs(barItems[best].value - (barItems.reduce((a, x) => a + x.value, 0) / barItems.length)) ? i : best), 0);
   const bars = barItems.map((b, i) => {
     const h = (Math.max(0, b.value) / bmax) * 140;
-    return `<rect x="${i * 68 + 8}" y="${150 - h}" width="44" height="${h}" rx="3" fill="${i === outlier ? '#b0472f' : '#28463a'}"/>
+    return `<rect data-i="${i}" tabindex="0" x="${i * 68 + 8}" y="${150 - h}" width="44" height="${h}" rx="3" fill="${i === outlier ? '#b0472f' : '#28463a'}"><title>${esc(String(b.name))} ${b.value}</title></rect>
 <text x="${i * 68 + 30}" y="168" text-anchor="middle" font-size="11" fill="#77837b">${esc(String(b.name).slice(0, 8))}</text>`;
   }).join('');
 
@@ -566,7 +616,18 @@ h1{font-size:2rem;letter-spacing:-.015em;margin:0 0 .3rem}
 .caveat{margin-top:2rem;border:1px dashed var(--acc);padding:1rem 1.3rem;font-size:.92rem;color:#6b4438;background:#fbf2ee}
 .caveat b{letter-spacing:.1em;text-transform:uppercase;font-size:.75rem}
 svg{width:100%;height:auto;display:block}
+circle[data-i],rect[data-i]{cursor:pointer;outline:none}circle[data-i]:focus,rect[data-i]:focus{stroke:#b0472f;stroke-width:3}
+.readout{margin:.6rem 0 0;font-size:.85rem;color:#4d564f;min-height:1.4em}
+.btn-mean{margin-top:.6rem;background:none;border:1px solid var(--rule);border-radius:999px;padding:.35rem .8rem;font:inherit;font-size:.8rem;color:var(--ink);cursor:pointer;min-height:32px}.btn-mean[aria-pressed=true]{border-color:var(--acc);color:var(--acc)}
+.table-panel{margin-top:1.5rem}
+table.data{width:100%;border-collapse:collapse;font-size:.9rem}table.data th{text-align:left;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#77837b;border-bottom:2px solid var(--ink);padding:.5rem .6rem .4rem 0;cursor:pointer;user-select:none}
+table.data th.num,table.data td.num{text-align:right;font-variant-numeric:tabular-nums}table.data th[aria-sort=ascending]::after{content:" ↑"}table.data th[aria-sort=descending]::after{content:" ↓"}
+table.data td{border-bottom:1px solid var(--rule);padding:.45rem .6rem .45rem 0}table.data tr.peak td{background:#eef4ef}table.data tr.trough td{background:#fbf2ee}
+.table-note{font-size:.8rem;color:#77837b;margin:.8rem 0 0}.swatch{display:inline-block;width:.9em;height:.9em;vertical-align:-.1em;border:1px solid var(--rule)}.swatch.peak{background:#eef4ef}.swatch.trough{background:#fbf2ee}
+.btn-csv{color:var(--acc);font-weight:700}
+.sr{position:absolute;left:-9999px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
+@media print{body{background:#fff}.btn-mean,.btn-csv{display:none}.panel{break-inside:avoid;border-color:#bbb}.readout{display:none}}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}<div class="wrap">
 <h1>${t}</h1>
@@ -575,20 +636,35 @@ ${PROV_CSS}
 <div class="grid">
   <div class="panel"><h2>${D ? `${esc(D.series.column)} · ${n} points${D.series.labelColumn ? ` by ${esc(D.series.labelColumn)}` : ''}` : 'The trend · 12 periods (sample)'}</h2>
     <svg viewBox="0 0 560 190" role="img" aria-label="12-period trend line, rising with a dip mid-series">
+      <line class="mean-line" x1="0" x2="560" y1="${180 - (Math.max(0, mean) / max) * 180}" y2="${180 - (Math.max(0, mean) / max) * 180}" stroke="#b0472f" stroke-width="1.5" stroke-dasharray="6 5" opacity="0"/>
       <polyline points="${pts}" fill="none" stroke="#28463a" stroke-width="3" stroke-linejoin="round"/>
-      ${series.map((v, i) => `<circle cx="${(i / Math.max(1, n - 1)) * 560}" cy="${180 - (Math.max(0, v) / max) * 180}" r="3.5" fill="#28463a"><title>${esc(labels[i] || '')} ${v}</title></circle>`).join('')}
+      ${series.map((v, i) => `<circle data-i="${i}" tabindex="0" cx="${(i / Math.max(1, n - 1)) * 560}" cy="${180 - (Math.max(0, v) / max) * 180}" r="3.5" fill="#28463a"><title>${esc(labels[i] || '')} ${v}</title></circle>`).join('')}
     </svg>
+    <p class="readout" data-for="trend" aria-live="polite"></p>
+    <button type="button" class="btn-mean" aria-pressed="false">Show the mean</button>
     <p class="headline">${authored(mission) ? esc(str(authored(mission).trend)) : 'Up and to the right, but the slope <b>halves</b> after period 8. The topline hides it; the segments below explain it.'}</p>
   </div>
   <div class="panel"><h2>${D && D.segments && D.segments.items.length >= 5 ? `By ${esc(D.segments.column)} · ${barItems.length} segments` : D ? `Latest ${barItems.length} points` : 'By segment · latest 8 (sample)'}</h2>
     <svg viewBox="0 0 560 175" role="img" aria-label="Segment bar chart with one outlier segment highlighted">${bars}</svg>
+    <p class="readout" data-for="bars" aria-live="polite"></p>
     <p class="headline">${authored(mission) ? esc(str(authored(mission).segment)) : 'One segment (<b>highlighted</b>) moves opposite to the rest. Remove it and the story reverses. That is the finding.'}</p>
   </div>
+</div>
+<div class="panel table-panel">
+  <h2>Every point, sortable</h2>
+  <table class="data"><caption class="sr">The plotted series, one row per point. Click a heading to sort.</caption>
+    <thead><tr><th scope="col" data-key="i" aria-sort="ascending">Period</th><th scope="col" data-key="value" class="num">Value</th><th scope="col" data-key="change" class="num">Change</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="table-note"><span class="swatch peak"></span> peak · <span class="swatch trough"></span> trough · <a class="btn-csv" href="#" download>Download the data as CSV</a>, made on this page, nothing fetched.</p>
 </div>
 <div class="caveat"><b>Caveats attached, as promised</b><br>
 ${authored(mission) ? esc(str(authored(mission).caveat)) + (D ? ` The plotted series is your own data from ${esc(D.name)} (${D.rows} rows); the house has not verified the file beyond parsing it.` : ' The plotted series is illustrative demonstration data, attach a CSV to run this on your real numbers.') : (D ? `The plotted series is your own data from ${esc(D.name)} (${D.rows} rows): ${esc(D.series.column)} summing to ${D.stats.sum}, mean ${D.stats.mean}, range ${D.stats.min}–${D.stats.max}. The reading above is house-scripted sample prose; load a key so a live model reads your numbers.${mission.computed && !mission.computed.none ? ` Computed by the code interpreter: change first to last ${mission.computed.growthPct == null ? 'n/a' : `${mission.computed.growthPct}%`}, peak ${esc(mission.computed.peak)}, trough ${esc(mission.computed.trough)}, mean ${mission.computed.mean}, sd ${mission.computed.sd}${mission.computed.topSegment ? `, top segment ${esc(mission.computed.topSegment)}` : ''}.` : ''}` : 'Sample size in the highlighted segment is small; treat direction as reliable, magnitude as ±40%. The series is illustrative demonstration data, attach a CSV to run this on your real numbers.')}</div>
 ${provenance(mission)}
-</div></body></html>`;
+</div>
+<script type="application/json" id="app-data">${JSON.stringify({ labels, series, bars: barItems, outlier, mean: Math.round(mean * 100) / 100, peak, trough, barTotal: barItems.reduce((a, b) => a + b.value, 0), file: `${String(subject).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'analysis'}-${mission.serial}.csv` }).replace(/</g, '\\u003c')}</script>
+<script>(${analysisRuntime.toString()})();</script>
+</body></html>`;
   return { title: `${subject}, Analysis`, kind: 'analysis', html };
 }
 
