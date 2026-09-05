@@ -1519,6 +1519,23 @@ when a house that has written on a key holds none, telling you to load
 yours again. The owner sees the same thing on the home page. A search
 key is not a model key and does not silence it.
 
+## v1.47: The media store is counted and kept clean (5 Sep 2026)
+
+Every illustrated deck writes seven pictures and nine clips into the
+house's media store, around ten megabytes, and a landing page and an app
+add to it. The export and the backups already carry the store, so nothing
+is lost; but nothing reported its size and nothing removed a file that no
+mission or media record pointed at any more.
+
+The house check now has a media-store row: how many files, how many
+megabytes, and how many orphans, a file pointed at by nothing. Green when
+there are none. Repair removes the orphans and says how much it freed, and
+keeps every file a mission or the media index still points at.
+
+Proved in the deck test: sixteen files and no orphans after a narrated,
+illustrated deck; a planted orphan counted; repair removed it and kept the
+slide picture.
+
 ## v1.46: The house says what your keys can do (5 Sep 2026)
 
 Decks, pages and apps now draw and speak on the owner's key, and a house

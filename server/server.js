@@ -53,6 +53,19 @@ function releases() {
 }
 // The house check: what the owner can run to know the house is sound.
 // Every row is a real test against disk, ledger, tokens and links.
+// The media store: every file the house drew or spoke, against every file a
+// mission or the media index still points at. What nothing points at is an
+// orphan, and a store on a small disk should not keep orphans.
+function mediaStoreAudit() {
+  const dir = path.join(DATA_DIR, 'media');
+  let files = [];
+  try { files = fs.readdirSync(dir).filter((f) => /^[a-f0-9]{16}\.[a-z0-9]{2,5}$/.test(f)); } catch { files = []; }
+  const referenced = new Set((ws().media || []).map((r) => r.id));
+  for (const m of store.missions()) { for (const v of m.visuals || []) if (v.id) referenced.add(v.id); for (const n of m.narration || []) if (n.id) referenced.add(n.id); }
+  let bytes = 0; const orphans = [];
+  for (const f of files) { try { bytes += fs.statSync(path.join(dir, f)).size; } catch { /* gone */ } if (!referenced.has(f.split('.')[0])) orphans.push(f); }
+  return { dir, files, bytes, orphans };
+}
 async function houseCheck() {
   const rows = [];
   const add = (id, ok, detail) => rows.push({ id, ok: !!ok, detail });
@@ -86,6 +99,7 @@ async function houseCheck() {
     add('media', !mediaOn || !!held || !needed, !mediaOn ? 'Media Generation is off under Tools: nothing is drawn or spoken on any key, the house draws its own visuals and the film reads with the browser voice'
       : held ? `Media Generation is on and a ${PROVIDERS[held]?.label || held} key is held: decks are illustrated and narrated, pages get a hero, apps an icon`
       : 'Media Generation is on but no image or speech key is in memory: the house draws its own visuals and the film reads with the browser voice; load an OpenAI or Google key under Your keys'); }
+  { const ms2 = mediaStoreAudit(); add('media-store', ms2.orphans.length === 0, `${ms2.files.length} file(s), ${(ms2.bytes / 1048576).toFixed(1)} MB, ${ms2.orphans.length} orphan(s)${ms2.orphans.length ? ' pointed at by nothing; repair removes them' : ''}`); }
   add('door', !!ACCESS_CODE || people.size <= 1, ACCESS_CODE
     ? `an access code is set; ${people.size} ${people.size === 1 ? 'person has' : 'people have'} accepted the house rules`
     : people.size <= 1
@@ -134,6 +148,9 @@ async function houseRepair() {
     ledger('reconcile', drift, `Reserve reconciled to the in-flight tickets: ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr moved back into reserve`}`);
     actions.push({ id: 'reserve', ok: true, detail: `reserve set to ${expected} cr, ${drift > 0 ? `${drift} cr returned to balance` : `${-drift} cr taken from balance`}, ledger line written` });
   }
+  { const ms2 = mediaStoreAudit(); let removed = 0, freed = 0;
+    for (const f of ms2.orphans) { try { freed += fs.statSync(path.join(ms2.dir, f)).size; fs.unlinkSync(path.join(ms2.dir, f)); removed += 1; } catch { /* already gone */ } }
+    if (removed) actions.push({ id: 'media-store', ok: true, detail: `${removed} orphan media file(s) removed, ${(freed / 1048576).toFixed(1)} MB freed; every file a mission or the media index points at was kept` }); }
   for (const o of standingHealth().orphaned) { pauseStandingOrder(o.id, true); actions.push({ id: 'standing', ok: true, detail: `${o.serial}: order paused, its ticket is gone; stop it under Settings or repeat another ticket` }); }
   const c = ws().consent;
   if (!c || c.version !== LEGAL.version) actions.push({ id: 'consent', ok: false, detail: 'only a person can accept the house rules; the acceptance screen opens on the next load' });

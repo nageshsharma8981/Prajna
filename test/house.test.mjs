@@ -1897,6 +1897,18 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     const mediaRow = (hc1.rows || hc1.check?.rows || []).find((r) => r.id === 'media');
     assert.ok(mediaRow && mediaRow.ok, `the media row is green with a key held: ${JSON.stringify(mediaRow)}`);
     assert.match(mediaRow.detail, /OpenAI(?:-compatible)? key is held: decks are illustrated and narrated/);
+    // The media store is audited: every file pointed at, none orphaned; and
+    // an orphan, when one appears, is named and removed by repair.
+    const store1 = (await (await fetch(`${lit.B}/api/housecheck`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json()).rows.find((r) => r.id === 'media-store');
+    assert.ok(store1 && store1.ok, `sixteen files, none orphaned: ${JSON.stringify(store1)}`);
+    assert.match(store1.detail, /^16 file\(s\), [\d.]+ MB, 0 orphan/);
+    fs.writeFileSync(path.join(lit.DIR, 'media', 'deadbeefdeadbeef.png'), PNG);
+    const store2 = (await (await fetch(`${lit.B}/api/housecheck`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json()).rows.find((r) => r.id === 'media-store');
+    assert.ok(!store2.ok && /17 file\(s\), [\d.]+ MB, 1 orphan/.test(store2.detail), `the orphan is counted: ${store2.detail}`);
+    const repaired = await (await fetch(`${lit.B}/api/housecheck/repair`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json();
+    assert.ok((repaired.actions || []).some((x) => x.id === 'media-store' && /1 orphan media file\(s\) removed/.test(x.detail)), `repair names what it removed: ${JSON.stringify(repaired.actions)}`);
+    assert.ok(!fs.existsSync(path.join(lit.DIR, 'media', 'deadbeefdeadbeef.png')), 'the orphan is gone');
+    assert.ok(fs.existsSync(path.join(lit.DIR, 'media', m1.visuals[0].file)), 'and a file a mission points at is kept');
     // And the PowerPoint carries the same pictures.
     const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
     const names = pptx.toString('latin1');
