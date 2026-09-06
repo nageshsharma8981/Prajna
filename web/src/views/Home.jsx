@@ -30,7 +30,11 @@ export default function Home() {
       dismiss(); await s.refresh(); navigate(`/c/${chat.id}`);
     } catch { setSampling(false); }
   };
-  const initial = new URLSearchParams(location.search).get('mode') || 'chat';
+  // A shared record's "Make your own" lands here with the desk and the
+  // brief in the address, so the reader starts where the record started.
+  const q = new URLSearchParams(location.search);
+  const initial = q.get('mode') || q.get('desk') || 'chat';
+  const brief = (q.get('brief') || '').slice(0, 600);
 
   const send = async (payload) => {
     const r = await fetch('/api/chats', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: payload.mode, title: payload.text.slice(0, 60) }) });
@@ -85,7 +89,7 @@ export default function Home() {
           </section>
         )}
         <h1 className="greet">Hey <em>{first}</em><br /><span>What's on your mind today?</span></h1>
-        <Composer onSend={send} initialMode={initial} />
+        <Composer onSend={send} initialMode={initial} initialText={brief} />
       </div>
       <section className="feature-cards" aria-label="Community">
         <Link to="/factory/community" className="feature-card">

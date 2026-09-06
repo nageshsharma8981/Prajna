@@ -2189,3 +2189,29 @@ tape says who chose the look and what it is. Proved with a live author
 choosing gold on black and serif: the colours are the deck's, nine pictures
 asked for in the same words, the occasion under the title, and the same
 paper, accent and Georgia in the PowerPoint.
+
+## v1.58: A shared record reads as a replay (2026-09-06)
+
+A shared record was the audit bundle: the contract, the gate, every move
+on the tape, the sources, the settlement and the delivery, in tables. It
+is the evidence, and a reader who wants the evidence still gets all of it.
+But a reader who was handed the link wanted to know three things first,
+what was asked, what happened, and where the delivery is, and the tables
+made them work for it. Zenith's shared session answers those first and
+lets the reader fork it; that was worth having as well as the evidence.
+
+The record now opens as a replay. The ask, then the three phases in one
+line each: the plan with its steps, estimate and ceiling; the build with
+its moves on the tape, how many live and how many scripted, who wrote the
+substance, what was drawn and spoken, what the advisers said; the result
+with the gate's count and the settled cost. One button opens the delivery,
+one takes the reader to the composer with the same brief on the same desk,
+and a player walks the tape one move at a time or plays it through. The
+audit tables follow, untouched.
+
+Sharing a record shares its delivery with it, so the button works for a
+reader with no account, and revoking the record closes the delivery too,
+unless it was shared on its own. Proved: the replay above the tables,
+three phases in their words, the player on the page, the delivery opened
+by the button, the fork carrying the desk and the brief, and both links
+dead after the revoke.

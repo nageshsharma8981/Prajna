@@ -8,7 +8,52 @@ function esc(s) {
 }
 const when = (t) => (t ? new Date(t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : '–');
 
-export function auditBundle(mission, artifact, artifactHtml) {
+// The replay: what a reader who was not in the room needs first. The ask,
+// then the three phases in one line each (what was planned and for how
+// much, what was built and by whom, what came out and whether it passed),
+// the delivery one click away, a way to make their own from the same brief,
+// and the tape as a player that walks the moves one at a time. The audit
+// tables follow for the reader who wants the evidence itself.
+const DESK_MODE = { brief: 'research', deck: 'deck', site: 'website', mobile: 'mobile', analysis: 'analysis' };
+function replay(m, artifact, { publicUrl = '', artifactPath = null } = {}) {
+  const plan = m.contract.plan || [];
+  const events = m.events || [];
+  const lastVal = (m.validations || []).at(-1);
+  const rows = (lastVal?.rows || []).filter((r) => r.lane === 'scrutiny');
+  const passed = rows.filter((r) => r.passed).length;
+  const live = events.filter((e) => e.live === true).length, scripted = events.filter((e) => e.live === false).length;
+  const pics = (m.visuals || []).length, clips = (m.narration || []).length;
+  const who = m.authored?.live ? `the substance by ${m.authored.model} on the owner's key` : m.authored?.composed ? 'the substance quoted from the sources, no model loaded' : 'scripted by the house';
+  const fork = `${publicUrl}/?desk=${encodeURIComponent(DESK_MODE[m.desk] || 'chat')}&brief=${encodeURIComponent(String(m.goal || '').slice(0, 600))}`;
+  const open = artifactPath || (artifact ? '#delivery' : null);
+  return `<section class="replay" aria-label="Replay">
+<p class="eyebrow">Prajñā replay · ${esc(m.deskName || m.desk)} · ${esc(m.serial)}${m.look ? ` · one look: ${esc(m.look.mood)}` : ''}</p>
+<h1 class="ask">${esc(m.goal)}</h1>
+<div class="phases">
+<div class="phase"><span>1 · Plan</span><b>${plan.length} steps, ${m.contract.estimate} cr estimated, ceiling ${m.contract.ceiling}</b><p>${esc(m.contract.why || 'The contract was stamped before anything was spent.')}</p></div>
+<div class="phase"><span>2 · Build</span><b>${events.length} moves on the tape, ${live} live, ${scripted} scripted</b><p>${esc(who)}${pics ? `; ${pics} picture${pics === 1 ? '' : 's'} drawn` : ''}${clips ? `; ${clips} clips spoken` : ''}${(m.critiques || []).length ? `; ${m.critiques.length} adviser critique${m.critiques.length === 1 ? '' : 's'}` : ''}${m.dissent ? `; dissent recorded from ${esc(m.dissent.model)}` : ''}.</p></div>
+<div class="phase"><span>3 · Result</span><b>${rows.length ? `${passed} of ${rows.length} assertions passed` : 'no gate rows kept'}, ${Number(m.spent || 0).toFixed(1)} cr settled</b><p>${artifact ? `${esc(artifact.title)}, v${artifact.version}${m.partial ? ', partial' : ''}` : 'No delivery was made.'}</p></div>
+</div>
+<div class="acts">${open ? `<a class="btn" href="${esc(open)}">Open the delivery</a>` : ''}<a class="btn alt" href="${esc(fork)}">Make your own from this brief</a><a class="btn alt" href="#tape">Replay the tape</a></div>
+<div class="player" id="tape" role="region" aria-label="Tape player"><button type="button" class="p-prev" aria-label="Previous move">‹</button><span class="p-count">1 / ${events.length}</span><button type="button" class="p-next" aria-label="Next move">›</button><button type="button" class="p-play">Play</button><p class="p-line"></p></div>
+</section>`;
+}
+function replayScript() {
+  const rec = JSON.parse(document.getElementById('prajna-bundle').textContent);
+  const ev = rec.mission.events || []; const box = document.getElementById('tape'); if (!box || !ev.length) return;
+  const count = box.querySelector('.p-count'), line = box.querySelector('.p-line'), play = box.querySelector('.p-play');
+  let i = 0, timer = null;
+  const plan = rec.mission.contract.plan || [];
+  const text = (e) => e.detail || e.text || e.note || e.prompt || (e.type === 'step.status' ? ((plan.find((p) => p.id === e.stepId) || {}).title || e.stepId) + ' → ' + e.status : '') || (e.type === 'cost' ? '+' + e.delta + ' → ' + e.total + ' cr' : '') || e.type;
+  const show = () => { const e = ev[i]; count.textContent = (i + 1) + ' / ' + ev.length; line.innerHTML = '<code>' + e.type + (e.label ? ' · ' + e.label : '') + '</code>' + (e.live === true ? ' <span class="live">live</span>' : e.live === false ? ' <span class="scripted">scripted</span>' : '') + ' ' + String(text(e)).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); };
+  const stop = () => { if (timer) clearInterval(timer); timer = null; play.textContent = 'Play'; };
+  box.querySelector('.p-prev').addEventListener('click', () => { stop(); i = (i - 1 + ev.length) % ev.length; show(); });
+  box.querySelector('.p-next').addEventListener('click', () => { stop(); i = (i + 1) % ev.length; show(); });
+  play.addEventListener('click', () => { if (timer) return stop(); play.textContent = 'Pause'; timer = setInterval(() => { i += 1; if (i >= ev.length) { i = ev.length - 1; show(); return stop(); } show(); }, 900); });
+  show();
+}
+
+export function auditBundle(mission, artifact, artifactHtml, opts = {}) {
   const m = mission;
   const plan = m.contract.plan || [];
   const events = m.events || [];
@@ -32,7 +77,20 @@ table{width:100%;border-collapse:collapse;font-size:.84rem;background:#fff}th{te
 iframe{width:100%;height:80vh;border:1px solid var(--rule);background:#fff;border-radius:6px}
 details summary{cursor:pointer;font-weight:700}
 .note{font-size:.8rem;color:#666}
+.replay{background:var(--ink);color:#f3efe4;margin:-2.5rem -1.5rem 2.5rem;padding:2.6rem 1.5rem 2rem}
+.replay .eyebrow{margin:0 0 .6rem;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:#d9b45a}
+.replay .ask{font-size:clamp(1.5rem,3.2vw,2.4rem);line-height:1.15;margin:0 0 1.4rem;max-width:32ch;color:#fff}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem;margin:0 0 1.4rem}
+.phase{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.9rem 1rem}
+.phase span{display:block;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:#d9b45a;margin-bottom:.35rem}.phase b{display:block;color:#fff;margin-bottom:.3rem}.phase p{margin:0;font-size:.84rem;color:#cfc9ba}
+.acts{display:flex;flex-wrap:wrap;gap:.6rem;margin:0 0 1.2rem}
+.btn{display:inline-block;background:#d9b45a;color:#14140f;font-weight:700;text-decoration:none;padding:.6rem 1rem;border-radius:6px;min-height:44px;line-height:1.6}.btn.alt{background:transparent;color:#f3efe4;border:1px solid rgba(255,255,255,.35)}.btn:hover{filter:brightness(1.08)}
+.player{display:grid;grid-template-columns:auto auto auto auto 1fr;gap:.5rem;align-items:center;background:rgba(0,0,0,.35);border-radius:8px;padding:.6rem .8rem;font-size:.84rem}
+.player button{background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:4px;min-width:2.2rem;min-height:2.2rem;cursor:pointer;font:inherit}.player .p-count{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#d9b45a}
+.player .p-line{grid-column:1/-1;margin:.3rem 0 0;color:#e9e4d6;min-height:1.4em}.player code{color:#d9b45a}.player .live{color:#8fd19e}.player .scripted{color:#aaa}
+@media(max-width:600px){.replay{margin:-2.5rem -1.5rem 2rem}}
 </style></head><body><div class="wrap">
+${replay(m, artifact, opts)}
 <h1>${esc(m.serial)} · ${esc(m.subject || m.goal)}</h1>
 <p class="note">Prajñā audit bundle · exported ${when(record.exportedAt)} · ${esc(m.deskName)} · status ${esc(m.status)}${m.partial ? ' · PARTIAL' : ''}${m.voided ? ' · VOIDED' : ''}. Everything below is the record as kept by the house; the machine-readable copy is at the end.</p>
 <div class="kv">
@@ -73,11 +131,12 @@ ${(m.critiques || []).length ? `<h2>Adviser critiques</h2><table><thead><tr><th>
 <h2>Settlement</h2>
 <p>${m.settlement ? `${m.settlement.reserved} cr reserved · ${m.settlement.settled} cr settled · ${m.settlement.released} cr released back to the house.` : `Nothing settled${m.status === 'OPEN' ? ', the ticket was never stamped' : ''}.`}</p>
 
-<h2>Delivered artifact${artifact ? ` · ${esc(artifact.title)} (v${artifact.version})` : ''}</h2>
+<h2 id="delivery">Delivered artifact${artifact ? ` · ${esc(artifact.title)} (v${artifact.version})` : ''}</h2>
 ${artifactHtml ? `<iframe sandbox="allow-scripts" srcdoc="${esc(artifactHtml)}" title="Delivered artifact"></iframe><p class="note">Embedded and sandboxed; the artifact carries its own provenance block.</p>` : '<p class="note">No artifact was delivered.</p>'}
 
 <h2>Machine-readable record</h2>
 <p class="note"><code>prajna.bundle.v1</code>, the complete mission record and artifact metadata as JSON.</p>
 <script type="application/json" id="prajna-bundle">${JSON.stringify(record).replace(/</g, '\\u003c')}</script>
+<script>(${replayScript.toString()})();</script>
 </div></body></html>`;
 }

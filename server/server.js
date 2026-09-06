@@ -744,7 +744,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (!m) { res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return res.end('<!doctype html><title>Not shared</title><p style="font:16px system-ui;padding:3rem">This record link is not on the books, it may have been revoked.</p>'); }
     const full = store.missionFull(m.id);
     const a = full.artifactId ? store.artifact(full.artifactId) : null;
-    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, auditBundle(pub(full), a, full.artifactId ? store.artifactHtml(full.artifactId) : null));
+    return sendCompressed(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }, auditBundle(pub(full), a, full.artifactId ? store.artifactHtml(full.artifactId) : null, { publicUrl: (process.env.PRAJNA_PUBLIC_URL || '').replace(/\/$/, ''), artifactPath: a?.shareToken ? `/s/${a.shareToken}` : null }));
   }
 
   // Nothing that changes the workspace runs before the house rules are accepted.
@@ -1299,6 +1299,11 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     m.shareToken = req.method === 'POST' ? (m.shareToken || crypto.randomBytes(16).toString('hex')) : null;
     m.sharedAt = m.shareToken ? (m.sharedAt || Date.now()) : null;
     store.flushMissions();
+    // A shared record opens its delivery with one click, so the delivery is
+    // shared with it, and closed with it unless it was shared on its own.
+    const a = m.artifactId ? store.artifact(m.artifactId) : null;
+    if (a && req.method === 'POST' && !a.shareToken) store.refreshArtifact(a.id, { shareToken: crypto.randomBytes(16).toString('hex'), sharedAt: Date.now(), sharedVia: 'record' }, store.artifactHtml(a.id));
+    if (a && req.method === 'DELETE' && a.shareToken && a.sharedVia === 'record') store.refreshArtifact(a.id, { shareToken: null, sharedAt: null, sharedVia: null }, store.artifactHtml(a.id));
     return json(res, 200, { ok: true, shareToken: m.shareToken, path: m.shareToken ? `/r/${m.shareToken}` : null });
   }
 

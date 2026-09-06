@@ -673,6 +673,41 @@ test('an analysis can leave as a workbook: the series, the segments and the arit
   assert.equal(b.artifacts.find((x) => x.id === m.artifactId)?.hasData, true, 'the delivery is flagged as having data');
 });
 
+test('a shared record opens as a replay, with the delivery one click away and a way to make your own', async () => {
+  const b = (await api('/api/bootstrap')).j;
+  const deck = b.artifacts.find((x) => /deck/i.test(x.kind) || /deck/i.test(x.title));
+  const m = b.missions.find((x) => x.artifactId === deck.id);
+  assert.ok(m, 'the deck\'s mission');
+  assert.ok(!deck.shareToken, 'the delivery starts unshared');
+  const share = await ownerPost(`/api/missions/${m.id}/share`); assert.equal(share.status, 200);
+  const token = share.j.path.split('/').pop();
+  const page = await fetch(`${BASE}/r/${token}`); assert.equal(page.status, 200);
+  const html = await page.text();
+  // The replay comes first: the ask, three phases, the acts, the player.
+  assert.ok(html.indexOf('class="replay"') < html.indexOf('<h2>Contract</h2>'), 'the replay sits above the audit tables');
+  assert.ok(html.includes('1 · Plan') && html.includes('2 · Build') && html.includes('3 · Result'), 'three phases');
+  assert.match(html, /\d+ steps, [\d.]+ cr estimated, ceiling [\d.]+/, 'the plan in one line');
+  assert.match(html, /\d+ moves on the tape, \d+ live, \d+ scripted/, 'the build in one line');
+  assert.match(html, /(\d+ of \d+ assertions passed|no gate rows kept), [\d.]+ cr settled/, 'the result in one line');
+  assert.ok(html.includes('id="tape"') && html.includes('class="p-play"'), 'the tape player is on the page');
+  // The delivery was shared with the record, and the button opens it.
+  const a2 = (await api('/api/bootstrap')).j.artifacts.find((x) => x.id === deck.id);
+  assert.ok(a2.shareToken, 'the delivery is shared with the record');
+  assert.ok(html.includes(`<a class="btn" href="/s/${a2.shareToken}">Open the delivery</a>`), 'one click opens the delivery');
+  assert.equal((await fetch(`${BASE}/s/${a2.shareToken}`)).status, 200, 'and it opens');
+  // Make your own lands on the composer with the same brief on the same desk.
+  const fork = (html.match(/href="([^"]*\?desk=[^"]*)">Make your own from this brief/) || [])[1];
+  assert.ok(fork, 'a way to make your own');
+  const u = new URL(fork.replace(/&amp;/g, '&'), BASE);
+  assert.equal(u.searchParams.get('desk'), 'deck');
+  assert.equal(u.searchParams.get('brief'), m.goal);
+  // Revoking the record closes the delivery it opened.
+  assert.equal((await ownerApi(`/api/missions/${m.id}/share`, { method: 'DELETE' })).status, 200);
+  assert.equal((await fetch(`${BASE}/r/${token}`)).status, 404);
+  assert.equal((await fetch(`${BASE}/s/${a2.shareToken}`)).status, 404, 'the delivery closed with the record');
+  assert.ok(!(await api('/api/bootstrap')).j.artifacts.find((x) => x.id === deck.id).shareToken, 'and is unshared again');
+});
+
 test('a shared delivery can be taken away, in the same formats, with no account', async () => {
   const b = (await api('/api/bootstrap')).j;
   const deck = b.artifacts.find((x) => /deck/i.test(x.kind) || /deck/i.test(x.title));

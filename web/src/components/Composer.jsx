@@ -124,10 +124,10 @@ function TemplateModal({ templates, value, onPick, onClose }) {
   );
 }
 
-export default function Composer({ chat, onSend, initialMode = 'chat', autoFocus = true, compact = false }) {
+export default function Composer({ chat, onSend, initialMode = 'chat', initialText = '', autoFocus = true, compact = false }) {
   const s = useStore();
   const [mode, setMode] = useState(initialMode);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const [variant, setVariant] = useState('build');
   const [depth, setDepth] = useState('fast');
   const [template, setTemplate] = useState('none');
