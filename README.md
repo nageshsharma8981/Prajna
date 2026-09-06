@@ -2266,3 +2266,29 @@ files in it, an Expo project with device storage, named after the app, the
 screens travelling as data, the lists, the delete and the settings in the
 code, the drawn icon byte for byte the project's icon, the README saying so,
 and the deck refused.
+
+## v1.61: What the house remembers about you (2026-09-06)
+
+The house had one memory, the owner's standing instructions, and it spoke
+to every delivery for everyone. A person who writes for a pharma audience,
+in British spelling, and never wants the word leverage, had to say so in
+every brief. Zenith keeps agent memories per user; Prajñā had nothing per
+person.
+
+Now each person has a memory of their own. Under Account, Memory, they tell
+the house what to keep, up to forty lines, and every author who writes for
+them is told it as "about the person asking", with the tape saying how many
+things the author was told. Beside what they told the house sits what the
+house has noticed on its own record, derived when asked and never stored:
+how many deliveries and on which desks, the latest brief, the look their
+decks mostly wear, the notes they have sent back. A memory belongs to the
+visitor who left it: nobody else in the house can read it, the owner
+included, it is never a key, and any of it can be forgotten one line or all
+at once. A mission now records who asked, by their signed cookie, so the
+memories reach that person's authors and nobody else's.
+
+Proved: every one of five live authors was told the memory and each tape
+says so, the house noticed the five asks and the look the decks wore, a
+second person signed into the same house reads none of it and cannot
+forget it for them, a nameless visitor leaves none, a duplicate and a blank
+are refused in words, and forgetting one line and then everything works.

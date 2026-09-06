@@ -708,6 +708,35 @@ test('a shared record opens as a replay, with the delivery one click away and a 
   assert.ok(!(await api('/api/bootstrap')).j.artifacts.find((x) => x.id === deck.id).shareToken, 'and is unshared again');
 });
 
+test('what a person tells the house to remember is theirs alone, and can be forgotten', async () => {
+  const add = await ownerPost('/api/memories', { text: 'I write for a pharma R&D audience.' });
+  assert.equal(add.status, 200, JSON.stringify(add.j));
+  assert.ok(add.j.memories.some((m) => m.text === 'I write for a pharma R&D audience.' && m.from === 'you'));
+  const dup = await ownerPost('/api/memories', { text: '  i write for a PHARMA r&d audience. ' }); assert.equal(dup.status, 400); assert.match(dup.j.error, /already remembers/);
+  const blank = await ownerPost('/api/memories', { text: '   ' }); assert.equal(blank.status, 400); assert.match(blank.j.error, /Write the memory first/);
+  const mine = (await ownerApi('/api/memories')).j;
+  assert.equal(mine.signedIn, true);
+  const mem = mine.memories.find((m) => m.text === 'I write for a pharma R&D audience.'); assert.ok(mem);
+  // Another person in the same house, signed in with their own name, sees none of it.
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const other = jar(await fetch(`${BASE}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Second Person' }) }));
+  const legal = await (await fetch(`${BASE}/api/legal`)).json();
+  await fetch(`${BASE}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: other }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Second Person' }) });
+  const theirs = await (await fetch(`${BASE}/api/memories`, { headers: { cookie: other } })).json();
+  assert.deepEqual(theirs.memories, [], 'the second person reads nothing of the first');
+  assert.equal((await fetch(`${BASE}/api/memories/${mem.id}`, { method: 'DELETE', headers: { cookie: other } })).status, 404, 'and cannot forget it for them');
+  assert.ok((await ownerApi('/api/memories')).j.memories.some((m) => m.id === mem.id), 'it is still there');
+  // Nobody without a name leaves a memory.
+  const nameless = await fetch(`${BASE}/api/memories`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'x' }) });
+  assert.ok([400, 401, 403].includes(nameless.status), `a nameless visitor is refused (${nameless.status})`);
+  // Forgetting one, then everything.
+  const gone = await ownerApi(`/api/memories/${mem.id}`, { method: 'DELETE' }); assert.equal(gone.status, 200);
+  assert.ok(!gone.j.memories.some((m) => m.id === mem.id));
+  assert.equal((await ownerPost('/api/memories', { text: 'British spelling.' })).status, 200);
+  assert.equal((await ownerApi('/api/memories', { method: 'DELETE' })).status, 200);
+  assert.deepEqual((await ownerApi('/api/memories')).j.memories, []);
+});
+
 test('a landing page edits in place, and the house keeps the edit as the next version with its provenance', async () => {
   const w = await ownerPost('/api/missions', { goal: 'Canvas test: a landing page for a Kochi ferry pass', deskId: 'site', depth: 'fast', advisers: [] });
   assert.equal(w.status, 200, JSON.stringify(w.j));
@@ -1232,6 +1261,7 @@ test('every desk delivers with a live model, not just the research desk', async 
   const P5 = PORT + 4;
   const B5 = `http://localhost:${P5}`;
   let desk = 'brief';
+  let sawMemory = 0;
   const model = http.createServer((req, res) => {
     let body = ''; req.on('data', (d) => { body += d; });
     req.on('end', () => {
@@ -1240,6 +1270,7 @@ test('every desk delivers with a live model, not just the research desk', async 
       // The deck also asks this key for pictures; a one-pixel PNG is a picture.
       if (/images\/generations/.test(req.url)) { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ data: [{ b64_json: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' }] })); }
       const prompt = JSON.parse(body).messages[0].content;
+      if (/About the person asking/.test(prompt) && /ferries run late on Mondays/.test(prompt)) sawMemory += 1;
       const payload = /CRITIQUE the draft/.test(prompt) ? { verdict: 'pass', issues: [] } : DRAFTS[desk];
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }));
@@ -1259,6 +1290,8 @@ test('every desk delivers with a live model, not just the research desk', async 
     assert.equal((await call('/api/bootstrap', null, 'GET')).j.owner.mine, true, 'signed in as the house');
     assert.equal((await call('/api/keys/openai', { key: 'sk-test-key', baseUrl: `http://127.0.0.1:${model.address().port}/v1` }, 'PUT')).status, 200);
     const lead = (await call('/api/models', { name: 'Desk Model', provider: 'openai', modelId: 'desk-1', baseUrl: `http://127.0.0.1:${model.address().port}/v1` })).j;
+    // What this person told the house to remember goes to every author who writes for them.
+    assert.equal((await call('/api/memories', { text: 'Remember: ferries run late on Mondays, say so plainly' })).status, 200);
     for (const [id, deskId] of [['brief', 'brief'], ['deck', 'deck'], ['site', 'site'], ['mobile', 'mobile'], ['analysis', 'analysis']]) {
       desk = id;
       const w = await call('/api/missions', { goal: `Live desk test: a ${id} for a Kochi ferry startup`, deskId, depth: 'fast', lead: lead.id, advisers: [] });
@@ -1333,7 +1366,12 @@ test('every desk delivers with a live model, not just the research desk', async 
       // The model's own words must actually be in the delivery.
       const marker = { brief: 'Live claim 1 about the coastal ferry programme', deck: 'The whole case in one sentence', site: 'Get across the water faster', mobile: 'What screen 1 is for', analysis: 'A live read of what the numbers would need to show' }[id];
       assert.ok(html.includes(marker), `${id} carries what the model wrote: looked for “${marker}”`);
+      assert.ok((m.events || []).some((e) => /the author was told 1 thing the person asking asked the house to remember/.test(e.detail || '')), `${id}: the tape says the author read the memory`);
     }
+    assert.ok(sawMemory >= 5, `every author was told what the person asked the house to remember (saw it ${sawMemory} times)`);
+    const seen = (await call('/api/memories', null, 'GET')).j;
+    assert.ok(seen.noticed.some((n) => /You have asked for 5 deliveries here/.test(n)), `the house noticed the five asks: ${JSON.stringify(seen.noticed)}`);
+    assert.ok(seen.noticed.some((n) => /Your decks mostly wear one look: chiaroscuro Renaissance gold on black/.test(n)), 'and the look the decks wear');
   } finally { child5.kill(); model.close(); fs.rmSync(DIR5, { recursive: true, force: true }); }
 });
 

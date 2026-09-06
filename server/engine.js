@@ -17,6 +17,7 @@ import path from 'node:path';
 import { callModel, generateImage, synthesizeSpeech } from './providers.js';
 import { DATA_DIR } from './store.js';
 import { authorContent, critiqueContent } from './author.js';
+import { memoryCount } from './memory.js';
 import { retrieve, urlsIn, readPages } from './retrieve.js';
 import { composeFor } from './compose.js';
 import { costHistory } from './history.js';
@@ -209,7 +210,7 @@ export function keyPlanFor(m) {
   };
 }
 
-export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages, by }) {
+export function writeContract({ goal, deskId, lead, advisers, installedSkills, queuedConnectors, lineage, variant, template, depth, chatId, attachments, pages, by, asker }) {
   const desk = deskById(deskId);
   const subject = subjectOf(goal);
   const installed = installedSkills ? new Set(installedSkills) : null;
@@ -283,6 +284,9 @@ export function writeContract({ goal, deskId, lead, advisers, installedSkills, q
     // Who asked for this. A house several people can enter should say whose
     // request each ticket is, and it travels with the artifact.
     writtenBy: by ? { name: by, at: Date.now() } : null,
+    // Who asked, by their signed cookie, so what they told the house to
+    // remember reaches the author of this delivery and nobody else's.
+    askerId: asker || null,
     // A thin ask makes a thin contract; the ticket says so rather than
     // pretending the plan and the price mean more than the goal does.
     thin: (() => { const c = clarify(goal, desk.id); return c.thin ? { why: c.why, questions: c.questions } : null; })(),
@@ -961,6 +965,8 @@ async function applyEvent(m, ev, notify, runner) {
             { const hb = String(ws().houseBrief || '').trim(); if (hb) m.houseBrief = { at: Date.now(), chars: hb.length }; }
             if (m.authored.usage) { const u = m.authored.usage; if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; m.keyUse.reported += 1; m.keyUse.prompt += u.prompt || 0; m.keyUse.completion += u.completion || 0; const at = (m.keyUse.models[seat.model.name] = m.keyUse.models[seat.model.name] || { calls: 0, prompt: 0, completion: 0 }); at.calls += 1; at.prompt += u.prompt || 0; at.completion += u.completion || 0; } else if (m.authored.live) { if (!m.keyUse) m.keyUse = { calls: 0, prompt: 0, completion: 0, reported: 0, models: {} }; m.keyUse.calls += 1; }
             if (refused.length) { m.authored.steppedIn = { after: refused.map((r) => r.name), lead: modelById(m.lead).name }; }
+            const remembered = memoryCount(m);
+            if (remembered) pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: false, detail: `the author was told ${remembered} thing${remembered === 1 ? '' : 's'} the person asking asked the house to remember` }, notify);
             pushEvent(m, { type: 'log', stepId: step.id, label: 'author', live: true, detail: `${m.authored.model} wrote the substance, ${m.authored.chars} chars in ${(m.authored.ms / 1000).toFixed(1)}s · billed to your key, 0 house credits · validators still gate it${refused.length ? ` · stepped in after ${refused.map((r) => `${r.name} refused (${r.error})`).join('; ')}` : ''}` }, notify);
             return 'ok';
           } catch (e) {

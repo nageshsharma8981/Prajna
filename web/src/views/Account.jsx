@@ -1,10 +1,10 @@
 // Account pages: profile, dashboard, assets, personalization, language,
 // subscription, invoices, settings, help.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link, navigate } from '../lib/router.jsx';
 
-const PAGES = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My Assets'], ['personalization', 'Personalization'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices'], ['settings', 'Settings'], ['help', 'Get Help']];
+const PAGES = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My Assets'], ['personalization', 'Personalization'], ['memory', 'Memory'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices'], ['settings', 'Settings'], ['help', 'Get Help']];
 const LANGS = [['en', 'English'], ['hi', 'हिन्दी'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['pt', 'Português'], ['ja', '日本語'], ['zh', '中文'], ['ar', 'العربية']];
 
 async function patch(url, body) {
@@ -120,6 +120,8 @@ export default function Account({ page }) {
             </div></div>
           </>
         )}
+
+        {p === 'memory' && <MemoryPage />}
 
         {p === 'personalization' && (
           <>
@@ -324,5 +326,44 @@ export default function Account({ page }) {
         )}
       </div>
     </div>
+  );
+}
+
+// What the house remembers about this person, for this person: what they
+// told it, which goes to the author of every delivery they ask for, and what
+// it has noticed on its own record. Theirs alone; any of it can be forgotten.
+function MemoryPage() {
+  const [data, setData] = useState(null);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState(null);
+  const load = async () => { try { const r = await fetch('/api/memories'); setData(await r.json()); } catch { setData({ memories: [], noticed: [], signedIn: false }); } };
+  useEffect(() => { load(); }, []);
+  const add = async () => {
+    setErr(null);
+    const r = await fetch('/api/memories', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(j.error || 'Refused.'); return; }
+    setText(''); setData((d) => ({ ...d, memories: j.memories }));
+  };
+  const del = async (id) => { const r = await fetch(`/api/memories/${id}`, { method: 'DELETE' }); const j = await r.json().catch(() => ({})); if (r.ok) setData((d) => ({ ...d, memories: j.memories })); };
+  const all = async () => { if (!window.confirm('Forget everything you told the house?')) return; await fetch('/api/memories', { method: 'DELETE' }); load(); };
+  const faint = { color: 'var(--bone-faint)' };
+  return (
+    <>
+      <h1 className="pg-title">Memory</h1>
+      <p style={faint}>What you tell the house here goes to the author of every delivery you ask for, as “about the person asking”. It is yours alone: nobody else in the house can read it, the owner included; it is never a key; and you can forget any of it.</p>
+      <div className="form">
+        <label>Tell the house something to remember<input className="key-input" value={text} maxLength={240} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} placeholder="e.g. I write for a pharma R&D audience; British spelling; never say leverage" /></label>
+        <button className="btn-stamp attn-btn" onClick={add} disabled={!text.trim()}>Remember this</button>
+        {err && <p role="alert" style={{ color: 'var(--rose)' }}>{err}</p>}
+      </div>
+      <h2 style={{ fontSize: '0.8rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: '1.6rem' }}>What you told the house</h2>
+      {data && data.memories.length ? (
+        <ul className="memory-list" aria-label="Memories">{data.memories.map((m) => <li key={m.id}><span>{m.text}</span><small style={faint}>{new Date(m.at).toLocaleDateString('en-GB')}</small><button className="btn-quiet" style={{ padding: '0.3rem 0.7rem' }} onClick={() => del(m.id)} aria-label={`Forget: ${m.text}`}>Forget</button></li>)}</ul>
+      ) : <p style={faint}>{data && !data.signedIn ? 'Sign in with a name under My Profile first; a memory belongs to the person who leaves it.' : 'Nothing yet.'}</p>}
+      {data && data.memories.length > 0 && <button className="btn-quiet" style={{ padding: '0.4rem 0.8rem' }} onClick={all}>Forget everything</button>}
+      <h2 style={{ fontSize: '0.8rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: '1.6rem' }}>What the house has noticed</h2>
+      {data && data.noticed.length ? <ul className="memory-list" aria-label="Noticed">{data.noticed.map((n, i) => <li key={i}><span>{n}</span></li>)}</ul> : <p style={faint}>Nothing yet; this fills in from your own asks, and is never stored.</p>}
+    </>
   );
 }
