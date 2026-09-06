@@ -30,6 +30,7 @@ import { hooks, hookState, setHooks, fire as fireHook, fromMissionEvent, HOOK_EV
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
 import { applyEdits, stampEdit } from './canvas.js';
+import { expoFromArtifact } from './expo.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -1421,6 +1422,23 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (!buf) return json(res, 400, { error: 'This delivery has no data table: attach a file to an analysis mission and the workbook follows.' });
     const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'analysis'}.xlsx`;
     res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
+    return res.end(buf);
+  }
+  // ---- The app as a native project: unzip, npm install, npx expo start ----
+  const artifactExpo = p.match(/^\/api\/artifacts\/([\w]+)\/expo$/);
+  if (artifactExpo && req.method === 'GET') {
+    if (!authed(req)) return json(res, 401, { locked: true });
+    const a = store.artifact(artifactExpo[1]);
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const html = store.artifactHtml(a.id);
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    const iv = m && Array.isArray(m.visuals) ? m.visuals.find((v) => v.slide === 0) : null;
+    let iconBytes = null;
+    if (iv) { try { iconBytes = fs.readFileSync(path.join(MEDIA_DIR, path.basename(iv.file))); } catch { iconBytes = null; } }
+    const buf = html && expoFromArtifact({ artifact: a, mission: m, html, iconBytes });
+    if (!buf) return json(res, 400, { error: 'Only a working app packs as a native project: this delivery has no app in it.' });
+    const file = `${a.serial || 'prajna'}-${String(a.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'app'}-expo.zip`;
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': buf.length, 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' });
     return res.end(buf);
   }
   const artifactPptx = p.match(/^\/api\/artifacts\/([\w]+)\/pptx$/);

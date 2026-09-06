@@ -2241,3 +2241,28 @@ look is the page's, the provenance row names the hand, a second edit is v3
 with one row for the hand and the first edit still standing, and a bad key,
 a doubled order, an unknown look and an empty text are each refused in
 words.
+
+## v1.60: The app leaves as a native project (2026-09-06)
+
+The mobile desk delivers a working app, not a picture of one, and it is a
+web app: it runs full screen on a phone and can be added to a home screen,
+and it cannot go to a store. Zenith's mobile skill starts from an Expo
+project and wires a subscription connector; the app it makes can be built
+for the stores. That was the one thing a Prajñā app could not do.
+
+A delivered app now packs as a native project. One button on the delivery
+gives a zip: an Expo project with the same app in it, the same screens,
+lists, search, add, edit, mark done, delete and settings, the data kept on
+the device, no navigation library, the icon drawn on the owner's key as the
+app's icon, the screens and their starting items as data exactly as
+delivered, and a README that says how to run it on a phone in Expo Go and
+how to build it for the stores. The project is packed from the page the
+house keeps, so an app edited since packs the way it reads, and app.json
+names the delivery it came from. A deck is not an app and does not pack as
+one.
+
+Proved in the live desk test: the zip is a real archive with the eight
+files in it, an Expo project with device storage, named after the app, the
+screens travelling as data, the lists, the delete and the settings in the
+code, the drawn icon byte for byte the project's icon, the README saying so,
+and the deck refused.

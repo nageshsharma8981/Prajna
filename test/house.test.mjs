@@ -1284,6 +1284,25 @@ test('every desk delivers with a live model, not just the research desk', async 
         assert.equal((m.visuals || []).length, 1, 'one app icon on the record');
         assert.ok(/<link rel="apple-touch-icon" href="\/api\/media\/[a-f0-9]{16}">/.test(html), 'the home-screen icon is the generated one');
         assert.ok(/class="brand"><img class="app-icon" src="\/api\/media\/[a-f0-9]{16}"/.test(html), 'and it is shown on the page');
+        // The same app leaves as a native project, with that icon in it.
+        const zr = await fetch(`${B5}/api/artifacts/${m.artifactId}/expo`, { headers: { cookie } });
+        assert.equal(zr.status, 200, 'the native project is offered');
+        assert.match(zr.headers.get('content-disposition') || '', /-expo\.zip"$/);
+        const zip = Buffer.from(await zr.arrayBuffer());
+        assert.equal(zip.readUInt32LE(0), 0x04034b50, 'a real zip');
+        const names = zip.toString('latin1');
+        for (const f of ['/package.json', '/app.json', '/App.js', '/app-data.json', '/assets/icon.png', '/README.md', '/babel.config.js']) assert.ok(names.includes(f), `${f} is in the project`);
+        assert.ok(names.includes('"expo": "~52.0.0"') && names.includes('@react-native-async-storage/async-storage'), 'an Expo project with device storage');
+        assert.ok(names.includes('"name": "Ferry"') && names.includes('"bundleIdentifier": "com.prajna.ferry"'), 'named after the app');
+        assert.ok(names.includes('"title": "Screen 1"') && names.includes('"tab": "Tab1"') && names.includes('What screen 1 is for.'), 'the screens travel as data');
+        assert.ok(names.includes('AsyncStorage.setItem(KEY') && names.includes('onLongPress={() => remove(item)}') && names.includes("kind: 'settings'"), 'lists, delete and settings are in the code');
+        const iconFile = fs.readFileSync(path.join(DIR5, 'media', m.visuals[0].file));
+        assert.ok(zip.includes(iconFile), 'the icon drawn on the key is the project\'s icon');
+        assert.ok(names.includes('the icon drawn on the owner\'s key for this app'), 'and the README says so');
+      }
+      if (deskId === 'deck') {
+        // A deck is not an app, so it does not pack as one.
+        assert.equal((await fetch(`${B5}/api/artifacts/${m.artifactId}/expo`, { headers: { cookie } })).status, 400);
       }
       if (deskId === 'deck') {
         // One look, chosen by the author, on every slide: the colours, the
