@@ -2339,3 +2339,14 @@ searched for the goal's words, the mail lands on the table with its sender,
 its date and its first lines, one draft is made to the house's address
 with the public link in it, nothing leaves without an approval, and the
 delivery is on the record with its link checked.
+
+## v1.64: The packed app bundles (2026-09-06)
+
+The native project packed in v1.60 was proved as a zip with the right
+files in it, not as a project that builds. Unzipped, installed and asked
+for an iOS bundle, it stopped at the bundler: Expo SDK 52 needs the
+expo-asset package on the project and the packed package.json did not
+list it. It does now, with expo-status-bar beside it, and the same project
+compiles to a Hermes bundle of 1.56 MB. The test pins the package. The
+lesson is the one the mobile desk taught: a thing is proved when it runs,
+not when its files are present.

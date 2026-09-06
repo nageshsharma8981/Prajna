@@ -204,7 +204,7 @@ export function expoFromArtifact({ artifact, mission, html, iconBytes }) {
   const pkg = {
     name: s, version: '1.0.0', private: true, main: 'expo/AppEntry.js',
     scripts: { start: 'expo start', android: 'expo start --android', ios: 'expo start --ios', web: 'expo start --web' },
-    dependencies: { expo: '~52.0.0', react: '18.3.1', 'react-native': '0.76.5', '@react-native-async-storage/async-storage': '1.23.1' },
+    dependencies: { expo: '~52.0.0', 'expo-asset': '~11.0.5', 'expo-status-bar': '~2.0.1', react: '18.3.1', 'react-native': '0.76.5', '@react-native-async-storage/async-storage': '1.23.1' },
     devDependencies: { '@babel/core': '^7.25.0' },
   };
   const app = { expo: {

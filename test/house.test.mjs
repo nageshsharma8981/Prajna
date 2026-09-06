@@ -1355,7 +1355,7 @@ test('every desk delivers with a live model, not just the research desk', async 
         assert.equal(zip.readUInt32LE(0), 0x04034b50, 'a real zip');
         const names = zip.toString('latin1');
         for (const f of ['/package.json', '/app.json', '/App.js', '/app-data.json', '/assets/icon.png', '/README.md', '/babel.config.js']) assert.ok(names.includes(f), `${f} is in the project`);
-        assert.ok(names.includes('"expo": "~52.0.0"') && names.includes('@react-native-async-storage/async-storage'), 'an Expo project with device storage');
+        assert.ok(names.includes('"expo": "~52.0.0"') && names.includes('"expo-asset": "~11.0.5"') && names.includes('@react-native-async-storage/async-storage'), 'an Expo project with the asset package the bundler needs and device storage');
         assert.ok(names.includes('"name": "Ferry"') && names.includes('"bundleIdentifier": "com.prajna.ferry"'), 'named after the app');
         assert.ok(names.includes('"title": "Screen 1"') && names.includes('"tab": "Tab1"') && names.includes('What screen 1 is for.'), 'the screens travel as data');
         assert.ok(names.includes('AsyncStorage.setItem(KEY') && names.includes('onLongPress={() => remove(item)}') && names.includes("kind: 'settings'"), 'lists, delete and settings are in the code');
