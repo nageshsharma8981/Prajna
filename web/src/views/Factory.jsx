@@ -4,7 +4,7 @@ import { useStore } from '../lib/store.jsx';
 import { Link, navigate } from '../lib/router.jsx';
 import Skills from './Skills.jsx';
 
-const TABS = [['cli', 'CLI'], ['community', 'Community'], ['skills', 'Skills'], ['assets', 'Assets'], ['projects', 'Projects']];
+const TABS = [['cli', 'Terminal'], ['community', 'Showroom'], ['skills', 'Crafts'], ['assets', 'Deliveries'], ['projects', 'Folders']];
 
 const SHOWCASE = [
   { id: 'sc1', title: 'The Renaissance: when humanity dared to dream', kind: 'deck', by: 'house', prompt: 'A nine-beat deck on the Renaissance for an international presentation competition', mode: 'deck' },
@@ -19,7 +19,7 @@ export default function Factory({ tab }) {
   const [err, setErr] = useState(null);
   const [proven, setProven] = useState(null);
   useEffect(() => { if (tab === 'community') fetch('/api/proven').then((r) => r.json()).then((j) => setProven(j.proven || [])).catch(() => setProven([])); }, [tab]);
-  if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening the factory…</p></div>;
+  if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening the foundry…</p></div>;
   const t = TABS.some(([id]) => id === tab) ? tab : 'cli';
   const submit = new URLSearchParams(location.search).get('submit');
 
@@ -38,8 +38,8 @@ export default function Factory({ tab }) {
 
   return (
     <div className="page">
-      <h1 className="pg-title">Factory</h1>
-      <nav className="tabs-row" aria-label="Factory sections">
+      <h1 className="pg-title">Foundry</h1>
+      <nav className="tabs-row" aria-label="Foundry sections">
         {TABS.map(([id, label]) => <Link key={id} to={`/factory/${id}`} className={`tab-link${t === id ? ' on' : ''}`} aria-current={t === id ? 'page' : undefined}>{label}</Link>)}
       </nav>
       {err && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>{err}</p>}
@@ -60,7 +60,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
 
       {t === 'community' && (
         <section className="section-gap">
-          <p className="lede">Real use cases made with Prajñā: prompts and model choices visible, one click to clone into your own chat.</p>
+          <p className="lede">The showroom: real deliveries made here, the brief and the bench visible, one click to run the same brief yourself.</p>
           <div className="board" style={{ marginBottom: '1.2rem' }} aria-label="Proven briefs">
             <div className="board-title"><span className="brd-sm">Proven in this house</span><span className="count">{proven ? proven.length : '…'}</span></div>
             <p className="conn-note" style={{ padding: '0.4rem 1rem 0.6rem' }}>Ranked by the record, not by likes: briefs that delivered, cleared the gate first time, settled at their estimate, and were asked for again. One click puts the brief on its desk.</p>
@@ -79,7 +79,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
               ))}
             </div>
           </div>
-          {submit && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Submit any fully delivered artifact from <Link to="/factory/assets">Assets</Link>: it goes public with its provenance block and the house grants 200 credits (demo grant).</p>}
+          {submit && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Submit any fully delivered artifact from <Link to="/factory/assets">Deliveries</Link>: it goes public with its provenance block and the house grants 200 credits (demo grant).</p>}
           <div className="showcase-grid">
             {(s.showcase || []).map((sc) => (
               <article key={sc.id} className={`showcase tint-${sc.kind === 'deck' ? 'rose' : sc.kind === 'site' ? 'blue' : sc.kind === 'brief' ? 'amber' : 'green'}`}>
@@ -88,7 +88,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
                 <span>{sc.kind} · by {sc.by} · {sc.provenance.mode} run · {sc.provenance.sealed}/{sc.provenance.assertions} sealed{sc.provenance.patches ? ` · ${sc.provenance.patches} patched` : ''}</span>
                 <p className="mono">“{sc.prompt}”</p>
                 <div style={{ display: 'flex', gap: '0.5rem', margin: '0 1rem', flexWrap: 'wrap' }}>
-                  <button className="btn-stamp attn-btn" style={{ margin: 0 }} onClick={() => clone(sc)}>Clone into a chat</button>
+                  <button className="btn-stamp attn-btn" style={{ margin: 0 }} onClick={() => clone(sc)}>Run this brief</button>
                   <a className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} href={`/s/${sc.shareToken}`} target="_blank" rel="noreferrer">Open (public)</a>
                   {sc.recordToken && <a className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} href={`/r/${sc.recordToken}`} target="_blank" rel="noreferrer" title="The whole session as a replay: the ask, the three phases, the tape, the delivery">Replay (public)</a>}
                   <button className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} onClick={async () => { await fetch(`/api/showcase/${sc.id}`, { method: 'DELETE' }); s.refresh(); }}>Withdraw</button>
@@ -101,7 +101,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
                 <b>{sc.title}</b>
                 <span>{sc.kind} · by {sc.by} · prompt visible</span>
                 <p className="mono">“{sc.prompt}”</p>
-                <button className="btn-stamp attn-btn" onClick={() => clone(sc)}>Clone into a chat</button>
+                <button className="btn-stamp attn-btn" onClick={() => clone(sc)}>Run this brief</button>
               </article>
             ))}
           </div>
@@ -112,7 +112,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
 
       {t === 'assets' && (
         <section className="board section-gap" aria-label="Assets">
-          <div className="board-title"><span className="brd-sm">Your assets</span><span className="count">{s.artifacts.length}</span></div>
+          <div className="board-title"><span className="brd-sm">Your deliveries</span><span className="count">{s.artifacts.length}</span></div>
           <div className="board-rows">
             {s.artifacts.length === 0 && <div className="board-empty">Nothing delivered yet.</div>}
             {s.artifacts.map((a) => (
@@ -130,7 +130,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
       {t === 'projects' && (
         <section className="section-gap">
           <div className="board">
-            <div className="board-title"><span className="brd-sm">Projects</span><span className="count">{(s.projects || []).length}</span></div>
+            <div className="board-title"><span className="brd-sm">Folders</span><span className="count">{(s.projects || []).length}</span></div>
             <div className="board-rows">
               {(s.projects || []).map((p) => (
                 <div key={p.id} className="board-row" style={{ cursor: 'default' }}>
@@ -140,8 +140,8 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
                 </div>
               ))}
               <div className="key-add" style={{ gridTemplateColumns: '1fr auto' }}>
-                <input className="key-input" placeholder="New project name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Project name" />
-                <button className="btn-stamp attn-btn" onClick={addProject} disabled={!name.trim()}>Create project</button>
+                <input className="key-input" placeholder="New folder name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Folder name" />
+                <button className="btn-stamp attn-btn" onClick={addProject} disabled={!name.trim()}>Create folder</button>
               </div>
             </div>
           </div>

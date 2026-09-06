@@ -1,5 +1,5 @@
 // The composer: prompt + mode chips + per-mode controls + model picker +
-// panel (Model Council) + attach + voice + send. Shared by Home and Chat.
+// the bench (lead model and advisers) + attach + voice + send. Shared by Home and Chat.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link } from '../lib/router.jsx';
@@ -55,8 +55,8 @@ function CouncilModal({ models, lead, advisers, onChange, onClose, plan }) {
   };
   return (
     <div className="veil" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Choose panel models" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head"><PanelIcon /> <b>Choose panel models</b><button className="x" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal" role="dialog" aria-modal="true" aria-label="The bench: lead model and advisers" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head"><PanelIcon /> <b>The bench: lead model and advisers</b><button className="x" onClick={onClose} aria-label="Close">×</button></div>
         <div className="lead-card">
           <span className="k">Lead model</span>
           <b>{models.find((m) => m.id === lead)?.name}</b>
@@ -248,7 +248,7 @@ export default function Composer({ chat, onSend, initialMode = 'chat', initialTe
               )}
             </span>
           )}
-          <button className="mode-pill soft" onClick={() => setShowCouncil(true)} title="Model Council"><PanelIcon /> Model Council <b>{advisers.length}</b></button>
+          <button className="mode-pill soft" onClick={() => setShowCouncil(true)} title="The bench: the lead model and the advisers who challenge it"><PanelIcon /> The bench <b>{advisers.length}</b></button>
           <span className="grow" />
           <span className="rel">
             <button className="model-btn" onClick={() => setShowModels((v) => !v)} aria-haspopup="dialog" aria-expanded={showModels}>{leadModel?.name} <ChevronIcon /></button>

@@ -17,7 +17,7 @@ export default function Tools() {
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <h1 className="pg-title">Tools</h1>
+        <h1 className="pg-title">Instruments</h1>
         <button className="ic" style={{ marginLeft: 'auto' }} onClick={() => setAdding((v) => !v)} aria-label="Add MCP tool" title="Add MCP tool">+</button>
       </div>
       <p className="lede">Configure built-in tools and connected MCP tools for missions.</p>

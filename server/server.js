@@ -1206,7 +1206,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     const m = store.mission(a.missionId);
     if (!m || m.status !== 'FILLED' || a.partial || a.voided) return json(res, 400, { error: 'Only a fully delivered, unvoided artifact can be submitted.' });
     const w = ws();
-    if (w.showcase.some((x) => x.artifactId === a.id)) return json(res, 400, { error: 'Already on the showcase.' });
+    if (w.showcase.some((x) => x.artifactId === a.id)) return json(res, 400, { error: 'Already in the showroom.' });
     const shareToken = a.shareToken || crypto.randomBytes(16).toString('hex');
     store.refreshArtifact(a.id, { shareToken, sharedAt: a.sharedAt || Date.now() }, store.artifactHtml(a.id));
     // The showcase shows the work as well as the delivery: the record is

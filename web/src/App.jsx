@@ -22,7 +22,7 @@ const Releases = lazy(() => import('./views/Releases.jsx'));
 const Skills = lazy(() => import('./views/Skills.jsx'));
 const Keys = lazy(() => import('./views/Keys.jsx'));
 
-const TITLES = [['/c/', 'Chat'], ['/plugins', 'Plugins'], ['/factory', 'Factory'], ['/boards', 'Boards'], ['/tools', 'Tools'], ['/connectors', 'Connectors'], ['/skills', 'Skills'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions'], ['/releases', 'Release notes']];
+const TITLES = [['/c/', 'Chat'], ['/plugins', 'Toolroom'], ['/factory', 'Foundry'], ['/boards', 'Docket'], ['/tools', 'Instruments'], ['/connectors', 'Wiring'], ['/skills', 'Crafts'], ['/keys', 'Your keys'], ['/media', 'Media'], ['/account', 'Account'], ['/missions', 'Missions'], ['/run/', 'Mission'], ['/artifacts', 'Artifacts'], ['/artifact/', 'Artifact'], ['/compare/', 'Compare versions'], ['/releases', 'Release notes']];
 
 function Sidebar({ open, onClose, menuRef }) {
   const s = useStore();
@@ -41,7 +41,7 @@ function Sidebar({ open, onClose, menuRef }) {
   const w = s.ready ? s.workspace : null;
   const tier = s.ready ? (s.planTiers || []).find((t) => t.id === s.plan) : null;
   const chats = s.ready ? s.chats || [] : [];
-  const MENU = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My Assets'], ['personalization', 'Personalization'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices']];
+  const MENU = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My deliveries'], ['personalization', 'House style'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices']];
   const delChat = async (e, id) => { e.preventDefault(); e.stopPropagation(); await fetch(`/api/chats/${id}`, { method: 'DELETE' }); s.refresh(); if (path === `/c/${id}`) navigate('/'); };
 
   return (
@@ -50,12 +50,12 @@ function Sidebar({ open, onClose, menuRef }) {
       <nav className={`side${open ? ' open' : ''}`} aria-label="Primary" inert={mobile && !open}>
         <Link to="/" className="side-logo" onClick={onClose} aria-label="Prajñā home"><img className="logo-img" src="/logo.png" alt="Prajñā" width="180" height="60" /></Link>
         <div className="side-nav">
-          <Link to="/" className={`side-item${path === '/' ? ' on' : ''}`} onClick={onClose}><EditIcon /> New chat</Link>
-          <Link to="/plugins" className={`side-item${active('/plugins') ? ' on' : ''}`} onClick={onClose}><PluginIcon /> Plugins</Link>
-          <Link to="/factory/cli" className={`side-item${active('/factory') ? ' on' : ''}`} onClick={onClose}><FactoryIcon /> Factory</Link>
-          <button className={`side-group${boardsOpen ? ' open' : ''}`} onClick={() => setBoardsOpen((v) => !v)} aria-expanded={boardsOpen}><BoardIcon /> Boards <span className="beta">beta</span><ChevronIcon /></button>
+          <Link to="/" className={`side-item${path === '/' ? ' on' : ''}`} onClick={onClose}><EditIcon /> New thread</Link>
+          <Link to="/plugins" className={`side-item${active('/plugins') ? ' on' : ''}`} onClick={onClose}><PluginIcon /> Toolroom</Link>
+          <Link to="/factory/cli" className={`side-item${active('/factory') ? ' on' : ''}`} onClick={onClose}><FactoryIcon /> Foundry</Link>
+          <button className={`side-group${boardsOpen ? ' open' : ''}`} onClick={() => setBoardsOpen((v) => !v)} aria-expanded={boardsOpen}><BoardIcon /> Docket <span className="beta">beta</span><ChevronIcon /></button>
           {boardsOpen && <div className="side-sub"><Link to="/boards" className={`side-item sm${active('/boards') ? ' on' : ''}`} onClick={onClose}>Mission board</Link><Link to="/missions" className={`side-item sm${active('/missions') ? ' on' : ''}`} onClick={onClose}>Tickets &amp; runs</Link></div>}
-          <button className={`side-group${chatsOpen ? ' open' : ''}`} onClick={() => setChatsOpen((v) => !v)} aria-expanded={chatsOpen}>Chats <ChevronIcon /></button>
+          <button className={`side-group${chatsOpen ? ' open' : ''}`} onClick={() => setChatsOpen((v) => !v)} aria-expanded={chatsOpen}>Threads <ChevronIcon /></button>
           {chatsOpen && (
             <div className="side-sub chats">
               {chats.length === 0 && <span className="side-empty">Empty</span>}
@@ -70,9 +70,9 @@ function Sidebar({ open, onClose, menuRef }) {
         </div>
         <div className="side-foot">
           <div className="side-tools">
-            <Link to="/connectors" className={`side-item sm${active('/connectors') ? ' on' : ''}`} onClick={onClose}><SeatIcon /> Connectors</Link>
-            <Link to="/skills" className={`side-item sm${active('/skills') ? ' on' : ''}`} onClick={onClose}><SkillIcon /> Skills</Link>
-            <Link to="/tools" className={`side-item sm${active('/tools') ? ' on' : ''}`} onClick={onClose}><ToolIcon /> Tools</Link>
+            <Link to="/connectors" className={`side-item sm${active('/connectors') ? ' on' : ''}`} onClick={onClose}><SeatIcon /> Wiring</Link>
+            <Link to="/skills" className={`side-item sm${active('/skills') ? ' on' : ''}`} onClick={onClose}><SkillIcon /> Crafts</Link>
+            <Link to="/tools" className={`side-item sm${active('/tools') ? ' on' : ''}`} onClick={onClose}><ToolIcon /> Instruments</Link>
             <Link to="/keys" className={`side-item sm${active('/keys') ? ' on' : ''}`} onClick={onClose}><KeyIcon /> Your keys</Link>
           </div>
           <Link to="/account/subscription" className="plan-pill" onClick={onClose}>

@@ -17,7 +17,7 @@ function Ticket({ mission, onFill, onVoid, busy, error }) {
       <div className="stamp in" aria-hidden="true">Open</div>
       <div className="ticket-inner">
         <p className="ticket-goal">{mission.goal}</p>
-        <p className="ticket-deliv">deliverable: {mission.deliverable.toLowerCase()} · panel of {mission.councilNames.length}: {mission.councilNames.join(', ')}</p>
+        <p className="ticket-deliv">deliverable: {mission.deliverable.toLowerCase()} · bench of {mission.councilNames.length}: {mission.councilNames.join(', ')}</p>
         <ol className="ticket-plan">
           {mission.contract.plan.map((p, i) => (
             <li key={p.id} className={p.access === 'external' ? 'ext' : ''}>
@@ -166,7 +166,7 @@ export default function Floor() {
     setAdvisers((prev) => {
       if (prev.includes(id)) return prev.filter((a) => a !== id);
       if (prev.length >= MAX_ADVISERS) {
-        setCouncilNote(`The panel models ${MAX_ADVISERS} advisers plus the lead, unseat one before adding another.`);
+        setCouncilNote(`The bench holds ${MAX_ADVISERS} advisers plus the lead; remove one before adding another.`);
         return prev;
       }
       return [...prev, id];
@@ -289,7 +289,7 @@ export default function Floor() {
               ))}
             </div>
             <div className="council-row">
-              <span className="lbl" id="council-label">The panel: tap a model to add it as an adviser; use its Lead button to make it the lead</span>
+              <span className="lbl" id="council-label">The bench: tap a model to add it as an adviser; use its Lead button to make it the lead</span>
               <div className="council-chips" role="group" aria-labelledby="council-label">
                 {s.models.map((m) => {
                   const isLead = lead === m.id;
@@ -350,7 +350,7 @@ export default function Floor() {
               <span className={`sym tint-${m.tint}`}>{m.serial}</span>
               <span className="what">
                 <b>{m.subject}</b>
-                <span>{m.deskName} · panel of {m.councilNames.length}</span>
+                <span>{m.deskName} · bench of {m.councilNames.length}</span>
               </span>
               <span className="num">{m.spent.toFixed(1)} / {m.contract.ceiling} cr</span>
               <StatusFlap status={m.status} />

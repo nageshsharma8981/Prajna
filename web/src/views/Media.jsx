@@ -63,9 +63,9 @@ export default function Media() {
   const download = () => { if (!svg) return; const b = new Blob([svg], { type: 'image/svg+xml' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'prajna-media.svg'; a.click(); URL.revokeObjectURL(u); };
   return (
     <div className="page">
-      <h1 className="pg-title">Media studio</h1>
+      <h1 className="pg-title">Darkroom</h1>
       <p className="lede">Images and motion pieces from a prompt. The house engine generates locally, real output, no invented provider. Load a media-capable key under <Link to="/keys">Your keys</Link> to route to hosted models.</p>
-      {!enabled && <p role="status" className="soft-banner">Media Generation is switched off under <Link to="/tools">Tools</Link>. You can still preview here; enable it to attach media to missions.</p>}
+      {!enabled && <p role="status" className="soft-banner">Media Generation is switched off under <Link to="/tools">Instruments</Link>. You can still preview here; enable it to attach media to missions.</p>}
       <nav className="tabs-row" aria-label="Media type"><button className={`tab-link${tab === 'image' ? ' on' : ''}`} onClick={() => setTab('image')}>Images</button><button className={`tab-link${tab === 'video' ? ' on' : ''}`} onClick={() => setTab('video')}>Video</button></nav>
       <div className="media-grid section-gap">
         <div className="media-form">

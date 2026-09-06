@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link, navigate } from '../lib/router.jsx';
 
-const PAGES = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My Assets'], ['personalization', 'Personalization'], ['memory', 'Memory'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices'], ['settings', 'Settings'], ['help', 'Get Help']];
+const PAGES = [['profile', 'My Profile'], ['dashboard', 'Dashboard'], ['assets', 'My deliveries'], ['personalization', 'House style'], ['memory', 'Remembered'], ['language', 'Language'], ['subscription', 'Subscription'], ['invoices', 'Payment & Invoices'], ['settings', 'Settings'], ['help', 'Get Help']];
 const LANGS = [['en', 'English'], ['hi', 'हिन्दी'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['pt', 'Português'], ['ja', '日本語'], ['zh', '中文'], ['ar', 'العربية']];
 
 async function patch(url, body) {
@@ -113,7 +113,7 @@ export default function Account({ page }) {
 
         {p === 'assets' && (
           <>
-            <h1 className="pg-title">My assets</h1>
+            <h1 className="pg-title">My deliveries</h1>
             <div className="board section-gap"><div className="board-rows">
               {s.artifacts.map((a) => <Link key={a.id} to={`/artifact/${a.id}`} className="board-row"><span className={`sym tint-${a.tint}`}>{a.serial}</span><span className="what"><b>{a.title.replace(/^VOID · /, '')}</b><span>{a.kind} · v{a.version}</span></span><a className="toggle-btn" href={`/api/artifacts/${a.id}/html?download=1`} onClick={(e) => e.stopPropagation()}>Download</a></Link>)}
               {s.artifacts.length === 0 && <div className="board-empty">Nothing delivered yet.</div>}
@@ -125,7 +125,7 @@ export default function Account({ page }) {
 
         {p === 'personalization' && (
           <>
-            <h1 className="pg-title">Personalization</h1>
+            <h1 className="pg-title">House style</h1>
             <div className="form">
               <label>House voice<input className="key-input" value={f('tone', s.personalization.tone)} onChange={(e) => setForm({ ...form, tone: e.target.value })} /></label>
               <label>Default lead model<select className="key-input" value={f('defaultModel', s.personalization.defaultModel)} onChange={(e) => setForm({ ...form, defaultModel: e.target.value })}>{s.models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
@@ -317,7 +317,7 @@ export default function Account({ page }) {
               </div>
             </section>
             <div className="board section-gap"><div className="board-rows">
-              {[['The house rules', 'Terms and Conditions, Privacy and GDPR Policy, AI Disclaimer.', '/legal/terms'], ['Release notes', 'Every version the house has shipped, newest first.', '/releases'], ['First-run welcome', 'The three steps and the one-minute sample, again.', '/?welcome=1'], ['How missions work', 'State an outcome → the house writes a ticket → it runs in the open → a validated artifact is delivered.', '/missions'], ['Bring your own keys', 'Load a provider key to make panel models live. Keys are never saved.', '/keys'], ['Connect apps', 'Register a provider OAuth app, then Connect from the catalog.', '/connectors'], ['Boards', 'See every mission on a Kanban and each plan as a task map.', '/boards']].map(([t, d, to]) => (
+              {[['The house rules', 'Terms and Conditions, Privacy and GDPR Policy, AI Disclaimer.', '/legal/terms'], ['Release notes', 'Every version the house has shipped, newest first.', '/releases'], ['First-run welcome', 'The three steps and the one-minute sample, again.', '/?welcome=1'], ['How missions work', 'State an outcome → the house writes a ticket → it runs in the open → a validated artifact is delivered.', '/missions'], ['Bring your own keys', 'Load a provider key to make panel models live. Keys are never saved.', '/keys'], ['Connect apps', 'Register a provider OAuth app, then Connect from the catalog.', '/connectors'], ['Docket', 'See every ticket on a board and each plan as a task map.', '/boards']].map(([t, d, to]) => (
                 <Link key={t} to={to} className="board-row"><span className="sym" style={{ '--tint': 'var(--flap-ink)' }}>?</span><span className="what"><b>{t}</b><span>{d}</span></span></Link>
               ))}
             </div></div>
@@ -350,7 +350,7 @@ function MemoryPage() {
   const faint = { color: 'var(--bone-faint)' };
   return (
     <>
-      <h1 className="pg-title">Memory</h1>
+      <h1 className="pg-title">Remembered</h1>
       <p style={faint}>What you tell the house here goes to the author of every delivery you ask for, as “about the person asking”. It is yours alone: nobody else in the house can read it, the owner included; it is never a key; and you can forget any of it.</p>
       <div className="form">
         <label>Tell the house something to remember<input className="key-input" value={text} maxLength={240} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} placeholder="e.g. I write for a pharma R&D audience; British spelling; never say leverage" /></label>

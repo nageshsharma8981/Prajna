@@ -71,7 +71,7 @@ export function liveSeat(modelIdOrRef) {
 
 function positionPrompt(mission, model) {
   const sources = (mission.sources || []).slice(0, 6).map((s, i) => `[${i + 1}] ${s.title}, ${s.extract.slice(0, 220)}`).join('\n');
-  return `You are ${model.name}, one model on a review panel for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources on the table (refer to them by number where they bear on your position):\n${sources}\n` : ''}In 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
+  return `You are ${model.name}, one model on the bench for a ${mission.deskName.toLowerCase()} mission.\nGoal: "${mission.goal}"\nDeliverable: ${mission.deliverable}.\n${sources ? `Retrieved sources on the table (refer to them by number where they bear on your position):\n${sources}\n` : ''}In 2-3 sentences state your position: the single strongest claim the deliverable should lead with, the biggest risk, and what you would refuse to assert without evidence. Be specific. No preamble.`;
 }
 
 // Serial counter continues from the persisted ledger so restarts never mint
@@ -96,14 +96,14 @@ const PLANS = {
     { id: 's1', title: `Frame the decision behind “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Sweep sources: filings, sector analyses, press', tool: 'search', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Grade every claim A–D by source strength', tool: 'cite-guard', cost: 10, access: 'read', dependsOn: ['s2'] },
-    { id: 's4', title: 'Panel deliberation: positions, challenges, verdict', tool: 'council', cost: 18, access: 'read', dependsOn: ['s2'] },
+    { id: 's4', title: 'Bench deliberation: positions, challenges, verdict', tool: 'council', cost: 18, access: 'read', dependsOn: ['s2'] },
     { id: 's5', title: 'Steelman the opposite conclusion', tool: 'steelman', cost: 8, access: 'read', dependsOn: ['s4'] },
     { id: 's6', title: 'Compose the decision brief', tool: 'compose', cost: 12, access: 'write', dependsOn: ['s3', 's5'] },
   ],
   deck: (s) => [
     { id: 's1', title: `Extract the argument in “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Storyboard the narrative arc, nine beats', tool: 'storyboard', cost: 10, access: 'read', dependsOn: ['s1'] },
-    { id: 's3', title: 'Panel deliberation on the through-line', tool: 'council', cost: 16, access: 'read', dependsOn: ['s1'] },
+    { id: 's3', title: 'Bench deliberation on the through-line', tool: 'council', cost: 16, access: 'read', dependsOn: ['s1'] },
     { id: 's4', title: 'Draft slides: one idea per slide', tool: 'compose', cost: 14, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Deck Doctor pass: kill bullet sprawl', tool: 'deck-doctor', cost: 8, access: 'write', dependsOn: ['s4'] },
     { id: 's6', title: 'Illustrate: one image per slide on your image key', tool: 'illustrate', cost: 6, access: 'write', dependsOn: ['s5'] },
@@ -111,7 +111,7 @@ const PLANS = {
   ],
   site: (s) => [
     { id: 's1', title: `Position the offer, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
-    { id: 's2', title: 'Panel deliberation on promise & proof', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's2', title: 'Bench deliberation on promise & proof', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Cut copy to promise → proof → action', tool: 'copy-cutter', cost: 8, access: 'write', dependsOn: ['s1'] },
     { id: 's4', title: 'Build the page, semantic, responsive', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Access audit: contrast, focus order', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
@@ -119,7 +119,7 @@ const PLANS = {
   ],
   mobile: (s) => [
     { id: 's1', title: `Map the app, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
-    { id: 's2', title: 'Panel deliberation on the core flow', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
+    { id: 's2', title: 'Bench deliberation on the core flow', tool: 'council', cost: 14, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Screen inventory & navigation', tool: 'storyboard', cost: 8, access: 'read', dependsOn: ['s1'] },
     { id: 's4', title: 'Build the tappable prototype, 4 screens, tab bar', tool: 'build', cost: 16, access: 'write', dependsOn: ['s2', 's3'] },
     { id: 's5', title: 'Access audit: touch targets, contrast', tool: 'a11y-audit', cost: 6, access: 'read', dependsOn: ['s4'] },
@@ -129,7 +129,7 @@ const PLANS = {
     { id: 's1', title: `Define the question, “${s}”`, tool: 'scope', cost: 6, access: 'read', dependsOn: [] },
     { id: 's2', title: 'Load & profile the series (sample data)', tool: 'ingest', cost: 8, access: 'read', dependsOn: ['s1'] },
     { id: 's3', title: 'Interrogate: segments, mix shift, outliers', tool: 'analyze', cost: 14, access: 'read', dependsOn: ['s2'] },
-    { id: 's4', title: 'Panel deliberation on the read', tool: 'council', cost: 14, access: 'read', dependsOn: ['s2'] },
+    { id: 's4', title: 'Bench deliberation on the read', tool: 'council', cost: 14, access: 'read', dependsOn: ['s2'] },
     { id: 's5', title: 'Chart Smith: honest forms only', tool: 'chart-smith', cost: 8, access: 'write', dependsOn: ['s3'] },
     { id: 's6', title: 'Compose dashboard with caveats attached', tool: 'compose', cost: 10, access: 'write', dependsOn: ['s4', 's5'] },
   ],
@@ -187,7 +187,7 @@ function contractWhy({ desk, depth, variant, plan, seatsAll, removedSkills, conn
   if (removedSkills.length) bits.push(`Skill steps not on the desk were removed (${removedSkills.join(', ')}); their dependents re-pointed so the graph stays connected.`);
   if (connectors.length) bits.push(`Connected apps add an external delivery step each (${connectors.join(', ')}), gated by approval.`);
   const live = seatsAll.filter((x) => x.live).length;
-  bits.push(live ? `${live} of ${seatsAll.length} panel models are live on your own keys and priced at 0 house credits; the rest share the panel cost.` : `All ${seatsAll.length} panel models are house models and share the panel cost.`);
+  bits.push(live ? `${live} of ${seatsAll.length} bench models are live on your own keys and priced at 0 house credits; the rest share the panel cost.` : `All ${seatsAll.length} panel models are house models and share the panel cost.`);
   bits.push('The ceiling is the estimate plus 25%; nothing beyond it is spent without a decision.');
   return bits.join(' ');
 }

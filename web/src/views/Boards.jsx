@@ -42,7 +42,7 @@ export default function Boards() {
   const mission = s.missions.find((m) => m.id === sel) || s.missions.find((m) => m.status === 'LIVE') || s.missions[0];
   return (
     <div className="page">
-      <h1 className="pg-title">Boards <span className="beta">beta</span></h1>
+      <h1 className="pg-title">Docket <span className="beta">beta</span></h1>
       <p className="lede">A structured view of the work: every mission on a board, and a task map that shows which steps run in parallel and which must wait. Review-before-merge lands with shared projects.</p>
       <div className="kanban section-gap">
         {COLS.map(([title, fn]) => {

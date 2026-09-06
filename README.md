@@ -2350,3 +2350,21 @@ list it. It does now, with expo-status-bar beside it, and the same project
 compiles to a Hermes bundle of 1.56 MB. The test pins the package. The
 lesson is the one the mobile desk taught: a thing is proved when it runs,
 not when its files are present.
+
+## v1.65: The house names its own rooms (2026-09-06)
+
+The rooms of the house carried the names of the incumbent's rooms:
+Plugins, Factory, Boards, Chats, Connectors, Skills, Tools, a Model
+Council, a Media studio, Assets, Projects, Personalization. The features
+behind them are the house's own and were built to be better; the names
+made them look copied. The owner asked for the house's own names.
+
+The rooms are now: the Toolroom (fittings that change the plans), the
+Foundry (a terminal, the showroom, the crafts, the deliveries, the
+folders), the Docket (every ticket on a board), Threads, the Wiring (the
+apps on the table), the Crafts (the house playbook), the Instruments
+(what the house may use), the Darkroom (pictures and voices on your key),
+House style, Remembered, My deliveries, and the Bench: the lead model and
+the advisers who challenge it. The plan steps, the provenance rows and
+the record say Bench where they said Panel. Addresses, record fields and
+the API keep their names, so nothing on disk or in a link breaks.

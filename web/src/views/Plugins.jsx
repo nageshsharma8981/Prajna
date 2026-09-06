@@ -4,7 +4,7 @@ import { useStore } from '../lib/store.jsx';
 export default function Plugins() {
   const s = useStore();
   const [err, setErr] = useState(null);
-  if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening plugins…</p></div>;
+  if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening the toolroom…</p></div>;
   const toggle = async (id) => {
     const r = await fetch(`/api/plugins/${id}/toggle`, { method: 'POST' });
     if (!r.ok) { setErr((await r.json().catch(() => ({}))).error || 'Refused.'); return; }
@@ -12,8 +12,8 @@ export default function Plugins() {
   };
   return (
     <div className="page">
-      <h1 className="pg-title">Plugins</h1>
-      <p className="lede">Extend what missions can do. Enabling a plugin changes the plans the house writes, the effect is named on each card, not implied.</p>
+      <h1 className="pg-title">Toolroom</h1>
+      <p className="lede">Fittings that change what a mission can do. Enable one and the plans the house writes change; the effect is named on each card, not implied.</p>
       {err && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>{err}</p>}
       <div className="plugin-grid section-gap">
         {(s.pluginCatalog || []).map((p) => {

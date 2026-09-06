@@ -38,7 +38,7 @@ export default function Connectors() {
 
   return (
     <div className="page">
-      <h1 className="pg-title">Connectors</h1>
+      <h1 className="pg-title">Wiring</h1>
       <p className="lede">Manage app connections for missions.</p>
       {flash.connected && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Connected{flash.as ? ` as ${flash.as}` : ''}.</p>}
       {flash.error && <p role="alert" className="soft-banner" style={{ color: 'var(--rose)' }}>Connection failed: {flash.error}</p>}

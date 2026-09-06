@@ -97,9 +97,9 @@ function provenance(mission) {
   <footer class="prov">
     <div class="prov-row"><span>Produced by</span><strong>PRAJÑĀ · ${esc(mission.serial)} · ${prov.mode} run${prov.partial ? ' · PARTIAL' : ''}</strong></div>
     <div class="prov-row"><span>Desk</span><strong>${esc(mission.deskName)}</strong></div>
-    <div class="prov-row"><span>Panel</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
+    <div class="prov-row"><span>Bench</span><strong>${esc(mission.councilNames.join(' · '))}</strong></div>
     <div class="prov-row"><span>Settlement</span><strong>${s.reserved}cr reserved · ${Number(s.settled).toFixed(1)}cr settled${s.released == null ? '' : ` · ${Number(s.released).toFixed(1)}cr released`}</strong></div>
-    <div class="prov-row"><span>Panel gate</span><strong>${gateLine}</strong></div>
+    <div class="prov-row"><span>Bench gate</span><strong>${gateLine}</strong></div>
     <div class="prov-row"><span>Terminal review</span><strong>${reviewLine}</strong></div>
     <div class="prov-row"><span>Definition of done</span><strong>${prov.assertions.length ? `${prov.assertions.filter((a) => a.status === 'SEALED').length}/${prov.assertions.length} assertions sealed by two independent validator lanes${prov.validation.acceptedRisks.length ? ` · ${prov.validation.acceptedRisks.length} accepted risk` : ''}${prov.validation.patches.length ? ` · patched: ${prov.validation.patches.join(', ')}` : ''}` : 'no assertions recorded'}</strong></div>
     <div class="prov-row"><span>Plan vs actual</span><strong>${prov.planVsActual.planned} planned · ${prov.planVsActual.done} done${prov.planVsActual.skipped.length ? ` · ${prov.planVsActual.skipped.length} skipped on the record` : ''}${prov.planVsActual.notReached ? ` · ${prov.planVsActual.notReached} not reached` : ''}${prov.access ? ` · access: ${prov.access.read} read / ${prov.access.write} write / ${prov.access.external} external` : ''}</strong></div>
@@ -266,7 +266,7 @@ ${PROV_CSS}
 ${A ? esc(A.verdict) : 'The panel recommends a <strong>staged commitment</strong>: enter with a narrow, reversible first move within two quarters, gated on the two signals in §4. A full commitment now outruns the evidence; standing still concedes the window.'}</div>
 
 <h2>1 · What the evidence supports</h2>
-<p>Three findings survived cross-examination by the full council. Every claim carries its source ref, a claim without one cannot ship:</p>
+<p>Three findings survived cross-examination by the full bench. Every claim carries its source ref, a claim without one cannot ship:</p>
 ${claimsHtml}
 
 <h2>2 · What the evidence does not support</h2>

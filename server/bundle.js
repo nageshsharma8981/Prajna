@@ -95,7 +95,7 @@ ${replay(m, artifact, opts)}
 <p class="note">Prajñā audit bundle · exported ${when(record.exportedAt)} · ${esc(m.deskName)} · status ${esc(m.status)}${m.partial ? ' · PARTIAL' : ''}${m.voided ? ' · VOIDED' : ''}. Everything below is the record as kept by the house; the machine-readable copy is at the end.</p>
 <div class="kv">
 <div><span>Goal</span><b>${esc(m.goal)}</b></div>
-<div><span>Panel</span><b>${esc((m.councilNames || []).join(' · '))}</b></div>
+<div><span>Bench</span><b>${esc((m.councilNames || []).join(' · '))}</b></div>
 <div><span>Mode</span><b>${m.authored?.live ? `live, substance by ${esc(m.authored.model)}` : (m.seats || []).some((s) => s.live) ? 'hybrid' : 'scripted'}</b></div>
 <div><span>Estimate / ceiling / settled</span><b>${m.contract.estimate} / ${m.contract.ceiling} / ${Number(m.spent || 0).toFixed(1)} cr</b></div>
 <div><span>Launched → finished</span><b>${when(m.launchedAt)} → ${when(m.filledAt)}</b></div>

@@ -352,7 +352,7 @@ export default function Run({ id }) {
           <button className="btn-quiet kill-btn" onClick={() => setConfirmStop(true)}>Stop run</button>
         )}
         {(filled || killed) && !mission.voidedBeforeRun && (
-          <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and panel; its delivery becomes the next version.">Amend & re-run</button>
+          <button className="btn-quiet" onClick={amend} disabled={busy} title="Write a new ticket on the same desk and bench; its delivery becomes the next version.">Amend & re-run</button>
         )}
         {filled && mission.artifactId && !mission.voidedBeforeRun && (
           <span className="standing-make">
@@ -433,7 +433,7 @@ export default function Run({ id }) {
           {killed && mission.voidedBeforeRun && <div className="stamp in" aria-hidden="true">Void</div>}
           <div className="ticket-inner">
             <h1 className="ticket-goal">{mission.goal}</h1>
-            <p className="ticket-deliv">panel: {mission.councilNames.join(', ')}</p>
+            <p className="ticket-deliv">bench: {mission.councilNames.join(', ')}</p>
             <ol className="ticket-plan">
               {mission.contract.plan.map((p, i) => (
                 <li key={p.id} className="plan-row">
