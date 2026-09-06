@@ -1,5 +1,5 @@
 // Factory: CLI · Community · Skills · Assets · Projects
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Link, navigate } from '../lib/router.jsx';
 import Skills from './Skills.jsx';
@@ -17,6 +17,8 @@ export default function Factory({ tab }) {
   const s = useStore();
   const [name, setName] = useState('');
   const [err, setErr] = useState(null);
+  const [proven, setProven] = useState(null);
+  useEffect(() => { if (tab === 'community') fetch('/api/proven').then((r) => r.json()).then((j) => setProven(j.proven || [])).catch(() => setProven([])); }, [tab]);
   if (!s.ready) return <div className="page"><p role="status" style={{ color: 'var(--bone-faint)' }}>Opening the factory…</p></div>;
   const t = TABS.some(([id]) => id === tab) ? tab : 'cli';
   const submit = new URLSearchParams(location.search).get('submit');
@@ -59,6 +61,24 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
       {t === 'community' && (
         <section className="section-gap">
           <p className="lede">Real use cases made with Prajñā: prompts and model choices visible, one click to clone into your own chat.</p>
+          <div className="board" style={{ marginBottom: '1.2rem' }} aria-label="Proven briefs">
+            <div className="board-title"><span className="brd-sm">Proven in this house</span><span className="count">{proven ? proven.length : '…'}</span></div>
+            <p className="conn-note" style={{ padding: '0.4rem 1rem 0.6rem' }}>Ranked by the record, not by likes: briefs that delivered, cleared the gate first time, settled at their estimate, and were asked for again. One click puts the brief on its desk.</p>
+            <div className="board-rows">
+              {proven && proven.length === 0 && <div className="board-rows"><div className="board-empty">Nothing proven yet: a brief earns its place by delivering.</div></div>}
+              {(proven || []).map((b) => (
+                <div key={b.use} className="board-row" style={{ cursor: 'default', alignItems: 'flex-start' }}>
+                  <span className={`sym tint-${b.desk === 'deck' ? 'rose' : b.desk === 'site' ? 'blue' : b.desk === 'brief' ? 'amber' : 'green'}`}>{b.latest.serial}</span>
+                  <span className="what"><b>“{b.goal}”</b><span>{b.deskName} · {b.runs} {b.runs === 1 ? 'run' : 'runs'} · {b.why.join(' · ')}{b.look ? ` · look: ${b.look}` : ''} · {b.cost} cr</span></span>
+                  <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <button className="btn-stamp attn-btn" style={{ margin: 0, padding: '0.4rem 0.8rem' }} onClick={() => navigate(b.use)}>Use this brief</button>
+                    <Link className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} to={`/artifact/${b.latest.artifactId}`}>Open the latest</Link>
+                    {b.latest.record && <a className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} href={b.latest.record} target="_blank" rel="noreferrer">Replay</a>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
           {submit && <p role="status" className="soft-banner" style={{ color: 'var(--green)' }}>Submit any fully delivered artifact from <Link to="/factory/assets">Assets</Link>: it goes public with its provenance block and the house grants 200 credits (demo grant).</p>}
           <div className="showcase-grid">
             {(s.showcase || []).map((sc) => (
@@ -70,6 +90,7 @@ prajna status · prajna tape &lt;mission-id&gt; · prajna artifacts · prajna ge
                 <div style={{ display: 'flex', gap: '0.5rem', margin: '0 1rem', flexWrap: 'wrap' }}>
                   <button className="btn-stamp attn-btn" style={{ margin: 0 }} onClick={() => clone(sc)}>Clone into a chat</button>
                   <a className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} href={`/s/${sc.shareToken}`} target="_blank" rel="noreferrer">Open (public)</a>
+                  {sc.recordToken && <a className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} href={`/r/${sc.recordToken}`} target="_blank" rel="noreferrer" title="The whole session as a replay: the ask, the three phases, the tape, the delivery">Replay (public)</a>}
                   <button className="btn-quiet" style={{ margin: 0, padding: '0.4rem 0.8rem' }} onClick={async () => { await fetch(`/api/showcase/${sc.id}`, { method: 'DELETE' }); s.refresh(); }}>Withdraw</button>
                 </div>
               </article>

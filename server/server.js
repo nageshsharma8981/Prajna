@@ -32,6 +32,7 @@ import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups,
 import { applyEdits, stampEdit } from './canvas.js';
 import { expoFromArtifact } from './expo.js';
 import { memoriesFor, remember, forget, forgetAll, noticed } from './memory.js';
+import { provenBriefs } from './proven.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -1067,6 +1068,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
 
   // ---- Standing orders: a delivered ticket that re-runs itself ----
   const standingDeps = () => ({ installedSkills: skillsInstalled(), queuedConnectors: connectedConnectors(), notify });
+  if (p === '/api/proven' && req.method === 'GET') return json(res, 200, { proven: provenBriefs() });
   if (p === '/api/standing' && req.method === 'GET') return json(res, 200, { orders: standingOrders().map((o) => ({ ...o, spentThisMonth: spentThisMonth(o) })), cadences: Object.keys(CADENCES) });
   const standingNew = p.match(/^\/api\/missions\/([\w]+)\/standing$/);
   if (standingNew && req.method === 'POST') {
@@ -1207,10 +1209,14 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     if (w.showcase.some((x) => x.artifactId === a.id)) return json(res, 400, { error: 'Already on the showcase.' });
     const shareToken = a.shareToken || crypto.randomBytes(16).toString('hex');
     store.refreshArtifact(a.id, { shareToken, sharedAt: a.sharedAt || Date.now() }, store.artifactHtml(a.id));
+    // The showcase shows the work as well as the delivery: the record is
+    // shared with it, as a replay, and closed with it on withdrawal unless
+    // it was shared on its own.
+    if (!m.shareToken) { m.shareToken = crypto.randomBytes(16).toString('hex'); m.sharedAt = Date.now(); m.sharedVia = 'showcase'; store.flushMissions(); }
     const entry = {
       id: `sc_${crypto.randomBytes(4).toString('hex')}`, artifactId: a.id, title: a.title.replace(/^VOID · /, ''), kind: a.kind, desk: a.desk, serial: a.serial,
       prompt: m.goal, mode: Object.entries({ website: 'site', mobile: 'mobile', deck: 'deck', research: 'brief', analysis: 'analysis' }).find(([, d]) => d === m.desk)?.[0] || 'chat',
-      by: w.profile.handle || w.profile.name, blurb: String(body.blurb || '').slice(0, 240), shareToken, submittedAt: Date.now(),
+      by: w.profile.handle || w.profile.name, blurb: String(body.blurb || '').slice(0, 240), shareToken, recordToken: m.shareToken, submittedAt: Date.now(),
       provenance: { mode: m.authored?.live ? 'live' : (m.seats || []).some((x) => x.live) ? 'hybrid' : 'scripted', sealed: (m.contract.assertions || []).filter((x) => x.status === 'SEALED').length, assertions: (m.contract.assertions || []).length, patches: (m.patches || []).length, acceptedRisks: (m.acceptedRisks || []).length },
       grant: 200,
     };
@@ -1222,7 +1228,10 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const scDel = p.match(/^\/api\/showcase\/(sc_[a-f0-9]+)$/);
   if (scDel && req.method === 'DELETE') {
-    const w = ws(); w.showcase = w.showcase.filter((x) => x.id !== scDel[1]); flushWs();
+    const w = ws();
+    const gone = w.showcase.find((x) => x.id === scDel[1]);
+    w.showcase = w.showcase.filter((x) => x.id !== scDel[1]); flushWs();
+    if (gone) { const a = store.artifact(gone.artifactId); const m = a && store.mission(a.missionId); if (m && m.sharedVia === 'showcase') { m.shareToken = null; m.sharedAt = null; m.sharedVia = null; store.flushMissions(); } }
     return json(res, 200, { ok: true });
   }
 

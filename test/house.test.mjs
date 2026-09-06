@@ -708,6 +708,36 @@ test('a shared record opens as a replay, with the delivery one click away and a 
   assert.ok(!(await api('/api/bootstrap')).j.artifacts.find((x) => x.id === deck.id).shareToken, 'and is unshared again');
 });
 
+test('proven briefs are read off the record, and a showcase entry carries its replay', async () => {
+  const pv = await ownerApi('/api/proven');
+  assert.equal(pv.status, 200);
+  assert.ok(Array.isArray(pv.j.proven) && pv.j.proven.length >= 1, 'something has been proven in this house');
+  const b = (await ownerApi('/api/bootstrap')).j;
+  const filled = b.missions.filter((m) => m.status === 'FILLED' && m.artifactId && !m.partial && !m.standing);
+  for (const p of pv.j.proven) {
+    assert.ok(p.runs >= 1 && p.firstTime >= 0 && p.firstTime <= p.runs, 'counts hold together');
+    assert.ok(Array.isArray(p.why) && p.why.length === 3, 'three reasons, in words');
+    assert.ok(filled.some((m) => m.id === p.latest.missionId), 'the latest run is a delivered mission on the record');
+    const u = new URL(p.use, BASE);
+    assert.equal(u.searchParams.get('brief'), p.goal, 'one click carries the brief');
+    assert.ok(['website', 'mobile', 'deck', 'research', 'analysis'].includes(u.searchParams.get('desk')), 'to its desk');
+  }
+  assert.ok(pv.j.proven.some((p) => /cleared the gate first time/.test(p.why[0])), 'a first-time clear is named');
+  // A showcase submission shares the record as a replay, and withdrawal closes it.
+  const art = b.artifacts.find((a) => { const m = b.missions.find((x) => x.id === a.missionId); return m && m.status === 'FILLED' && !a.partial && !a.voided && !m.shareToken && !(b.showcase || []).some((s) => s.artifactId === a.id); });
+  assert.ok(art, 'an unshared delivered artifact to submit');
+  const sub = await ownerPost('/api/showcase', { artifactId: art.id, blurb: 'proven test' });
+  assert.equal(sub.status, 200, JSON.stringify(sub.j));
+  assert.ok(sub.j.entry.recordToken, 'the entry carries its replay');
+  const replay = await fetch(`${BASE}/r/${sub.j.entry.recordToken}`);
+  assert.equal(replay.status, 200);
+  assert.ok((await replay.text()).includes('class="replay"'), 'and it opens as a replay');
+  const pv2 = (await ownerApi('/api/proven')).j.proven.find((p) => p.latest.artifactId === art.id);
+  if (pv2) assert.equal(pv2.latest.record, `/r/${sub.j.entry.recordToken}`, 'the proven brief links the replay too');
+  assert.equal((await ownerApi(`/api/showcase/${sub.j.entry.id}`, { method: 'DELETE' })).status, 200);
+  assert.equal((await fetch(`${BASE}/r/${sub.j.entry.recordToken}`)).status, 404, 'withdrawn, the replay closes');
+});
+
 test('what a person tells the house to remember is theirs alone, and can be forgotten', async () => {
   const add = await ownerPost('/api/memories', { text: 'I write for a pharma R&D audience.' });
   assert.equal(add.status, 200, JSON.stringify(add.j));

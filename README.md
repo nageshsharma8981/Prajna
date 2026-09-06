@@ -2292,3 +2292,26 @@ says so, the house noticed the five asks and the look the decks wore, a
 second person signed into the same house reads none of it and cannot
 forget it for them, a nameless visitor leaves none, a duplicate and a blank
 are refused in words, and forgetting one line and then everything works.
+
+## v1.62: Proven briefs, and a replay on every showcase entry (2026-09-06)
+
+Zenith's factory is a gallery of proven prompts, ranked by likes and uses,
+and its showcase lets a reader replay the session that made each piece.
+Prajñā's factory had the showcase, with the delivery and its provenance,
+and nothing that said which briefs actually work here.
+
+Proven briefs are now read off the record. A brief earns its place by
+delivering, by clearing the gate first time, by settling at or under its
+estimate, by being written live, and by being asked for again; the house
+ranks by that evidence, derived when asked and never stored, and says the
+three reasons in words on each card. One click puts the brief on its desk
+in the composer, one opens the latest delivery, and one replays the record
+where it is shared. A showcase submission now shares the record with the
+delivery, so every showcase entry carries a public replay: the ask, the
+three phases, the tape and the delivery; withdrawing the entry closes the
+replay unless the record was shared on its own.
+
+Proved: the counts hold together, the three reasons are there, the latest
+run is a delivered mission on the record, one click carries the brief to
+its desk, a submission carries its replay and the replay opens, the proven
+brief links it too, and withdrawing closes it.
