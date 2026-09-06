@@ -1577,6 +1577,6 @@ abbr.cite { cursor: help; }
 .activity li a { color: var(--bone); }
 
 /* Memory: what the house remembers about a person, for that person. */
-.memory-list{list-style:none;margin:.6rem 0 1rem;padding:0;display:flex;flex-direction:column;gap:.4rem}
-.memory-list li{display:flex;align-items:center;gap:.8rem;padding:.55rem .8rem;border:1px solid var(--line,rgba(255,255,255,.12));border-radius:8px}
-.memory-list li span{flex:1}
+.memory-list { list-style: none; margin: 0.6rem 0 1rem; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.memory-list li { display: flex; align-items: center; gap: 0.8rem; padding: 0.5rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; }
+.memory-list li span { flex: 1; }
