@@ -29,6 +29,7 @@ import { checkMission as checkEvidence, sweep as sweepEvidence, evidenceHealth }
 import { hooks, hookState, setHooks, fire as fireHook, fromMissionEvent, HOOK_EVENTS } from './hooks.js';
 import { urlsIn, readPages } from './retrieve.js';
 import { exportWorkspace, eraseFiles, importWorkspace, writeBackup, listBackups, readBackup, backupHealth } from './export.js';
+import { applyEdits, stampEdit } from './canvas.js';
 import { standingOrders, standingFor, addStandingOrder, removeStandingOrder, pauseStandingOrder, runOrder, scheduleStandingOrders, standingHealth, spentThisMonth, CADENCES } from './standing.js';
 import { seedTestTokens, targets as connectorTargets, DELIVERABLE_CONNECTORS, deliver as deliverTo } from './connect.js';
 import { extractText } from './docs.js';
@@ -1347,6 +1348,27 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
 
   // Owner notes on a delivery: the raw material for the next version.
+  // ---- The canvas: a page edited in place comes back as words, an order and a look; the house re-renders it as the next version ----
+  const editsMatch = p.match(/^\/api\/artifacts\/([\w]+)\/edits$/);
+  if (editsMatch && req.method === 'POST') {
+    if (guestGate(req, res, 'write')) return;
+    const a = store.artifact(editsMatch[1]);
+    if (!a) return json(res, 404, { error: 'Artifact not found.' });
+    const html = store.artifactHtml(a.id);
+    if (!html) return json(res, 404, { error: 'The page is not on file.' });
+    const body = await readBody(req);
+    let r;
+    try { r = applyEdits(html, body); } catch (e) { return json(res, 400, { error: e.message }); }
+    if (!r.count) return json(res, 400, { error: 'Nothing to save: change a text, the order or the look first.' });
+    const version = (a.version || 1) + 1;
+    const by = meOf(req)?.name || ws().profile.name || 'the owner';
+    const at = Date.now();
+    store.refreshArtifact(a.id, { version, editedAt: at, editedBy: by, edits: (a.edits || 0) + 1 }, stampEdit(r.html, { version, summary: r.summary, by, at }));
+    const m = a.missionId ? store.mission(a.missionId) : null;
+    if (m) { m.edits = [...(m.edits || []), { at, version, summary: r.summary, by }]; store.flushMissions(); }
+    return json(res, 200, { ok: true, version, summary: r.summary });
+  }
+
   const noteMatch = p.match(/^\/api\/artifacts\/([\w]+)\/notes(?:\/([\w]+))?$/);
   if (noteMatch && (req.method === 'POST' || req.method === 'DELETE')) {
     if (guestGate(req, res, 'write')) return;

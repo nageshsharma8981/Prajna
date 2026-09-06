@@ -708,6 +708,59 @@ test('a shared record opens as a replay, with the delivery one click away and a 
   assert.ok(!(await api('/api/bootstrap')).j.artifacts.find((x) => x.id === deck.id).shareToken, 'and is unshared again');
 });
 
+test('a landing page edits in place, and the house keeps the edit as the next version with its provenance', async () => {
+  const w = await ownerPost('/api/missions', { goal: 'Canvas test: a landing page for a Kochi ferry pass', deskId: 'site', depth: 'fast', advisers: [] });
+  assert.equal(w.status, 200, JSON.stringify(w.j));
+  assert.equal((await ownerPost(`/api/missions/${w.j.id}/launch`)).status, 200);
+  let m; const t0 = Date.now();
+  while (Date.now() - t0 < 120000) {
+    m = (await ownerApi(`/api/missions/${w.j.id}`)).j;
+    if (m.status === 'FILLED' || m.status === 'KILLED') break;
+    if (String(m.status).startsWith('PAUSED')) { const a = (m.attention || []).find((x) => !x.decision); if (a) { const pick = ['patch', 'raise-ceiling', 'approve', 'accept-risk', 'continue'].find((o) => a.options.includes(o)) || a.options[0]; await ownerPost(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: 'canvas test' }); } }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  assert.equal(m.status, 'FILLED', `the page was delivered (ended ${m.status})`);
+  const id = m.artifactId;
+  const html1 = await (await fetch(`${BASE}/api/artifacts/${id}/html`)).text();
+  assert.ok(html1.includes("className = 'canvas-tab'") && html1.includes('/edits'), 'the canvas runtime is on the page');
+  assert.ok(/<h1 data-edit="headline">/.test(html1) && html1.includes('data-edit-key="why1"'), 'the page marks what a hand may change');
+  assert.deepEqual([...html1.matchAll(/data-edit-key="(\w+)"/g)].map((x) => x[1]), ['why1', 'why2', 'why3']);
+  // Words, an order and a look go in; the page comes back as v2, the words as text.
+  const r = await ownerPost(`/api/artifacts/${id}/edits`, { text: { headline: '<script>alert(1)</script> Cross the water faster', 'why1.h': 'the moment is now' }, order: ['why3', 'why1', 'why2'], look: 'midnight' });
+  assert.equal(r.status, 200, JSON.stringify(r.j));
+  assert.equal(r.j.version, 2);
+  const html2 = await (await fetch(`${BASE}/api/artifacts/${id}/html`)).text();
+  assert.ok(html2.includes('<h1 data-edit="headline">&lt;script&gt;alert(1)&lt;/script&gt; Cross the water faster</h1>'), 'the words are on the page as words');
+  assert.ok(!html2.includes('<script>alert(1)'), 'and never as code');
+  assert.ok(html2.includes('<span data-edit="why1.h">the moment is now</span>'), 'a dotted key reaches its element');
+  assert.deepEqual([...html2.matchAll(/data-edit-key="(\w+)"/g)].map((x) => x[1]), ['why3', 'why1', 'why2'], 'the reasons are in the new order');
+  assert.ok(html2.includes(':root{--ink:#0b1020;--ground:#eef1f8;--acc:#1f6fd6;--acc2:#d9e6fb}'), 'the look is the page\'s');
+  assert.match(html2, /<div class="prov-row edited"><span>Edited by hand<\/span><strong>v2 · 2 texts, the order, the look “Midnight, blue on cool white” · \d{4}-\d\d-\d\d by [^<]+<\/strong><\/div>/, 'the provenance says a hand changed it');
+  assert.ok(html2.includes("className = 'canvas-tab'"), 'and the page can be edited again');
+  const a2 = (await ownerApi('/api/bootstrap')).j.artifacts.find((x) => x.id === id);
+  assert.equal(a2.version, 2); assert.equal(a2.edits, 1);
+  const m2 = (await ownerApi(`/api/missions/${w.j.id}`)).j;
+  assert.equal(m2.edits?.length, 1, 'the mission records the edit'); assert.equal(m2.edits[0].version, 2);
+  // What is not an edit is refused, in words.
+  const bad1 = await ownerPost(`/api/artifacts/${id}/edits`, { text: { '<img onerror=1>': 'x' } }); assert.equal(bad1.status, 400); assert.match(bad1.j.error, /Not an editable key/);
+  const bad2 = await ownerPost(`/api/artifacts/${id}/edits`, { order: ['why1', 'why1', 'why2'] }); assert.equal(bad2.status, 400); assert.match(bad2.j.error, /once/);
+  const bad3 = await ownerPost(`/api/artifacts/${id}/edits`, { look: 'neon' }); assert.equal(bad3.status, 400); assert.match(bad3.j.error, /No look called neon/);
+  const bad4 = await ownerPost(`/api/artifacts/${id}/edits`, { text: { headline: '   ' } }); assert.equal(bad4.status, 400); assert.match(bad4.j.error, /cannot be empty/);
+  assert.equal((await ownerPost(`/api/artifacts/${id}/edits`, {})).status, 400);
+  // A second edit is v3, with one row for the hand, and the first edit still standing.
+  const r2 = await ownerPost(`/api/artifacts/${id}/edits`, { text: { sub: 'One line under the headline.' } });
+  assert.equal(r2.status, 200); assert.equal(r2.j.version, 3);
+  const html3 = await (await fetch(`${BASE}/api/artifacts/${id}/html`)).text();
+  assert.equal((html3.match(/prov-row edited/g) || []).length, 1, 'one row for the hand');
+  assert.match(html3, /<strong>v3 · 1 text · /);
+  assert.ok(html3.includes('Cross the water faster') && html3.includes('<p data-edit="sub">One line under the headline.</p>'), 'earlier edits stay');
+  // A shared page cannot save anywhere, and says nothing about editing; a reader gets the page.
+  const share = await ownerPost(`/api/artifacts/${id}/share`); assert.equal(share.status, 200);
+  const shared = await (await fetch(`${BASE}${share.j.path}`)).text();
+  assert.ok(shared.includes('Cross the water faster'), 'the shared page is the edited page');
+  assert.equal((await ownerApi(`/api/artifacts/${id}/share`, { method: 'DELETE' })).status, 200);
+});
+
 test('a shared delivery can be taken away, in the same formats, with no account', async () => {
   const b = (await api('/api/bootstrap')).j;
   const deck = b.artifacts.find((x) => /deck/i.test(x.kind) || /deck/i.test(x.title));

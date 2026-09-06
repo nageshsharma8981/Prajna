@@ -2215,3 +2215,29 @@ unless it was shared on its own. Proved: the replay above the tables,
 three phases in their words, the player on the page, the delivery opened
 by the button, the fork carrying the desk and the brief, and both links
 dead after the revoke.
+
+## v1.59: The landing page edits in place (2026-09-06)
+
+A delivered landing page could be amended only by writing notes and
+running the desk again. For a word in the headline, the order of the three
+reasons or the colour of the page, that is a long way round, and Zenith's
+design canvas lets a hand do those things on the page itself.
+
+The page now carries its own canvas. One button turns every marked text
+into something a hand can change, puts arrows on the three reasons, and
+offers five looks. What the hand does stays on that device as a draft until
+it is saved or discarded, and saving sends the house words, an order and
+the name of a look, never markup: the house re-renders the page it keeps,
+escaping every character, and the page comes back as its next version with
+a provenance row that says a hand changed it, when, and who. A page that
+took markup from a browser would let a guest plant a script the owner then
+opens on the house's own origin; a page that takes words cannot. A shared
+page and a downloaded file have no house to save to, so the button is not
+on them.
+
+Proved: a script pasted into the headline comes back as text and never as
+code, a dotted key reaches its element, the reasons take the new order, the
+look is the page's, the provenance row names the hand, a second edit is v3
+with one row for the hand and the first edit still standing, and a bad key,
+a doubled order, an unknown look and an empty text are each refused in
+words.

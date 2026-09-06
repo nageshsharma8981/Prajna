@@ -332,6 +332,7 @@ ${provenance(mission)}
 /* ----------------------------------- DECK --------------------------------- */
 
 import { DECK_TEMPLATES } from './workspace.js';
+import { SITE_LOOKS, rootLine } from './canvas.js';
 
 // The deck's own runtime. A deck is presented, not scrolled: every slide has
 // an address, the keys a presenter reaches for all work, F is fullscreen,
@@ -677,12 +678,14 @@ function siteRuntime() {
   const count = () => { const n = load().length; $('.count').textContent = n ? (n === 1 ? 'One person on the list, kept on this device.' : n + ' people on the list, kept on this device.') : ''; };
   document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => {
     const id = a.getAttribute('href').slice(1); const to = id && document.getElementById(id);
+    if (document.body.classList.contains('editing')) { e.preventDefault(); return; }
     if (!to) return; e.preventDefault(); to.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (id === 'join') setTimeout(() => email.focus({ preventScroll: true }), 450);
     history.replaceState(null, '', '#' + id);
   }));
   form.addEventListener('submit', (e) => {
     e.preventDefault(); err.textContent = '';
+    if (document.body.classList.contains('editing')) return;
     const v = email.value.trim(), n = name.value.trim();
     if (!v) { err.textContent = 'An email address is needed.'; email.focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { err.textContent = 'That does not look like an email address.'; email.focus(); return; }
@@ -696,6 +699,65 @@ function siteRuntime() {
   count();
 }
 
+// The canvas. On the page itself, one button turns every marked text into
+// something a hand can change, puts arrows on the three reasons, and offers
+// the looks. What the hand does is kept on this device as a draft until it
+// is saved, and saving sends words, an order and a look name to the house,
+// never markup; the house re-renders the page and it comes back as the next
+// version. A shared page or a downloaded file has no house to save to, so
+// the button does not appear there.
+function siteCanvas() {
+  const id = (location.pathname.match(/\/api\/artifacts\/(\w+)\/html/) || [])[1];
+  if (!id) return;
+  const KEY = 'prajna-canvas-' + document.documentElement.dataset.serial;
+  const $ = (q, el) => (el || document).querySelector(q);
+  const LOOKS = JSON.parse($('#site-looks').textContent);
+  const bar = document.createElement('div'); bar.className = 'canvas'; bar.hidden = true;
+  bar.innerHTML = '<span class="c-title">Canvas</span><span class="c-note">Click any outlined text to change it. Move the reasons with the arrows. Pick a look.</span><span class="c-looks"></span><button type="button" class="c-save">Save to the house</button><button type="button" class="c-discard">Discard</button><button type="button" class="c-close">Done</button><span class="c-msg" role="status" aria-live="polite"></span>';
+  document.body.appendChild(bar);
+  const tab = document.createElement('button'); tab.type = 'button'; tab.className = 'canvas-tab'; tab.textContent = 'Edit page'; document.body.appendChild(tab);
+  const edits = { text: {}, order: null, look: null };
+  const groups = () => Array.from(document.querySelectorAll('[data-edit-key]'));
+  const msg = $('.c-msg', bar);
+  const applyLook = (lk) => { const l = LOOKS.find((x) => x.id === lk); if (!l) return; const r = document.documentElement.style; r.setProperty('--ink', l.ink); r.setProperty('--ground', l.ground); r.setProperty('--acc', l.acc); r.setProperty('--acc2', l.acc2); };
+  const dirty = () => { const n = Object.keys(edits.text).length + (edits.order ? 1 : 0) + (edits.look ? 1 : 0); msg.textContent = n ? n + ' change' + (n === 1 ? '' : 's') + ' on this device, not yet saved' : ''; try { localStorage.setItem(KEY, JSON.stringify(edits)); } catch (e) { /* no draft on this device */ } };
+  LOOKS.forEach((l) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'c-look'; b.title = l.name; b.setAttribute('aria-label', l.name); b.style.background = l.acc; b.style.borderColor = l.ground; b.addEventListener('click', () => { edits.look = l.id; applyLook(l.id); dirty(); }); $('.c-looks', bar).appendChild(b); });
+  const move = (g, d) => { const sib = d < 0 ? g.previousElementSibling : g.nextElementSibling; if (!sib || !sib.dataset.editKey) return; if (d < 0) g.parentNode.insertBefore(g, sib); else g.parentNode.insertBefore(sib, g); edits.order = groups().map((x) => x.dataset.editKey); dirty(); };
+  const arrows = (on) => { groups().forEach((g) => { let a = $('.c-arrows', g); if (!on) { if (a) a.remove(); return; } if (a) return; a = document.createElement('span'); a.className = 'c-arrows'; a.innerHTML = '<button type="button" aria-label="Move earlier">←</button><button type="button" aria-label="Move later">→</button>'; a.children[0].addEventListener('click', () => move(g, -1)); a.children[1].addEventListener('click', () => move(g, 1)); g.prepend(a); }); };
+  const editing = (on) => {
+    document.body.classList.toggle('editing', on); bar.hidden = !on; tab.hidden = on;
+    document.querySelectorAll('[data-edit]').forEach((el) => {
+      el.contentEditable = on ? 'true' : 'false';
+      if (on && !el.dataset.wired) { el.dataset.wired = '1'; el.addEventListener('input', () => { edits.text[el.dataset.edit] = el.textContent; dirty(); }); el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } }); }
+    });
+    arrows(on);
+  };
+  tab.addEventListener('click', () => editing(true));
+  $('.c-close', bar).addEventListener('click', () => editing(false));
+  $('.c-discard', bar).addEventListener('click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* fine */ } location.reload(); });
+  $('.c-save', bar).addEventListener('click', async () => {
+    msg.textContent = 'Saving to the house…';
+    try {
+      const r = await fetch('/api/artifacts/' + id + '/edits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(edits) });
+      const j = await r.json();
+      if (!r.ok) { msg.textContent = j.error || 'The house refused the edit.'; return; }
+      try { localStorage.removeItem(KEY); } catch (e) { /* fine */ }
+      msg.textContent = 'Saved as v' + j.version + ': ' + j.summary + '. Reloading…'; setTimeout(() => location.reload(), 700);
+    } catch (e) { msg.textContent = 'Could not reach the house; the draft stays on this device.'; }
+  });
+  // A draft left on this device comes back until it is saved or discarded.
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d && (Object.keys(d.text || {}).length || d.order || d.look)) {
+      Object.assign(edits, d);
+      Object.entries(edits.text || {}).forEach(([k, v]) => { const el = document.querySelector('[data-edit="' + k + '"]'); if (el) el.textContent = v; });
+      if (edits.order) { const p = groups()[0] && groups()[0].parentNode; if (p) edits.order.forEach((k) => { const g = document.querySelector('[data-edit-key="' + k + '"]'); if (g) p.appendChild(g); }); }
+      if (edits.look) applyLook(edits.look);
+      editing(true); dirty();
+    }
+  } catch (e) { /* no draft */ }
+}
+
 export function siteArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
@@ -706,7 +768,7 @@ export function siteArtifact(mission) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t}</title>
 <style>
-:root{--ink:#101c16;--ground:#eef1ea;--acc:#1d5c3a;--acc2:#dbe8d2}
+${rootLine(SITE_LOOKS[0])}
 html{scroll-behavior:smooth}
 *{box-sizing:border-box}body{margin:0;background:var(--ground);color:var(--ink);font:17px/1.6 'Avenir Next','Segoe UI',system-ui,sans-serif}
 nav{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 5vw;max-width:72rem;margin:0 auto}
@@ -742,14 +804,24 @@ footer{padding:2rem 5vw;font-size:.85rem;color:#6c7a70;max-width:72rem;margin:0 
 .count{font-size:.85rem;color:#6c7a70;margin:1rem 0 0}
 @media(max-width:800px){.join{grid-template-columns:1fr}}
 @media(max-width:800px){.hero{grid-template-columns:1fr;padding-top:5vh}.why{grid-template-columns:1fr;gap:2rem}}
+.canvas-tab{position:fixed;bottom:1rem;left:1rem;z-index:9;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:.6rem 1rem;font:600 .8rem/1 inherit;cursor:pointer;min-height:44px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.canvas{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--ink);color:#fff;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;padding:.7rem 5vw;font-size:.85rem;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+.canvas .c-title{font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:.7rem}.canvas .c-note{opacity:.8;flex:1;min-width:14rem}
+.canvas button{font:inherit;border:0;border-radius:999px;padding:.5rem .9rem;cursor:pointer;min-height:40px;background:rgba(255,255,255,.14);color:#fff}.canvas .c-save{background:var(--acc)}
+.canvas .c-looks{display:inline-flex;gap:.35rem}.canvas .c-look{width:28px;height:28px;min-height:0;padding:0;border-radius:50%;border:3px solid #fff}
+.canvas .c-msg{width:100%;opacity:.85;min-height:1.2em}
+body.editing [data-edit]{outline:2px dashed var(--acc);outline-offset:3px;cursor:text}body.editing [data-edit]:focus{outline-style:solid}
+.c-arrows{display:flex;gap:.3rem;margin-bottom:.5rem}.c-arrows button{font:inherit;border:1px solid var(--acc);background:#fff;color:var(--acc);border-radius:6px;width:40px;height:40px;cursor:pointer}
+body.editing footer{padding-bottom:7rem}
+[hidden]{display:none!important}
 ${PROV_CSS}
 </style></head><body>${partialBanner(mission)}
-<nav><span class="logo">${A ? esc(str(A.brand, t.split(/\s+/).slice(0, 2).join(' '))) : t.split(/\s+/).slice(0, 2).join(' ')}</span><a class="cta" href="#join">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a></nav>
+<nav><span class="logo" data-edit="brand">${A ? esc(str(A.brand, t.split(/\s+/).slice(0, 2).join(' '))) : t.split(/\s+/).slice(0, 2).join(' ')}</span><a class="cta" href="#join" data-edit="nav-cta">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a></nav>
 <header class="hero">
   <div>
-    <h1>${A ? esc(str(A.headline, subject)) : t}</h1>
-    <p>${A ? esc(str(A.sub)) : 'One promise, kept: the thing this page announces, working, in your hands, without the noise the category insists on.'}</p>
-    <div class="actions"><a class="btn" href="#join">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a><a class="ghost" href="#how">${A ? esc(str(A.secondary, 'See how it works')) : 'See how it works'}</a></div>
+    <h1 data-edit="headline">${A ? esc(str(A.headline, subject)) : t}</h1>
+    <p data-edit="sub">${A ? esc(str(A.sub)) : 'One promise, kept: the thing this page announces, working, in your hands, without the noise the category insists on.'}</p>
+    <div class="actions"><a class="btn" href="#join" data-edit="primary">${A ? esc(str(A.primary, 'Get early access')) : 'Get early access'}</a><a class="ghost" href="#how" data-edit="secondary">${A ? esc(str(A.secondary, 'See how it works')) : 'See how it works'}</a></div>
   </div>
   ${(() => {
     // The hero: the picture generated on the owner's key when there is one,
@@ -759,28 +831,33 @@ ${PROV_CSS}
     return `<div class="vis"><span>${(mission.patches || []).includes('VAL-PROOF-REAL') ? 'Evidence pending: supplied by the owner' : 'Product still: replace with real capture'}</span></div>`;
   })()}
 </header>
-<div class="strip">${A ? esc(str(A.strip, 'Built by Prajñā')) : 'Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement'}</div>
+<div class="strip" data-edit="strip">${A ? esc(str(A.strip, 'Built by Prajñā')) : 'Built by Prajñā · copy structured as promise → proof → action · placeholder claims marked for replacement'}</div>
 <section class="why" id="how">
-${why ? `  <div><h3><em>${why[0].k}</em>, ${why[0].h}</h3><p>${why[0].p}</p></div>
-  <div><h3><em>${why[1].k}</em>, ${why[1].h}</h3><p>${proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : `${why[1].p} <em>This slot awaits your real case study.</em>`}</p></div>
-  <div><h3><em>${why[2].k}</em>, ${why[2].h}</h3><p>${why[2].p}</p></div>` : `  <div><h3><em>Why now</em>, the moment is specific</h3><p>State the shift that makes this possible today and impossible last year. Dated, not vibed.</p></div>
-  <div><h3><em>The proof</em>, one real case</h3><p>${proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.'}</p></div>
-  <div><h3><em>The practice</em>, opinionated by design</h3><p>The product makes choices so the user doesn't have to. Name the three it makes.</p></div>`}
+${(why ? [
+    { k: why[0].k, h: why[0].h, p: why[0].p },
+    { k: why[1].k, h: why[1].h, p: proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : `${why[1].p} This slot awaits your real case study.` },
+    { k: why[2].k, h: why[2].h, p: why[2].p },
+  ] : [
+    { k: 'Why now', h: 'the moment is specific', p: 'State the shift that makes this possible today and impossible last year. Dated, not vibed.' },
+    { k: 'The proof', h: 'one real case', p: proofPatched ? 'Evidence pending: supplied by the owner. This section is deliberately unpopulated until a real case study exists; no invented numbers.' : 'A single concrete before/after beats a wall of adjectives. This slot awaits your real case study.' },
+    { k: 'The practice', h: 'opinionated by design', p: 'The product makes choices so the user doesn\'t have to. Name the three it makes.' },
+  ]).map((w, i) => `  <div data-edit-group="why" data-edit-key="why${i + 1}"><h3><em data-edit="why${i + 1}.k">${w.k}</em>, <span data-edit="why${i + 1}.h">${w.h}</span></h3><p data-edit="why${i + 1}.p">${w.p}</p></div>`).join('\n')}
 </section>
 ${mission.dissent ? `<aside class="carried-dissent" style="max-width:72rem;margin:0 auto;padding:1.2rem 5vw;font-size:.92rem;color:#3d4a41;border-top:1px solid #c9d3c7"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</aside>` : ''}
 <section class="final" id="join">
-  <h2>${A ? esc(str(A.closing?.h, 'Be first through the door.')) : 'Be first through the door.'}</h2>
+  <h2 data-edit="closing">${A ? esc(str(A.closing?.h, 'Be first through the door.')) : 'Be first through the door.'}</h2>
   <form class="join" novalidate aria-label="Join">
     <label><span>Your name</span><input name="name" type="text" maxlength="80" autocomplete="name" placeholder="Optional"></label>
     <label><span>Email</span><input name="email" type="email" maxlength="160" autocomplete="email" required placeholder="you@example.com"></label>
-    <button class="btn" type="submit">${A ? esc(str(A.closing?.cta, 'Join the waitlist')) : 'Join the waitlist'}</button>
+    <button class="btn" type="submit" data-edit="cta">${A ? esc(str(A.closing?.cta, 'Join the waitlist')) : 'Join the waitlist'}</button>
     <p class="err" role="alert" aria-live="assertive"></p>
   </form>
   <div class="joined" hidden tabindex="-1" role="status"><b>Thanks.</b> You are on the list. The entry is kept on this device until the house connects this page to a mailbox or a sheet; nothing has been sent anywhere. <button type="button" class="again">Add another</button></div>
   <p class="count" aria-live="polite"></p>
 </section>
 <footer>${provenance(mission)}</footer>
-<script>(${siteRuntime.toString()})();</script>
+<script type="application/json" id="site-looks">${JSON.stringify(SITE_LOOKS)}</script>
+<script>(${siteRuntime.toString()})();(${siteCanvas.toString()})();</script>
 </body></html>`;
   return { title: `${subject}, Landing page`, kind: 'site', html };
 }
