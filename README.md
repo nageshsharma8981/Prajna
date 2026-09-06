@@ -2162,3 +2162,30 @@ message and the same way to claim the house. Proved in an unclaimed
 house: a planted model and stranger's instructions both refused; and in a
 claimed house: a guest's planted model refused as the owner's business.
 
+
+## v1.57: Every deck has one look (2026-09-06)
+
+A deck used to be styled slide by slide: the title and the arguments got a
+picture each, drawn from a fixed editorial brief, and the one sentence and
+the close got a flat colour. It read as a stack of pages. Zenith's showcase
+decks read as one film because every slide shares a palette, a typeface and
+a way of drawing, and that is the only thing they had over a Prajñā deck.
+
+Now a deck has one look. The author chooses it with the substance: the mood
+in a few words, the paper, the ink and one accent, serif or sans display
+type, one sentence on how every picture is made, and the occasion under the
+title. When no author chose one, the house picks from its own six looks by
+what the deck is about (chiaroscuro gold for history and ceremony, midnight
+and cyan for technology, forest and brass for climate, terracotta for food
+and travel, Bauhaus primaries for design and learning, quiet paper
+otherwise), so the same brief gets the same look on every run.
+
+The look reaches everything: every one of the nine slides is drawn on the
+image key in that look, the one sentence and the close included, the title
+slide carries the occasion and a rule in the accent, the display type is the
+look's, a vignette sits on every picture, the film sets its type from the
+look, and the PowerPoint wears the same paper, ink, accent and face. The
+tape says who chose the look and what it is. Proved with a live author
+choosing gold on black and serif: the colours are the deck's, nine pictures
+asked for in the same words, the occasion under the title, and the same
+paper, accent and Georgia in the PowerPoint.

@@ -1133,6 +1133,7 @@ test('every desk delivers with a live model, not just the research desk', async 
       claims: [1, 2, 3].map((n) => ({ text: `Live claim ${n} about the coastal ferry programme.`, grade: 'B', detail: `Support ${n}.`, src: 0, source: { title: `Source class ${n}`, kind: 'analysis' } })),
       refuted: [], moves: [{ move: 'A first move', commitment: 'small', signal: 'weekly numbers' }], tripwires: 'Stop if the signal does not appear.', dissent: { seat: 'an adviser', text: 'The pace is optimistic.' } },
     deck: { sub: 'The argument in six beats.', one: 'The whole case in one sentence.', close: 'End on the claim.',
+      look: { mood: 'chiaroscuro Renaissance gold on black', paper: '#0d0b0a', ink: '#f4e4c8', acc: '#C9A84C', type: 'serif', image: 'Oil painting, chiaroscuro, one shaft of warm light', kicker: 'Presented at the desk test' },
       slides: ['The problem', 'The shift', 'The mechanism', 'The proof', 'The economics', 'The ask'].map((n, i) => ({ n, h: `Headline ${i + 1}`, s: `One supporting line for ${n.toLowerCase()}.` })) },
     site: { brand: 'Ferry Works', headline: 'Get across the water faster', sub: 'A landing page written live for the test.', primary: 'Book a crossing', secondary: 'See timetables', strip: 'Serving four districts',
       why: [1, 2, 3].map((n) => ({ k: `Kicker ${n}`, h: `Heading ${n}`, p: `Thirty words or fewer about reason ${n}.` })), closing: { h: 'Ready when you are', cta: 'Start' } },
@@ -1195,6 +1196,26 @@ test('every desk delivers with a live model, not just the research desk', async 
         assert.equal((m.visuals || []).length, 1, 'one app icon on the record');
         assert.ok(/<link rel="apple-touch-icon" href="\/api\/media\/[a-f0-9]{16}">/.test(html), 'the home-screen icon is the generated one');
         assert.ok(/class="brand"><img class="app-icon" src="\/api\/media\/[a-f0-9]{16}"/.test(html), 'and it is shown on the page');
+      }
+      if (deskId === 'deck') {
+        // One look, chosen by the author, on every slide: the colours, the
+        // display type, a picture on each of the nine slides made in that
+        // look, the occasion under the title, and the same look on the
+        // PowerPoint that leaves.
+        assert.ok(html.includes('--acc:#c9a84c') && html.includes('--paper:#0d0b0a'), 'the author\'s colours are the deck\'s');
+        assert.match(html, /--display:'Iowan Old Style'/, 'serif display type as the author asked');
+        assert.ok(html.includes('<p class="kick">Presented at the desk test</p>'), 'the occasion sits under the title');
+        const sections = html.match(/<section class="slide[^"]*"/g) || [];
+        assert.equal(sections.length, 9, 'nine slides');
+        assert.equal(sections.filter((x) => /has-visual/.test(x) && !/house-visual/.test(x)).length, 9, 'a picture drawn on the key on every one of them');
+        assert.equal((m.visuals || []).length, 9, 'nine pictures on the record');
+        assert.ok((m.visuals || []).every((v) => /Oil painting, chiaroscuro/.test(v.prompt) && /Mood: chiaroscuro Renaissance gold/.test(v.prompt)), 'every picture was asked for in the same look');
+        assert.equal(m.look?.by, 'Desk Model', 'the record says who chose the look');
+        assert.ok(m.events.some((e) => /one look for every slide, chosen by Desk Model: chiaroscuro Renaissance gold on black/.test(e.detail || '')), 'and the tape says so');
+        const pptx = Buffer.from(await (await fetch(`${B5}/api/artifacts/${m.artifactId}/pptx`)).arrayBuffer());
+        const xml = pptx.toString('latin1');
+        assert.ok(xml.includes('<a:srgbClr val="0D0B0A"/>') && xml.includes('<a:accent1><a:srgbClr val="C9A84C"/>'), 'the PowerPoint wears the same paper and accent');
+        assert.ok(xml.includes('<a:latin typeface="Georgia"/>'), 'and a serif display face');
       }
       if (deskId === 'site') {
         // The hero is a picture drawn on the key, not a placeholder box.
@@ -1940,17 +1961,17 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     // Before anything is stamped, the ticket says what the key will pay for.
     const open1 = await (await fetch(`${lit.B}/api/missions`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ goal: 'Key plan: a deck for a Kochi ferry pass', deskId: 'deck', depth: 'fast', lead: leadLit.id, advisers: [] }) })).json();
     const kp = (await (await fetch(`${lit.B}/api/missions/${open1.id}`, { headers: hdr(lit.cookie) })).json()).keyPlan;
-    assert.deepEqual({ images: kp.images.count, on: kp.images.on, clips: kp.speech.clips, spoken: kp.speech.on, voice: kp.speech.voice, authoring: kp.authoring.calls, off: kp.mediaOff }, { images: 7, on: 'OpenAI', clips: 9, spoken: 'OpenAI', voice: 'onyx', authoring: 1, off: false }, 'the open ticket names the other bill');
+    assert.deepEqual({ images: kp.images.count, on: kp.images.on, clips: kp.speech.clips, spoken: kp.speech.on, voice: kp.speech.voice, authoring: kp.authoring.calls, off: kp.mediaOff }, { images: 9, on: 'OpenAI', clips: 9, spoken: 'OpenAI', voice: 'onyx', authoring: 1, off: false }, 'the open ticket names the other bill');
     const m1 = await run(lit.B, lit.cookie, leadLit.id);
     assert.equal((await (await fetch(`${lit.B}/api/missions/${m1.id}`, { headers: hdr(lit.cookie) })).json()).keyPlan, undefined, 'a stamped ticket carries the record, not a forecast');
     assert.equal(m1.status, 'FILLED');
     assert.ok(m1.contract.plan.some((p) => p.tool === 'illustrate'), 'the contract carries the illustrate step');
-    assert.equal(images, 7, 'seven images asked for: the title and six arguments');
-    assert.equal((m1.visuals || []).length, 7, 'seven visuals on the record');
+    assert.equal(images, 9, 'nine images asked for: every slide, the one sentence and the close included');
+    assert.equal((m1.visuals || []).length, 9, 'nine visuals on the record');
     assert.ok(prompts.every((p) => /no text, no logos/.test(p)), 'every prompt asks for a clean plate');
     assert.ok(prompts.some((p) => /Headline 3 about the ferry/.test(p)), 'each prompt is built from its own slide');
     const html = await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/html`)).text();
-    assert.equal((html.match(/<img class="visual"/g) || []).length, 7, 'seven images in the page');
+    assert.equal((html.match(/<img class="visual"/g) || []).length, 9, 'nine images in the page');
     assert.ok(/<img class="visual" src="\/api\/media\/[a-f0-9]{16}" alt="[^"]{8,}"/.test(html), 'each by its id, with alt text');
     // The picture the page actually asks for, at the address it asks for it.
     const src = (html.match(/<img class="visual" src="([^"]+)"/) || [])[1];
@@ -1981,11 +2002,11 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     // The media store is audited: every file pointed at, none orphaned; and
     // an orphan, when one appears, is named and removed by repair.
     const store1 = (await (await fetch(`${lit.B}/api/housecheck`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json()).rows.find((r) => r.id === 'media-store');
-    assert.ok(store1 && store1.ok, `sixteen files, none orphaned: ${JSON.stringify(store1)}`);
-    assert.match(store1.detail, /^16 file\(s\), [\d.]+ MB, 0 orphan/);
+    assert.ok(store1 && store1.ok, `eighteen files, none orphaned: ${JSON.stringify(store1)}`);
+    assert.match(store1.detail, /^18 file\(s\), [\d.]+ MB, 0 orphan/);
     fs.writeFileSync(path.join(lit.DIR, 'media', 'deadbeefdeadbeef.png'), PNG);
     const store2 = (await (await fetch(`${lit.B}/api/housecheck`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json()).rows.find((r) => r.id === 'media-store');
-    assert.ok(!store2.ok && /17 file\(s\), [\d.]+ MB, 1 orphan/.test(store2.detail), `the orphan is counted: ${store2.detail}`);
+    assert.ok(!store2.ok && /19 file\(s\), [\d.]+ MB, 1 orphan/.test(store2.detail), `the orphan is counted: ${store2.detail}`);
     const repaired = await (await fetch(`${lit.B}/api/housecheck/repair`, { method: 'POST', headers: hdr(lit.cookie), body: '{}' })).json();
     assert.ok((repaired.actions || []).some((x) => x.id === 'media-store' && /1 orphan media file\(s\) removed/.test(x.detail)), `repair names what it removed: ${JSON.stringify(repaired.actions)}`);
     assert.ok(!fs.existsSync(path.join(lit.DIR, 'media', 'deadbeefdeadbeef.png')), 'the orphan is gone');
@@ -1994,13 +2015,13 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     // travel inside it, and it asks the house for nothing.
     const bundle = await (await fetch(`${lit.B}/api/missions/${m1.id}/bundle?download=1`, { headers: hdr(lit.cookie) })).text();
     assert.ok(!/(?:src|href)=(?:"|&quot;)\/api\/media\//.test(bundle), 'no picture or clip in the bundle is fetched from the house');
-    assert.ok((bundle.match(/data:image\/png;base64,/g) || []).length >= 7, 'seven pictures travel inside it');
+    assert.ok((bundle.match(/data:image\/png;base64,/g) || []).length >= 9, 'nine pictures travel inside it');
     assert.ok((bundle.match(/data-narration-src=&quot;data:audio\/wav;base64,/g) || []).length >= 9, 'and nine clips, where the film will find them');
     // And the PowerPoint carries the same pictures.
     const pptx = Buffer.from(await (await fetch(`${lit.B}/api/artifacts/${m1.artifactId}/pptx`, { headers: { cookie: lit.cookie } })).arrayBuffer());
     const names = pptx.toString('latin1');
     assert.ok(names.includes('ppt/media/image1.png'), 'the title picture is in the package');
-    assert.ok((names.match(/ppt\/media\/image\d+\.png/g) || []).length >= 7, 'seven pictures travel');
+    assert.ok((names.match(/ppt\/media\/image\d+\.png/g) || []).length >= 9, 'nine pictures travel');
     assert.ok(/<p:pic>[\s\S]*?descr="[^"]{8,}"[\s\S]*?r:embed="rId3"/.test(names), 'a picture placed on the slide, with its description');
     assert.ok(names.includes('Extension="png" ContentType="image/png"'), 'declared in the content types');
     // And the narration, as audio on each slide behind a speaker.
@@ -2042,12 +2063,12 @@ test('a deck is illustrated on the owner\'s image key, and drawn by the house wi
     let m4; { const t0 = Date.now(); while (Date.now() - t0 < 120000) { m4 = await (await fetch(`${lit.B}/api/missions/${forked.id}`, { headers: hdr(lit.cookie) })).json(); if (m4.status === 'FILLED' || m4.status === 'KILLED') break; if (m4.status.startsWith('PAUSED')) { const at = (m4.attention || []).find((x) => !x.decision); if (at) { const pick = ['raise-ceiling', 'accept-risk', 'approve', 'continue'].find((o) => at.options.includes(o)) || at.options[0]; await fetch(`${lit.B}/api/missions/${forked.id}/attention/${at.id}`, { method: 'POST', headers: hdr(lit.cookie), body: JSON.stringify({ decision: pick, justification: `amend test, ${pick}` }) }); } } await new Promise((r) => setTimeout(r, 300)); } }
     assert.equal(m4.status, 'FILLED');
     assert.equal(images, imagesBefore, 'no picture was drawn again'); assert.equal(spoken, spokenBefore, 'nothing was spoken again');
-    assert.equal((m4.visuals || []).length, 7); assert.ok(m4.visuals.every((v) => v.reused === m1.serial), 'every picture kept from the parent');
+    assert.equal((m4.visuals || []).length, 9); assert.ok(m4.visuals.every((v) => v.reused === m1.serial), 'every picture kept from the parent');
     assert.equal((m4.narration || []).length, 9); assert.ok(m4.narration.every((n) => n.reused === m1.serial), 'every clip kept from the parent');
     assert.ok((m4.events || []).some((e) => e.type === 'log' && /every slide kept its picture from/.test(e.detail)), 'the tape says the pictures were kept');
     assert.ok((m4.events || []).some((e) => e.type === 'log' && /every slide kept its clip from/.test(e.detail)), 'and the clips');
     const html4 = await (await fetch(`${lit.B}/api/artifacts/${m4.artifactId}/html`)).text();
-    assert.equal((html4.match(/<img class="visual"/g) || []).length, 7, 'and the new version shows them');
+    assert.equal((html4.match(/<img class="visual"/g) || []).length, 9, 'and the new version shows them');
     // The shut house: the owner enters with the code, runs a deck, shares it.
     { const t1 = Date.now(); while (Date.now() - t1 < 15000) { try { if ((await fetch(`${BS}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); } }
     const jar2 = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');

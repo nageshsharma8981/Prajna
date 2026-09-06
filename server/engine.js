@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 import { store } from './store.js';
 import { deskById, modelById, SKILLS } from './catalog.js';
-import { GENERATORS, subjectOf, deckSlides } from './artifacts.js';
+import { GENERATORS, subjectOf, deckSlides, deckLook } from './artifacts.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { callModel, generateImage, synthesizeSpeech } from './providers.js';
@@ -198,7 +198,8 @@ export function keyPlanFor(m) {
   const bench = [m.lead, ...(m.advisers || [])].map((id) => modelById(id)).filter(Boolean);
   const live = bench.filter((x) => store.keyFor(x.provider));
   const mediaOn = !!ws().tools?.media;
-  const images = m.desk === 'deck' ? 7 : m.desk === 'site' || m.desk === 'mobile' ? 1 : 0;
+  // A deck draws every slide in one look, the one sentence and the close included.
+  const images = m.desk === 'deck' ? 9 : m.desk === 'site' || m.desk === 'mobile' ? 1 : 0;
   const speech = m.desk === 'deck' ? 9 : 0;
   return {
     authoring: live.length ? { calls: 1 + Math.max(0, live.length - 1), models: live.map((x) => x.name) } : null,
@@ -735,6 +736,12 @@ async function applyEvent(m, ev, notify, runner) {
     if (step && step.tool === 'illustrate' && !m.visuals) {
       pushEvent(m, record, notify);
       m.visuals = [];
+      // A deck's pictures are all made the same way: the look names the
+      // medium, the light and the palette once, and every slide's prompt
+      // starts from it, so nine pictures read as one film, not nine stock
+      // photographs. The look goes on the record and on the tape.
+      const look = m.desk === 'deck' ? deckLook(m) : null;
+      if (look) { m.look = look; pushEvent(m, { type: 'log', stepId: step.id, label: 'illustrate', live: false, detail: `one look for every slide, chosen by ${look.by}: ${look.mood}; ${look.type} display type, ${look.paper} paper, ${look.acc} accent` }, notify); }
       const prov = ['openai', 'google'].find((id) => store.keyFor(id));
       const k = prov ? store.keyFor(prov) : null;
       // A deck wants the title and every argument; a landing page wants one
@@ -743,7 +750,7 @@ async function applyEvent(m, ev, notify, runner) {
         ? [{ i: 0, sl: { k: 'hero', h: `${String(x.authored?.content?.brand || '').trim()} ${String(x.authored?.content?.headline || subjectOf(x.goal)).trim()}`.trim(), s: String(x.authored?.content?.sub || x.goal).trim() } }]
         : x.desk === 'mobile'
           ? [{ i: 0, sl: { k: 'icon', h: `an app icon for “${String(x.authored?.content?.short || subjectOf(x.goal)).trim()}”`, s: String(x.authored?.content?.screens?.[0]?.body || x.goal).trim() } }]
-          : deckSlides(x).map((sl, i) => ({ sl, i })).filter(({ sl }) => sl.k === 'title' || sl.k === 'claim'));
+          : deckSlides(x).map((sl, i) => ({ sl, i })));
       let wanted = wantedFor(m);
       // An amended version keeps the parent's picture for every slide whose
       // words did not change: the same words would buy the same picture, and
@@ -773,7 +780,7 @@ async function applyEvent(m, ev, notify, runner) {
         ? 'Flat app icon, one bold centred symbol, two or three solid colours, no text, no letters, no numbers, no border, filling the square edge to edge'
         : m.desk === 'site'
         ? 'Product photograph for a landing page hero, natural light, clean background, the product or its setting in use, no text, no logos, no watermarks, tall 4:5 composition'
-        : 'Cinematic editorial photograph, natural light, shallow depth of field, no text, no logos, no watermarks, muted warm palette, wide 3:2 composition with space on the left for a headline';
+        : `${look.image}. Mood: ${look.mood}. Clean plate: no text, no logos, no letters, no watermarks. Wide 3:2 composition with the left third quiet and dark enough for a headline`;
       let made = 0; const failed = [];
       // Three at a time, ninety seconds each at most: a slow or stalled
       // provider costs the deck a minute and a half, never seven of them.

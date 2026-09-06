@@ -423,6 +423,7 @@ function deckFilm() {
     kind: s.classList.contains('title') ? 'title' : s.classList.contains('big') ? 'big' : s.classList.contains('end') ? 'end' : 'claim',
   }));
   const acc = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#b0472f';
+  const fam = getComputedStyle(document.documentElement).getPropertyValue('--display').trim() || 'Helvetica Neue, Helvetica, Arial, sans-serif';
   const stage = document.querySelector('.film'); const canvas = stage.querySelector('canvas'); const ctx = canvas.getContext('2d');
   const status = stage.querySelector('.film-status'); const W = 1920, H = 1080; canvas.width = W; canvas.height = H;
   let playing = false, recorder = null, chunks = [], ac = null, dest = null, stopFlag = false;
@@ -443,10 +444,11 @@ function deckFilm() {
     const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 0.95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
     const rise = Math.min(1, t * 4); const y0 = H * 0.42 + (1 - rise) * 30;
     ctx.globalAlpha = rise; ctx.fillStyle = '#fbf7ee'; ctx.textBaseline = 'alphabetic';
-    const big = s.kind === 'title' ? 'bold 96px Helvetica Neue, Helvetica, Arial, sans-serif' : 'bold 78px Helvetica Neue, Helvetica, Arial, sans-serif';
+    const big = (s.kind === 'title' ? 'bold 104px ' : 'bold 78px ') + fam;
     const lines = wrap(s.title, W * 0.55, big); let y = y0;
     for (const l of lines) { ctx.font = big; ctx.fillText(l, 150, y); y += s.kind === 'title' ? 104 : 86; }
     ctx.globalAlpha = Math.min(1, Math.max(0, t * 4 - 0.6)); ctx.fillStyle = '#e6ddcc'; const small = '36px Helvetica Neue, Helvetica, Arial, sans-serif';
+    if (s.kind === 'title') { ctx.fillStyle = acc; ctx.fillRect(150, y - 6, 160, 5); y += 26; }
     for (const l of wrap(s.sub, W * 0.5, small)) { ctx.font = small; ctx.fillText(l, 150, y + 24); y += 48; }
     if (s.label) { ctx.globalAlpha = 0.9; ctx.font = 'bold 22px Helvetica Neue, Helvetica, Arial, sans-serif'; ctx.fillStyle = acc; ctx.fillText(s.label.toUpperCase(), 150, H - 90); }
     ctx.globalAlpha = 1;
@@ -533,11 +535,48 @@ function houseVisual(sl, i, acc, ink) {
   return `<svg class="visual house" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="1920" height="1080" fill="${ink}" opacity="0.04"/>${shapes}<path d="M0 ${Math.round(700 + r(2) * 200)} Q 960 ${Math.round(500 + r(4) * 300)} 1920 ${Math.round(760 + r(6) * 200)}" stroke="${acc}" stroke-width="3" fill="none" opacity="0.35"/></svg>`;
 }
 
+// One look for the whole deck. A deck reads as one film when every slide
+// shares a palette, a typeface and a way of drawing; a deck whose slides
+// were each styled on their own reads as a stack of pages. The author
+// chooses the look with the substance (mood, colours, type, how every
+// picture is made); when nothing chose one, the house picks from its own
+// looks by what the deck is about, so the choice is the same on every run.
+export const LOOKS = [
+  { id: 'gilt', mood: 'chiaroscuro Renaissance gold on black', paper: '#0d0b0a', ink: '#f4e4c8', acc: '#c9a84c', type: 'serif', image: 'Oil painting in the manner of the Italian Renaissance, chiaroscuro lighting, one shaft of warm light out of deep black, gold leaf accents, museum quality', match: /renaissance|history|histor|art\b|museum|classical|heritage|legacy|competition|award|ceremon|gala|luxury/i },
+  { id: 'midnight', mood: 'midnight blue and one electric cyan light', paper: '#0b1020', ink: '#e8eefc', acc: '#46d3ff', type: 'sans', image: 'Long-exposure night photograph, deep blue shadows, one cyan light source, rain on glass, anamorphic lens flare, cinematic', match: /\bai\b|agent|software|saas|tech|data|cloud|cyber|platform|digital|robot|quantum|startup|developer|engineer/i },
+  { id: 'forest', mood: 'deep forest green with brass', paper: '#101a14', ink: '#e9efe6', acc: '#d3a955', type: 'serif', image: 'Moody nature photograph, deep greens, morning mist, one shaft of golden light through trees, painterly, 35mm film grain', match: /climate|carbon|energy|forest|farm|nature|green|sustain|solar|water|ocean|wildlife|planet|environment/i },
+  { id: 'terracotta', mood: 'terracotta and sand at Mediterranean noon', paper: '#f3e6d5', ink: '#3a2418', acc: '#c65a2e', type: 'serif', image: 'Sun-drenched architectural photograph, terracotta, sand and whitewashed walls, hard shadows at noon, minimal and warm', match: /coffee|food|restaurant|travel|hotel|hospitality|wine|kitchen|cafe|bakery|craft|home|interior|fashion|retail/i },
+  { id: 'bauhaus', mood: 'Bauhaus primaries on warm white', paper: '#f7f5ef', ink: '#111111', acc: '#d42b1e', type: 'sans', image: 'Bauhaus-style composition, flat geometric shapes, primary red, blue and yellow blocks on off-white, strong diagonals, no gradients', match: /design|brand|studio|creative|agency|product launch|education|school|learning|workshop|training/i },
+  { id: 'paper', mood: 'quiet editorial paper with rust', paper: '#f4f1e8', ink: '#14140f', acc: '#b0472f', type: 'sans', image: 'Cinematic editorial photograph, natural light, shallow depth of field, muted warm palette', match: /./ },
+];
+const HEX = /^#[0-9a-f]{6}$/i;
+const SERIF = "'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,'Times New Roman',serif";
+const SANS = "'Helvetica Neue',Helvetica,Arial,sans-serif";
+export function deckLook(mission) {
+  const A = authored(mission);
+  const l = A && A.look && typeof A.look === 'object' ? A.look : null;
+  const tpl = DECK_TEMPLATES.find((x) => x.id === mission.template)?.theme || null;
+  const own = LOOKS.find((x) => x.match.test(String(mission.goal || ''))) || LOOKS[LOOKS.length - 1];
+  const pick = (k, d) => (l && typeof l[k] === 'string' && l[k].trim() ? l[k].trim() : d);
+  const hex = (k, d) => (l && HEX.test(String(l[k] || '').trim()) ? String(l[k]).trim().toLowerCase() : d);
+  const paper = hex('paper', tpl ? tpl.paper : own.paper), ink = hex('ink', tpl ? tpl.ink : own.ink), acc = hex('acc', tpl ? tpl.acc : own.acc);
+  const type = pick('type', own.type).toLowerCase() === 'serif' ? 'serif' : 'sans';
+  return {
+    id: l && (l.paper || l.mood) ? 'authored' : tpl ? `template:${mission.template}` : own.id,
+    by: l && (l.paper || l.mood) ? (mission.authored?.model || 'the author') : 'the house',
+    mood: pick('mood', own.mood).slice(0, 80), paper, ink, acc, type,
+    display: type === 'serif' ? SERIF : (tpl ? tpl.font : SANS),
+    image: pick('image', own.image).replace(/\s+/g, ' ').slice(0, 240),
+    kicker: pick('kicker', '').slice(0, 120),
+    dark: parseInt(paper.slice(1, 3), 16) * 0.299 + parseInt(paper.slice(3, 5), 16) * 0.587 + parseInt(paper.slice(5, 7), 16) * 0.114 < 128,
+  };
+}
+
 export function deckArtifact(mission) {
   const subject = subjectOf(mission.goal);
   const t = esc(subject);
-  const tpl = DECK_TEMPLATES.find((x) => x.id === mission.template)?.theme || null;
-  const paper = tpl ? tpl.paper : '#f4f1e8', ink = tpl ? tpl.ink : '#14140f', acc = tpl ? tpl.acc : '#b0472f', font = tpl ? tpl.font : "'Helvetica Neue',Helvetica,Arial,sans-serif";
+  const look = deckLook(mission);
+  const paper = look.paper, ink = look.ink, acc = look.acc, font = look.type === 'serif' ? SANS : look.display;
   const A = authored(mission);
   const slides = deckSlides(mission);
   const visuals = Array.isArray(mission.visuals) ? mission.visuals : [];
@@ -552,26 +591,29 @@ export function deckArtifact(mission) {
   const notesOf = (sl) => sl.notes ? `<aside class="notes" hidden>${sl.notes}</aside>` : '';
   const slideHtml = slides.map((sl, i) => {
     const V = visualOf(sl, i);
-    if (sl.k === 'title') return `<section class="slide title${V.cls}" id="slide-1"${V.attr}${narrOf(0)}>${V.html}<div><h1>${sl.h}</h1><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
-    if (sl.k === 'big') return `<section class="slide big" id="slide-${i + 1}"${narrOf(i)}><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
-    if (sl.k === 'end') return `<section class="slide end" id="slide-${i + 1}"${narrOf(i)}><div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'title') return `<section class="slide title${V.cls}" id="slide-1"${V.attr}${narrOf(0)}>${V.html}<div>${look.kicker ? `<p class="kick">${esc(look.kicker)}</p>` : ''}<h1>${sl.h}</h1><hr class="rule"><p class="sub">${sl.s}</p></div><p class="run">Prajñā deck · ${esc(mission.serial)}</p><p class="pg">1 / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'big') return `<section class="slide big${V.cls}" id="slide-${i + 1}"${V.attr}${narrOf(i)}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
+    if (sl.k === 'end') return `<section class="slide end${V.cls}" id="slide-${i + 1}"${V.attr}${narrOf(i)}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p>${mission.dissent ? `<p class="deck-dissent"><b>Recorded dissent, ${esc(mission.dissent.model)}:</b> ${esc(mission.dissent.text)}</p>` : ''}</div><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
     return `<section class="slide${V.cls}" id="slide-${i + 1}"${V.attr}${narrOf(i)}>${V.html}<div><h2>${sl.h}</h2><p class="sub">${sl.s}</p></div><p class="run">${sl.n}</p><p class="pg">${i + 1} / ${slides.length}</p>${notesOf(sl)}</section>`;
   }).join('\n');
 
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+  const html = `<!doctype html><html lang="en" data-serial="${esc(mission.serial)}" data-look="${esc(look.id)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${t}, Deck</title>
 <style>
-:root{--ink:${ink};--paper:${paper};--acc:${acc}}
+:root{--ink:${ink};--paper:${paper};--acc:${acc};--display:${look.display}}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 body{background:var(--ink);font:16px/1.5 ${font};overflow:hidden}
 .deck{height:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth}
 .slide{min-width:100%;height:100%;scroll-snap-align:start;background:var(--paper);color:var(--ink);
 display:flex;flex-direction:column;justify-content:center;padding:6vh 8vw;position:relative;border-right:2px solid var(--ink)}
 .run{position:absolute;bottom:2.2vh;left:3vw;font-size:.75rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);margin:0}
-h1{font-size:clamp(2.2rem,6vw,4.5rem);line-height:1.04;margin:0 0 1.2rem;letter-spacing:-.02em;max-width:18ch}
+h1,h2{font-family:var(--display)}
+h1{font-size:${subject.length > 72 ? 'clamp(1.7rem,3.6vw,2.8rem)' : subject.length > 40 ? 'clamp(2.1rem,5vw,3.9rem)' : 'clamp(2.6rem,7.5vw,6rem)'};line-height:1.02;margin:0 0 1.2rem;letter-spacing:-.02em;max-width:${subject.length > 40 ? 24 : 16}ch}
 h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;letter-spacing:-.02em;max-width:22ch}
-.sub{font-size:clamp(1rem,1.6vw,1.25rem);color:#54524a;max-width:52ch;margin:0}
+.kick{margin:0 0 1.2rem;font:600 .8rem/1 ${SANS};letter-spacing:.22em;text-transform:uppercase;color:var(--acc)}
+.rule{width:7rem;height:4px;border:0;margin:0 0 1.4rem;background:var(--acc)}
+.sub{font-size:clamp(1rem,1.6vw,1.25rem);color:${look.dark ? 'color-mix(in srgb,var(--ink) 72%,var(--paper))' : '#54524a'};max-width:52ch;margin:0}
 .big{background:var(--acc)}.big h2,.big .sub{color:#f8ede8}.big .sub{color:#eed3c9}
 .end{background:var(--ink)}.end h2{color:var(--paper)}.end .sub{color:#a5a294}
 .deck-dissent{margin:2rem 0 0;max-width:60ch;font-size:.9rem;color:#d7c9a5;border-left:3px solid var(--acc);padding-left:.9rem}.deck-dissent b{color:var(--paper)}
@@ -579,6 +621,8 @@ h2{font-size:clamp(1.8rem,4.5vw,3.4rem);line-height:1.08;margin:0 0 1.2rem;lette
 .visual{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .slide.has-visual>div{position:relative;z-index:2;max-width:56%}
 .slide.has-visual:not(.house-visual)::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(10,10,8,.82) 0%,rgba(10,10,8,.62) 45%,rgba(10,10,8,.15) 100%)}
+.slide.has-visual:not(.house-visual)::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;box-shadow:inset 0 0 22vw rgba(0,0,0,.55)}
+.slide.big.has-visual:not(.house-visual)::before{background:linear-gradient(90deg,color-mix(in srgb,var(--acc) 55%,#0a0a08) 0%,rgba(10,10,8,.55) 55%,rgba(10,10,8,.2) 100%)}
 .slide.has-visual:not(.house-visual) h1,.slide.has-visual:not(.house-visual) h2{color:#fbf7ee}.slide.has-visual:not(.house-visual) .sub{color:#e6ddcc}
 .slide.has-visual:not(.house-visual) .pg{color:#cfc8b8}.slide.has-visual .run,.slide.has-visual .pg{z-index:2}
 @media(max-width:700px){.slide.has-visual>div{max-width:100%}.slide.has-visual:not(.house-visual)::before{background:linear-gradient(180deg,rgba(10,10,8,.25) 0%,rgba(10,10,8,.85) 60%)}}
