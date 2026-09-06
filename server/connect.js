@@ -18,6 +18,7 @@ const BASES = {
   slack: { api: 'https://slack.com' },
   notion: { api: 'https://api.notion.com' },
   github: { api: 'https://api.github.com' },
+  microsoft: { api: 'https://graph.microsoft.com' },
 };
 export function base(provider, which = 'api') {
   const env = process.env[`PRAJNA_API_BASE_${provider.toUpperCase()}`];
@@ -96,6 +97,14 @@ const GATHER = {
     }
     return out;
   },
+  async outlook(t, q) {
+    const j = await call(`${base('microsoft')}/v1.0/me/messages?$search=${encodeURIComponent(`"${q.replace(/"/g, '')}"`)}&$top=5&$select=subject,from,receivedDateTime,bodyPreview,webLink`, { headers: auth(t) }, 'Outlook');
+    return (j.value || []).map((m) => ({ title: m.subject || '(no subject)', url: m.webLink || null, kind: 'mail', extract: clip(`${m.from?.emailAddress?.name || m.from?.emailAddress?.address ? `From ${m.from.emailAddress.name || m.from.emailAddress.address}. ` : ''}${(m.receivedDateTime || '').slice(0, 10)}. ${m.bodyPreview || ''}`) }));
+  },
+  async onedrive(t, q) {
+    const j = await call(`${base('microsoft')}/v1.0/me/drive/root/search(q='${encodeURIComponent(q.replace(/'/g, ''))}')?$top=5&$select=name,webUrl,lastModifiedDateTime,file`, { headers: auth(t) }, 'OneDrive');
+    return (j.value || []).map((f) => ({ title: f.name, url: f.webUrl || null, kind: 'file', extract: clip(`${f.file?.mimeType || 'file'}, modified ${(f.lastModifiedDateTime || '').slice(0, 10)}`) }));
+  },
   async github(t, q) {
     const j = await call(`${base('github')}/search/issues?per_page=5&q=${encodeURIComponent(`${q} is:issue`)}`, { headers: { ...auth(t), 'user-agent': 'prajna', accept: 'application/vnd.github+json' } }, 'GitHub search');
     return (j.items || []).map((i) => ({ title: `${i.title} (#${i.number})`, url: i.html_url || null, kind: 'issue', extract: clip(`${i.state}. ${i.body || ''}`) }));
@@ -171,6 +180,12 @@ const DELIVER = {
     const raw = Buffer.from([`To: ${to}`, `Subject: ${m.serial}: ${m.deliverable}`, 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', summary(m, link)].join('\r\n')).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     const j = await call(`${base('google', 'gmail')}/gmail/v1/users/me/drafts`, { method: 'POST', headers: { ...auth(t), 'content-type': 'application/json' }, body: JSON.stringify({ message: { raw } }) }, 'Gmail draft');
     return { id: j.id || null, url: j.id ? `https://mail.google.com/mail/u/0/#drafts/${j.message?.id || ''}` : null, where: `Gmail draft to ${to}` };
+  },
+  async outlook(t, m, link) {
+    const to = ws().profile?.email;
+    if (!to) throw new Error('no email on the profile to draft to');
+    const j = await call(`${base('microsoft')}/v1.0/me/messages`, { method: 'POST', headers: { ...auth(t), 'content-type': 'application/json' }, body: JSON.stringify({ subject: `${m.serial}: ${m.deliverable}`, body: { contentType: 'Text', content: summary(m, link) }, toRecipients: [{ emailAddress: { address: to } }] }) }, 'Outlook draft');
+    return { id: j.id || null, url: j.webLink || null, where: `Outlook draft to ${to}` };
   },
   async github(t, m, link, prior) {
     const repo = targets().github;

@@ -93,7 +93,8 @@ export const SKILLS = [
 
 export const CONNECTORS = [
   { id: 'gmail', provider: 'google', name: 'Gmail', kind: 'Mail', what: 'Read threads as evidence; draft replies as artifacts.' },
-  { id: 'outlook', name: 'Outlook', kind: 'Mail', what: 'Mail and calendar evidence for briefs and updates.' },
+  { id: 'outlook', provider: 'microsoft', name: 'Outlook', kind: 'Mail', what: 'Mail as evidence; a delivery drafted in your Outlook, never sent for you.' },
+  { id: 'onedrive', provider: 'microsoft', name: 'OneDrive', kind: 'Files', what: 'Files that match the goal on the sources table.' },
   { id: 'gdrive', provider: 'google', name: 'Google Drive', kind: 'Files', what: 'Pull documents into mission evidence; file artifacts back.' },
   { id: 'notion', provider: 'notion', name: 'Notion', kind: 'Docs', what: 'Source pages as evidence; publish briefs to your wiki.' },
   { id: 'slack', provider: 'slack', name: 'Slack', kind: 'Chat', what: 'Post mission fills to a channel; pull threads as context.' },

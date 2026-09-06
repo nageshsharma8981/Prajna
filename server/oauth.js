@@ -82,6 +82,29 @@ export const OAUTH_PROVIDERS = {
       return `Notion: recently edited, ${titles.join(' · ') || 'no shared pages yet'}`;
     },
   },
+  microsoft: {
+    label: 'Microsoft',
+    covers: ['outlook', 'onedrive'],
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scopes: ['openid', 'email', 'offline_access', 'User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Calendars.Read', 'Files.Read'],
+    console: 'https://portal.azure.com, App registrations, new registration (accounts in any organizational directory and personal accounts), add the redirect URI as a Web platform, then a client secret',
+    async identity(t) {
+      const r = await withTimeout(fetch('https://graph.microsoft.com/v1.0/me', { headers: { authorization: `Bearer ${t}` } }), 'Microsoft');
+      const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'me failed');
+      return j.mail || j.userPrincipalName || j.displayName || 'Microsoft account';
+    },
+    async evidence(t, connector) {
+      if (connector === 'onedrive') {
+        const r = await withTimeout(fetch('https://graph.microsoft.com/v1.0/me/drive/recent?$top=3', { headers: { authorization: `Bearer ${t}` } }), 'OneDrive');
+        const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'drive failed');
+        return `OneDrive: recent, ${(j.value || []).map((f) => f.name).join(' · ') || 'none'}`;
+      }
+      const r = await withTimeout(fetch('https://graph.microsoft.com/v1.0/me/messages?$top=5&$select=subject', { headers: { authorization: `Bearer ${t}` } }), 'Outlook');
+      const j = await r.json(); if (!r.ok) throw new Error(j.error?.message || 'messages failed');
+      return `Outlook: ${(j.value || []).length} recent messages available as evidence (read-only), a delivery can be drafted`;
+    },
+  },
   github: {
     label: 'GitHub',
     covers: ['github'],

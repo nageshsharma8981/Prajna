@@ -1536,6 +1536,73 @@ test('the ceiling is set by what this work has really cost, not by the table alo
   if (filled) assert.equal(Math.round((filled.settlement.settled + filled.settlement.released) * 10) / 10, Math.round(filled.settlement.reserved * 10) / 10);
 });
 
+test('Outlook puts mail on the table and takes a draft, behind approval, never sent for you', async () => {
+  // A Graph of our own: it answers a mail search, and keeps the draft it is given.
+  const drafts = []; const searches = [];
+  const graph = http.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => { body += d; });
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.method === 'GET' && req.url.startsWith('/v1.0/me/messages')) { searches.push(decodeURIComponent(req.url)); return res.end(JSON.stringify({ value: [{ subject: 'Ferry pass pricing, board note', from: { emailAddress: { name: 'Meera', address: 'meera@example.com' } }, receivedDateTime: '2026-09-01T10:00:00Z', bodyPreview: 'The Monday ferries run late; the pass must say so.', webLink: 'https://outlook.example/read/1' }] })); }
+      if (req.method === 'POST' && req.url.startsWith('/v1.0/me/messages')) { const j = JSON.parse(body || '{}'); drafts.push(j); return res.end(JSON.stringify({ id: `AAMk${drafts.length}`, webLink: `https://outlook.example/drafts/${drafts.length}` })); }
+      res.end(JSON.stringify({ value: [] }));
+    });
+  });
+  await new Promise((r) => graph.listen(0, '127.0.0.1', r));
+  const DIR9 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-outlook-'));
+  const P9 = PORT + 9;
+  const B9 = `http://localhost:${P9}`;
+  const child9 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P9), PRAJNA_DATA_DIR: DIR9, PRAJNA_PUBLIC_URL: B9,
+    PRAJNA_API_BASE_MICROSOFT: `http://127.0.0.1:${graph.address().port}`,
+    PRAJNA_TEST_TOKENS: JSON.stringify({ microsoft: { token: 'ms-test', account: 'nagesh@contoso.example' } }) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B9) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  try {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B9}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
+    const legal = (await call('/api/legal', null, 'GET')).j;
+    await call('/api/consent', { accept: true, version: legal.version, name: 'Outlook Test' });
+    assert.equal((await call('/api/profile', { email: 'nagesh@contoso.example' }, 'PATCH')).status, 200, 'the house profile carries the address a draft goes to');
+    const boot = (await call('/api/bootstrap', null, 'GET')).j;
+    assert.ok(boot.connectors.find((c) => c.id === 'outlook')?.connected, 'the house holds a live Microsoft token, so Outlook is connected');
+    assert.ok(boot.connectors.find((c) => c.id === 'onedrive')?.connected, 'and OneDrive with it, one app for both');
+    const w = await call('/api/missions', { goal: 'Outlook test: a brief for a Kochi ferry pass', deskId: 'brief', depth: 'fast' });
+    assert.ok(w.j.contract.plan.some((p) => p.tool === 'connector-post' && /Outlook/.test(p.title)), 'the plan carries an Outlook draft step');
+    assert.equal((await call(`/api/missions/${w.j.id}/launch`)).status, 200);
+    let m, approvals = 0; const started = Date.now();
+    while (Date.now() - started < 120000) {
+      m = (await call(`/api/missions/${w.j.id}`, null, 'GET')).j;
+      if (m.status === 'FILLED' || m.status === 'KILLED') break;
+      if (m.status.startsWith('PAUSED')) {
+        const a = (m.attention || []).find((x) => !x.decision);
+        if (a) {
+          if (a.kind === 'approval') approvals += 1;
+          const pick = ['approve-step', 'approve', 'patch', 'raise-ceiling', 'accept-risk', 'continue'].find((o) => a.options.includes(o)) || a.options[0];
+          await call(`/api/missions/${w.j.id}/attention/${a.id}`, { decision: pick, justification: `outlook test, ${pick}` });
+        }
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    assert.equal(m.status, 'FILLED', `run ended ${m.status}`);
+    // The mail is on the sources table, read, with where it came from.
+    assert.ok(searches.length >= 1 && /\$search="/.test(searches[0]), `the house searched the mailbox: ${searches[0]}`);
+    const src = (m.sources || []).find((s) => s.connector === 'outlook');
+    assert.ok(src, `Outlook mail on the table: ${JSON.stringify((m.sources || []).map((s) => s.title))}`);
+    assert.equal(src.title, 'Ferry pass pricing, board note'); assert.equal(src.kind, 'mail'); assert.equal(src.url, 'https://outlook.example/read/1');
+    assert.match(src.extract, /From Meera\. 2026-09-01\. The Monday ferries run late/);
+    // The draft was made, addressed to the person, never sent, behind an approval, with the public link in it.
+    assert.ok(approvals >= 1, 'nothing left the house without an approval');
+    assert.equal(drafts.length, 1, `one draft: ${JSON.stringify(drafts)}; deliveries ${JSON.stringify(m.deliveries)}; approvals ${approvals}; steps ${JSON.stringify(m.contract.plan.map((p) => [p.title, p.status]))}`);
+    assert.equal(drafts[0].toRecipients[0].emailAddress.address, 'nagesh@contoso.example');
+    assert.match(drafts[0].subject, /^PJ-\d+: /);
+    assert.match(drafts[0].body.content, /https?:\/\/\S+\/s\/[a-f0-9]{32}/, 'the draft carries the public link');
+    const d = (m.deliveries || []).find((x) => x.connector === 'outlook');
+    assert.ok(d && d.ok, `the delivery is on the record: ${JSON.stringify(m.deliveries)}`);
+    assert.equal(d.where, 'Outlook draft to nagesh@contoso.example');
+    assert.equal(d.url, 'https://outlook.example/drafts/1');
+    assert.equal(d.linkOk, true, 'the house checked its own link first');
+  } finally { child9.kill(); graph.close(); fs.rmSync(DIR9, { recursive: true, force: true }); }
+});
+
 test('a delivery reaches a connected app, behind approval, with a link the house checks', async () => {
   // A Slack of our own: it lists a channel, accepts a post, and remembers it.
   const posted = [];

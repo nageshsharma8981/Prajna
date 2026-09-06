@@ -38,7 +38,8 @@ export const CONNECTOR_CATALOG = [
   ['notion', 'Notion', 'Productivity', 'notion', 'Source pages as evidence; publish briefs to your wiki.', true],
   ['gdrive', 'Google Drive', 'Files', 'google', 'Pull documents into mission evidence; file artifacts back.', true],
   ['gdocs', 'Google Docs', 'Productivity', 'google', 'Read and write documents.', true],
-  ['outlook', 'Outlook', 'Communication', null, 'Mail and calendar evidence for briefs and updates.', true],
+  ['outlook', 'Outlook', 'Communication', 'microsoft', 'Mail as evidence; a delivery drafted in your Outlook, never sent for you.', true],
+  ['onedrive', 'OneDrive', 'Files', 'microsoft', 'Files that match the goal on the sources table.', true],
   ['slack', 'Slack', 'Communication', 'slack', 'Post mission deliveries to a channel; pull threads as context.', true],
   ['gcal', 'Google Calendar', 'Productivity', 'google', 'Schedule evidence; book time when a mission needs it.', true],
   // accounting
@@ -71,7 +72,6 @@ export const CONNECTOR_CATALOG = [
   ['netlify', 'Netlify', 'Developer', null, 'Deploy generated sites.'],
   // files & data
   ['dropbox', 'Dropbox', 'Files', null, 'Files as evidence; deliver artifacts to folders.'],
-  ['onedrive', 'OneDrive', 'Files', null, 'Microsoft files as evidence.'],
   ['box', 'Box', 'Files', null, 'Enterprise document storage.'],
   ['sheets', 'Google Sheets', 'Data', 'google', 'Spreadsheets as analysis inputs; results written back.'],
   ['airtable', 'Airtable', 'Data', null, 'Bases as structured evidence.'],

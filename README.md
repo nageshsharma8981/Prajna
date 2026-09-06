@@ -2315,3 +2315,27 @@ Proved: the counts hold together, the three reasons are there, the latest
 run is a delivered mission on the record, one click carries the brief to
 its desk, a submission carries its replay and the replay opens, the proven
 brief links it too, and withdrawing closes it.
+
+## v1.63: Outlook and OneDrive, one Microsoft app (2026-09-06)
+
+The house connected to Google, Slack, Notion and GitHub for real, and
+listed Outlook as a connector it could not connect. Zenith connects
+Outlook. Half the people who would bring their mail to a brief keep it in
+Outlook, and OneDrive beside it.
+
+Microsoft is now a provider like the others: one OAuth app, registered by
+the owner in the Azure portal, covers Outlook and OneDrive, with the client
+id, the secret and the token in memory only, never on disk, like every
+other key here. Outlook puts mail that matches the goal on the sources
+table, each message with who sent it, when, and the first lines, and it
+takes the delivery as a draft in the owner's own mailbox, addressed to the
+house's own address, behind the same approval as every delivery, and never
+sent for them. OneDrive puts matching files on the table. The tape and the
+record carry all of it as they do for Slack and Gmail.
+
+Proved against a Graph of the house's own: the token lights both
+connectors, the plan carries the Outlook draft step, the mailbox is
+searched for the goal's words, the mail lands on the table with its sender,
+its date and its first lines, one draft is made to the house's address
+with the public link in it, nothing leaves without an approval, and the
+delivery is on the record with its link checked.

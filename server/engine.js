@@ -141,6 +141,7 @@ const CONNECTOR_STEPS = {
   slack: { title: 'Post the delivery to Slack (queued connector)', tool: 'connector-post', cost: 2 },
   notion: { title: 'Publish the artifact to Notion (queued connector)', tool: 'connector-post', cost: 2 },
   gmail: { title: 'Draft a delivery email in Gmail (queued connector)', tool: 'connector-post', cost: 2 },
+  outlook: { title: 'Draft a delivery email in Outlook (queued connector)', tool: 'connector-post', cost: 2 },
   github: { title: 'Open a delivery issue on GitHub (queued connector)', tool: 'connector-post', cost: 2 },
 };
 
