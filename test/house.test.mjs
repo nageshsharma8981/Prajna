@@ -50,6 +50,24 @@ async function ownerCookie() {
   _ownerCookie = c; return c;
 }
 async function ownerPost(p, body) { const r = await fetch(BASE + p, { method: 'POST', headers: { 'content-type': 'application/json', cookie: await ownerCookie() }, body: body === undefined ? undefined : JSON.stringify(body) }); return { status: r.status, j: await r.json().catch(() => ({})) }; }
+// A house of a test's own: claim it once, as Owner, and keep the cookie.
+// House-level acts (models, keys, limits, instructions) wait for an owner.
+const _owners = new Map();
+async function ownerOf(base) {
+  // Two tests may take the same port in turn: a cookie claimed on the first
+  // house is signed with a secret the second has never seen. The server's
+  // own start time tells them apart.
+  let started = null;
+  try { started = (await (await fetch(`${base}/api/health`)).json()).startedAt || null; } catch { /* not up yet */ }
+  const key = `${base}#${started}`;
+  if (_owners.has(key)) return _owners.get(key);
+  const jar = (r) => (r.headers.get('set-cookie') || '').split(/,(?=\s*prajna_)/).map((c) => c.split(';')[0].trim()).join('; ');
+  const c = jar(await fetch(base + '/'));
+  const legal = await (await fetch(`${base}/api/legal`)).json();
+  await fetch(`${base}/api/consent`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ accept: true, version: legal.version, name: 'Owner' }) });
+  await fetch(`${base}/api/me`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify({ name: 'Owner' }) });
+  _owners.set(key, c); return c;
+}
 async function ownerApi(p, opts = {}) { const r = await fetch(BASE + p, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}), cookie: await ownerCookie() } }); return { status: r.status, j: await r.json().catch(() => ({})), r }; }
 
 before(async () => {
@@ -694,7 +712,7 @@ test('when the sweep finds nothing, the house offers a smaller ticket instead of
   const DIR2 = fs.mkdtempSync(path.join(os.tmpdir(), 'prajna-ground-'));
   const child2 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(PORT + 1), PRAJNA_DATA_DIR: DIR2, PRAJNA_WIKI_BASE: `http://127.0.0.1:${port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
   const B2 = `http://localhost:${PORT + 1}`;
-  const j2 = async (p, o) => { const r = await fetch(B2 + p, { headers: { 'content-type': 'application/json' }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const j2 = async (p, o) => { const r = await fetch(B2 + p, { headers: { 'content-type': 'application/json', cookie: await ownerOf(B2) }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B2}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
@@ -794,7 +812,7 @@ test('a claim citing a source that does not speak to it is caught at the gate', 
   const P3 = PORT + 2;
   const B3 = `http://localhost:${P3}`;
   const child3 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P3), PRAJNA_DATA_DIR: DIR3, PRAJNA_WIKI_BASE: `http://127.0.0.1:${wiki.address().port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const j3 = async (p, o) => { const r = await fetch(B3 + p, { headers: { 'content-type': 'application/json' }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const j3 = async (p, o) => { const r = await fetch(B3 + p, { headers: { 'content-type': 'application/json', cookie: await ownerOf(B3) }, ...o }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B3}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
@@ -1010,6 +1028,7 @@ test('the house itself belongs to its own: a visitor can work, not dismantle', a
     ['/api/backup', null, 'POST'],
     ['/api/keys/openai', { key: 'sk-a-guests-key' }, 'PUT'],
     ['/api/housecheck/repair', null, 'POST'],
+    ['/api/models', { name: 'Planted', provider: 'openai', modelId: 'x', baseUrl: 'https://attacker.invalid/v1' }, 'POST'],
   ]) {
     const r = await call(p, guest, body, method);
     assert.equal(r.status, 403, `${method} ${p} is refused`);
@@ -1211,7 +1230,7 @@ test('the substance is written in the open, and the count survives the streaming
   const P6 = PORT + 5;
   const B6 = `http://localhost:${P6}`;
   const child6 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P6), PRAJNA_DATA_DIR: DIR6 }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const call = async (p, body, method = 'POST') => { const r = await fetch(B6 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B6 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B6) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B6}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
@@ -1340,7 +1359,7 @@ test('a delivery reaches a connected app, behind approval, with a link the house
   const child7 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P7), PRAJNA_DATA_DIR: DIR7, PRAJNA_PUBLIC_URL: B7,
     PRAJNA_API_BASE_SLACK: `http://127.0.0.1:${slack.address().port}`,
     PRAJNA_TEST_TOKENS: JSON.stringify({ slack: { token: 'xoxb-test', account: 'the test workspace' } }) }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const call = async (p, body, method = 'POST') => { const r = await fetch(B7 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B7 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B7) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B7}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }
@@ -1469,7 +1488,7 @@ test('a reader can see what each claim rests on, in the delivery itself', async 
   const P8 = PORT + 7;
   const B8 = `http://localhost:${P8}`;
   const child8 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P8), PRAJNA_DATA_DIR: DIR8, PRAJNA_WIKI_BASE: `http://127.0.0.1:${wiki.address().port}/api.php` }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const call = async (p, body, method = 'POST') => { const r = await fetch(B8 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B8 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B8) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   const runOne = async (lead) => {
     const w = await call('/api/missions', { goal: 'Citation view: did the ferry subsidy raise passenger numbers?', deskId: 'brief', depth: 'fast', lead, advisers: [] });
     await call(`/api/missions/${w.j.id}/launch`);
@@ -1518,7 +1537,7 @@ test('the house says when a restart has taken its keys', async () => {
   const P9 = PORT + 8;
   const B9 = `http://localhost:${P9}`;
   const child9 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P9), PRAJNA_DATA_DIR: DIR9 }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B9) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   const keysRow = async () => (await call('/api/housecheck')).j.rows.find((r) => r.id === 'keys');
   try {
     const t0 = Date.now();
@@ -1681,6 +1700,11 @@ test('the house rules are accepted by a person, not by the building', async () =
     // erase is refused with the way to claim it, not carried out.
     const unclaimed = await call('/api/erase', first, { confirm: 'ERASE' });
     assert.equal(unclaimed.status, 403); assert.equal(unclaimed.j.unclaimed, true); assert.match(unclaimed.j.error, /no owner yet/);
+    // Nor add a model to it: a model carries an address, and a key picked
+    // for that model would be sent there.
+    const planted = await call('/api/models', first, { name: 'Planted', provider: 'openai', modelId: 'x', baseUrl: 'https://attacker.invalid/v1' });
+    assert.equal(planted.status, 403); assert.equal(planted.j.unclaimed, true);
+    assert.equal((await call('/api/housebrief', first, { text: 'instructions from a stranger' }, 'PUT')).j.unclaimed, true, 'nor set its instructions');
     assert.equal((await call('/api/chats', first, { title: 'after reading' })).status, 200);
 
     const stranger = await call('/api/chats', second, { title: 'on somebody else\'s acceptance' });
@@ -1735,7 +1759,7 @@ test('the recorded dissent is a real objection by a model that made it', async (
   const P9 = PORT + 8;
   const B9 = `http://localhost:${P9}`;
   const child9 = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(P9), PRAJNA_DATA_DIR: DIR9 }, stdio: ['ignore', 'pipe', 'pipe'] });
-  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const call = async (p, body, method = 'POST') => { const r = await fetch(B9 + p, { method, headers: { 'content-type': 'application/json', cookie: await ownerOf(B9) }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
   try {
     const t0 = Date.now();
     while (Date.now() - t0 < 15000) { try { if ((await fetch(`${B9}/api/health`)).ok) break; } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 200)); }

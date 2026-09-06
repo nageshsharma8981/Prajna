@@ -2146,3 +2146,19 @@ The tests now claim their shared house and act as its owner where the
 house demands one, the erase test proves the refusal first, and it proves
 the eraser keeps the house.
 
+## v1.56: Nobody plants a model in an unclaimed house (2026-09-06)
+
+One more edge of the unclaimed-house rule, and the sharpest. Any visitor
+to an unclaimed house could add a custom model to it, with a base address
+of their choosing. If the eventual owner then loaded a key and picked that
+model, the key would be sent to that address. The same openness let a
+stranger set the house's standing instructions, which shape every
+delivery, its limits and its voice. And removing a model, on any house,
+had never been gated at all: a guest could delete the owner's models.
+
+Adding or removing a model, the house instructions, the limits and the
+voice now wait for an owner like erase and restore do, with the same
+message and the same way to claim the house. Proved in an unclaimed
+house: a planted model and stranger's instructions both refused; and in a
+claimed house: a guest's planted model refused as the owner's business.
+

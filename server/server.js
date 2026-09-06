@@ -279,7 +279,7 @@ function keepHouse(secret, actorId, actor) {
 }
 function houseGate(req, res) {
   if (!(ws().ownerId || ownerName())) {
-    json(res, 403, { error: 'This house has no owner yet, so nobody may erase it, restore over it, point its webhook elsewhere or set its guest policy. Sign in under My Profile to claim it; the first name signed becomes the house\'s own.', unclaimed: true, owner: true });
+    json(res, 403, { error: 'This house has no owner yet, so nobody may erase it, restore over it, point its webhook elsewhere, set its guest policy, its limits, its instructions or its voice, or add or remove a model. Sign in under My Profile to claim it; the first name signed becomes the house\'s own.', unclaimed: true, owner: true });
     return true;
   }
   return ownerGate(req, res);
@@ -773,7 +773,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/housebrief' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     const text = String(body.text || '').trim().slice(0, 2000);
     ws().houseBrief = text; flushWs();
@@ -784,7 +784,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   // so the choice can be heard before a deck is run.
   if (p === '/api/voice' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     const voice = String(body.voice || '').trim().slice(0, 40);
     if (voice && !/^[A-Za-z][A-Za-z0-9 _-]{1,39}$/.test(voice)) return json(res, 400, { error: 'A voice is a short name the provider knows, such as alloy or Kore.' });
@@ -824,7 +824,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   if (p === '/api/limits' && req.method === 'PUT') {
     if (!authed(req)) return json(res, 401, { locked: true });
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     const r = setLimits(body || {});
     if (r.error) return json(res, 400, { error: r.error });
@@ -1801,7 +1801,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
     }
   }
   if (p === '/api/models' && req.method === 'POST') {
-    if (ownerGate(req, res)) return;
+    if (houseGate(req, res)) return;
     const body = await readBody(req);
     if (body.__tooLarge) return json(res, 413, { error: 'Request body too large.' });
     const name = String(body.name || '').trim().slice(0, 40);
@@ -1819,6 +1819,7 @@ ${has.xlsx ? `<a href="/s/${a.shareToken}.xlsx" style="color:#ffb300;text-decora
   }
   const modelDel = p.match(/^\/api\/models\/(c_[\w]+)$/);
   if (modelDel && req.method === 'DELETE') {
+    if (houseGate(req, res)) return;
     store.removeCustomModel(modelDel[1]);
     return json(res, 200, { ok: true });
   }
