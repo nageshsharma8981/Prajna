@@ -20,3 +20,5 @@
    workflow-verbs go plain (mission, stamp & run, stop run, DONE / STOPPED).
 8. **External steps always hold for approval.** `access: 'external'` implies
    `requiresConfirmation`; the decision and its justification go into provenance.
+
+9. **Start with `HANDOVER.md`.** It is the complete map of the house for anyone new: purpose, principles, architecture, data model, run lifecycle, desks, security, routes, tests, deploy, traps, and the order to rebuild in.
